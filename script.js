@@ -13,7 +13,7 @@ const copyAsImage = async () => {
 };
 
 const renderCards = () => {
-  const cards = document.querySelectorAll("#cards > .card");
+  const cards = document.querySelectorAll("#cards > div > .card");
 
   [...cards].forEach((card) => {
     const dropZone = card.querySelector(".drop");

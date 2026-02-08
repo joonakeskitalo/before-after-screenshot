@@ -17,9 +17,24 @@ body {
 
 #cards {
     background-color: #f0f0f0;
-    display: flex;
-    flex-direction: row;
-    gap: 12px;
+
+
+    &>textarea {
+        border: none;
+        resize: none;
+        margin-top: 8px;
+        background-color: unset;
+        line-height: 1.5em;
+        text-align: center;
+        width: 100%;
+        field-sizing: content;
+    }
+
+    &>.row {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+    }
 }
 
 .card {
