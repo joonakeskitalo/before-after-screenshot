@@ -25,7 +25,12 @@
           "
         >
           <h1>Before & After Preview</h1>
-          <button onclick="copyAsImage()">Copy to clipboard</button>
+          <div>
+            <button onclick="copyAsImage(false)">Copy to clipboard</button>
+            <button onclick="copyAsImage(true)">
+              Copy full size to clipboard
+            </button>
+          </div>
         </div>
 
         <div id="cards">
