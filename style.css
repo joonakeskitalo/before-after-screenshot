@@ -15,15 +15,30 @@ body {
     }
 }
 
+textarea {
+    border: none;
+    resize: none;
+    background-color: unset;
+    font-size: 15pt;
+    transition: background-color ease-in-out 0.2s;
+    background-color: unset;
+    border: unset;
+    resize: none;
+    text-align: center;
+    border-radius: 0.2em;
+    padding: 4px;
+}
+
+textarea:hover {
+    background-color: #e1e1e1;
+}
+
 #cards {
     background-color: #f0f0f0;
 
 
     &>textarea {
-        border: none;
-        resize: none;
         margin-top: 8px;
-        background-color: unset;
         line-height: 1.5em;
         text-align: center;
         width: 100%;
@@ -46,12 +61,6 @@ body {
     justify-content: center;
     display: flex;
 
-    &>textarea {
-        background-color: unset;
-        border: unset;
-        resize: none;
-        text-align: center;
-    }
 
     &>.drop {
         height: 100%;
