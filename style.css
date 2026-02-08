@@ -1,25 +1,31 @@
+:root {
+    --text-fontsize: 15pt
+}
+
 body {
     font-family: "Maple Mono", monospace;
     background-color: #f0f0f0;
 }
 
-
 .content-container {
     display: flex;
     justify-content: center;
+    box-sizing: border-box;
     padding: 4px;
 
     &>.content {
         width: 100%;
+        box-sizing: border-box;
         padding: 32px;
     }
 }
 
 textarea {
+    box-sizing: border-box;
     border: none;
     resize: none;
     background-color: unset;
-    font-size: 15pt;
+    font-size: var(--text-fontsize);
     transition: background-color ease-in-out 0.2s;
     background-color: unset;
     border: unset;
@@ -34,7 +40,9 @@ textarea:hover {
 }
 
 #cards {
+    box-sizing: border-box;
     background-color: #f0f0f0;
+    padding: 32px 96px;
 
 
     &>textarea {
@@ -43,16 +51,19 @@ textarea:hover {
         text-align: center;
         width: 100%;
         field-sizing: content;
+        box-sizing: border-box;
     }
+
 
     &>.row {
         display: flex;
         flex-direction: row;
-        gap: 12px;
+        gap: 32px;
     }
 }
 
 .card {
+    box-sizing: border-box;
     min-height: 500px;
     width: 100%;
     display: flex;

@@ -1,3 +1,5 @@
+let root = document.documentElement;
+
 const cardsEl = document.getElementById("cards");
 const content = document.querySelector(".content");
 
@@ -31,6 +33,10 @@ const copyAsImage = async (useFullSize = false) => {
   try {
     if (useFullSize) setElementWidths(elementsToAdjustWidth, "unset");
 
+    const rect = cardsEl.getBoundingClientRect();
+    const fontSize = Math.floor(rect.width / 80);
+    root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+
     const blob = await domtoimage.toBlob(cardsEl);
     navigator.clipboard.write([
       new ClipboardItem({
@@ -39,6 +45,8 @@ const copyAsImage = async (useFullSize = false) => {
     ]);
 
     if (useFullSize) setElementWidths(elementsToAdjustWidth, "100%");
+
+    root.style.setProperty("--text-fontsize", `15pt`);
   } catch (error) {
     console.error(error);
   }
