@@ -23,6 +23,9 @@ const renderCards = () => {
     inputElement.addEventListener("change", function (e) {
       const clickFile = this.files[0];
       if (clickFile) {
+        img.style.display = "flex";
+        dropZone.style.border = "unset";
+
         const reader = new FileReader();
         reader.readAsDataURL(clickFile);
         reader.onloadend = function () {
