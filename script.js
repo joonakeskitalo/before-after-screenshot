@@ -31,18 +31,19 @@ const setElementWidths = (arr, width) =>
 
 const copyAsImage = async (useFullSize = false) => {
   try {
-    if (useFullSize) setElementWidths(elementsToAdjustWidth, "unset");
+    if (useFullSize) {
+      const rect = cardsEl.getBoundingClientRect();
+      const fontSize = Math.floor(rect.width / 90);
+      root.style.setProperty(
+        "--text-fontsize",
+        `${fontSize > 15 ? fontSize : 15}pt`,
+      );
 
-    const rect = cardsEl.getBoundingClientRect();
-    const fontSize = Math.floor(rect.width / 90);
-    root.style.setProperty(
-      "--text-fontsize",
-      `${fontSize > 15 ? fontSize : 15}pt`,
-    );
+      const gap = Math.floor(leftImage.getBoundingClientRect().width / 6);
+      root.style.setProperty("--gap", `${gap}px`);
 
-    const gap = Math.floor(leftImage.getBoundingClientRect().width / 6);
-
-    root.style.setProperty("--gap", `${gap}px`);
+      cardsEl.style.padding = "64px 96px 32px 96px";
+    }
 
     const blob = await domtoimage.toBlob(cardsEl);
     navigator.clipboard.write([
@@ -51,10 +52,12 @@ const copyAsImage = async (useFullSize = false) => {
       }),
     ]);
 
-    if (useFullSize) setElementWidths(elementsToAdjustWidth, "100%");
-
-    root.style.setProperty("--text-fontsize", `15pt`);
-    root.style.setProperty("--gap", `32px`);
+    if (useFullSize) {
+      setElementWidths(elementsToAdjustWidth, "100%");
+      root.style.setProperty("--text-fontsize", `15pt`);
+      root.style.setProperty("--gap", `32px`);
+      cardsEl.style.padding = "32px 32px 16px 32px";
+    }
   } catch (error) {
     console.error(error);
   }
