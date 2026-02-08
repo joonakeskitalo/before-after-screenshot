@@ -32,6 +32,7 @@ const setElementWidths = (arr, width) =>
 const copyAsImage = async (useFullSize = false) => {
   try {
     if (useFullSize) {
+      setElementWidths(elementsToAdjustWidth, "unset");
       const rect = cardsEl.getBoundingClientRect();
       const fontSize = Math.floor(rect.width / 90);
       root.style.setProperty(
