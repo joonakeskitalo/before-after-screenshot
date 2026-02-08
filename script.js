@@ -34,8 +34,11 @@ const copyAsImage = async (useFullSize = false) => {
     if (useFullSize) setElementWidths(elementsToAdjustWidth, "unset");
 
     const rect = cardsEl.getBoundingClientRect();
-    const fontSize = Math.floor(rect.width / 80);
-    root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+    const fontSize = Math.floor(rect.width / 90);
+    root.style.setProperty(
+      "--text-fontsize",
+      `${fontSize > 15 ? fontSize : 15}pt`,
+    );
 
     const blob = await domtoimage.toBlob(cardsEl);
     navigator.clipboard.write([
