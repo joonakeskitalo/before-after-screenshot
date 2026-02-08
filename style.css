@@ -1,5 +1,6 @@
 :root {
-    --text-fontsize: 15pt
+    --text-fontsize: 15pt;
+    --gap: 64px;
 }
 
 body {
@@ -58,7 +59,7 @@ textarea:hover {
     &>.row {
         display: flex;
         flex-direction: row;
-        gap: 32px;
+        gap: var(--gap);
     }
 }
 

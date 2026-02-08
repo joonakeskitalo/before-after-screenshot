@@ -40,6 +40,10 @@ const copyAsImage = async (useFullSize = false) => {
       `${fontSize > 15 ? fontSize : 15}pt`,
     );
 
+    const gap = Math.floor(leftImage.getBoundingClientRect().width / 6);
+
+    root.style.setProperty("--gap", `${gap}px`);
+
     const blob = await domtoimage.toBlob(cardsEl);
     navigator.clipboard.write([
       new ClipboardItem({
@@ -50,6 +54,7 @@ const copyAsImage = async (useFullSize = false) => {
     if (useFullSize) setElementWidths(elementsToAdjustWidth, "100%");
 
     root.style.setProperty("--text-fontsize", `15pt`);
+    root.style.setProperty("--gap", `32px`);
   } catch (error) {
     console.error(error);
   }
