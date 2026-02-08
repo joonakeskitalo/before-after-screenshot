@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Screenshot Preview</title>
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📱</text></svg>"
+    />
+
+    <link rel="stylesheet" href="normalize.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="content-container">
+      <div class="content">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 8px;
+          "
+        >
+          <h1>Screenshot Preview</h1>
+          <button onclick="downloadAsImage()">Copy to clipboard</button>
+        </div>
+
+        <div id="cards">
+          <div class="card" id="left">
+            <div class="drop">
+              <img style="display: none" src="" alt="" />
+            </div>
+            <input type="file" class="file-input" hidden />
+            <textarea rows="7">Before</textarea>
+          </div>
+          <div class="card" id="right">
+            <div class="drop">
+              <img style="display: none" src="" alt="" />
+            </div>
+            <input type="file" class="file-input" hidden />
+            <textarea rows="7">After</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="dom-to-image.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
