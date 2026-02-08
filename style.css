@@ -158,3 +158,15 @@ button:before {
 button:-webkit-details-marker {
     display: none;
 }
+
+.note {
+    border: unset;
+    padding: 8px 8px;
+    border-radius: 1em;
+    opacity: 0.9;
+    border: 1px solid #f5e5c1;
+    background-color: #fffbd3;
+    font-size: 12pt;
+    field-sizing: content;
+    min-width: 16px;
+}

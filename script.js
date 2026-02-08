@@ -133,3 +133,49 @@ document.onpaste = function (event) {
     }
   }
 };
+
+cardsEl.addEventListener(
+  "contextmenu",
+  async (e) => {
+    if (e.button === 2) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+
+      if (e.target.tagName === "INPUT") {
+        return;
+      }
+
+      const el = document.createElement("input");
+      el.type = "text";
+      el.className = "note";
+      el.style = `top:${e.pageY}px;left:${e.pageX}px;z-index:3;position:absolute;`;
+
+      el.oncontextmenu = () => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+        el.remove();
+      };
+
+      const move = (ev) => {
+        el.style.left = `${el.offsetLeft + ev.movementX}px`;
+        el.style.top = `${el.offsetTop + ev.movementY}px`;
+      };
+
+      const dragStart = (ev) => el.setPointerCapture(ev.pointerId);
+      const drag = (ev) => el.hasPointerCapture(ev.pointerId) && move(ev);
+      const dragEnd = (ev) => el.releasePointerCapture(ev.pointerId);
+
+      el.addEventListener("pointerdown", dragStart);
+      el.addEventListener("pointermove", drag);
+      el.addEventListener("pointerup", dragEnd);
+
+      cardsEl.appendChild(el);
+      el.focus();
+    }
+  },
+  {
+    passive: false,
+  },
+);
