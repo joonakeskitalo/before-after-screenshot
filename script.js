@@ -1,5 +1,5 @@
 const cardsEl = document.getElementById("cards");
-const downloadAsImage = async () => {
+const copyAsImage = async () => {
   try {
     const blob = await domtoimage.toBlob(cardsEl);
     navigator.clipboard.write([
