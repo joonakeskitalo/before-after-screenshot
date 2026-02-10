@@ -16,14 +16,21 @@ const rightImage = right.querySelector("img");
 
 const elementsToAdjustWidth = [cardsEl, content];
 
-const setElementWidths = (arr, width) => {
-  const elements = document.querySelectorAll("#card-row > div.card *");
-  const elementsWithoutTextareas = [...arr, ...elements].filter(
-    (el) => el.tagName !== "TEXTAREA",
-  );
+const setElementWidths = (arr, size) => {
+  const images = cardsEl.querySelectorAll("img");
+  const cards = cardsEl.querySelectorAll("div.card");
+  const drops = cardsEl.querySelectorAll("div.drop");
+
+  const elementsWithoutTextareas = [
+    ...arr,
+    ...cards,
+    ...images,
+    ...drops,
+  ].filter((el) => el.tagName !== "TEXTAREA");
 
   elementsWithoutTextareas.forEach((x) => {
-    x.style.width = width;
+    x.style.width = size;
+    x.style.height = size;
   });
 };
 
@@ -41,8 +48,7 @@ const copyAsImage = async (useFullSize = false) => {
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, "unset");
       const rect = cardsEl.getBoundingClientRect();
-      const _fontSize = Math.floor(rect.width / 70);
-      const fontSize = minMax(_fontSize, 20, 48);
+      const fontSize = minMax(Math.floor(rect.width / 70), 20, 48);
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
       const _gap = Math.floor(leftImage.getBoundingClientRect().width / 8);
@@ -98,6 +104,7 @@ const copyAsImage = async (useFullSize = false) => {
       })
       .forEach((drop) => {
         drop.style.width = "100%";
+        // drop.style.height = "100%";
       });
   } catch (error) {
     console.error(error);
