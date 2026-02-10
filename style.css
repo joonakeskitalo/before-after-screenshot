@@ -24,7 +24,6 @@ body {
 
 textarea {
     box-sizing: border-box;
-    border: none;
     resize: none;
     background-color: unset;
     font-size: var(--text-fontsize);
@@ -81,7 +80,8 @@ textarea:hover {
         width: 100%;
         display: flex;
         justify-content: center;
-        border: var(--border)
+        border: var(--border);
+        box-sizing: border-box;
     }
 
     &>input[type="text"] {
