@@ -104,7 +104,6 @@ const copyAsImage = async (useFullSize = false) => {
       })
       .forEach((drop) => {
         drop.style.width = "100%";
-        // drop.style.height = "100%";
       });
   } catch (error) {
     console.error(error);
