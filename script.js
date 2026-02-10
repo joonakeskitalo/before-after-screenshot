@@ -1,6 +1,7 @@
 let root = document.documentElement;
 
 const cardsEl = document.getElementById("cards");
+const cardRow = document.getElementById("card-row");
 const content = document.querySelector(".content");
 
 let pasteLeftImage = false;
@@ -13,40 +14,65 @@ const right = document.querySelector("#right");
 const rightDrop = right.querySelector(".drop");
 const rightImage = right.querySelector("img");
 
-const elementsToAdjustWidth = [
-  cardsEl,
-  content,
-  left,
-  right,
-  leftDrop,
-  rightDrop,
-  leftImage,
-  rightImage,
-];
+const elementsToAdjustWidth = [cardsEl, content];
 
-const setElementWidths = (arr, width) =>
-  arr.forEach((x) => {
+const setElementWidths = (arr, width) => {
+  const elements = document.querySelectorAll("#card-row > div.card *");
+  const elementsWithoutTextareas = [...arr, ...elements].filter(
+    (el) => el.tagName !== "TEXTAREA",
+  );
+
+  elementsWithoutTextareas.forEach((x) => {
     x.style.width = width;
   });
+};
+
+const minMax = (value, min, max) => {
+  if (value < min) {
+    return min;
+  } else if (value > max) {
+    return max;
+  }
+  return value;
+};
 
 const copyAsImage = async (useFullSize = false) => {
   try {
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, "unset");
       const rect = cardsEl.getBoundingClientRect();
-      const fontSize = Math.floor(rect.width / 90);
-      root.style.setProperty(
-        "--text-fontsize",
-        `${fontSize > 15 ? fontSize : 15}pt`,
-      );
+      const _fontSize = Math.floor(rect.width / 70);
+      const fontSize = minMax(_fontSize, 20, 48);
+      root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
-      const gap = Math.floor(leftImage.getBoundingClientRect().width / 6);
+      const _gap = Math.floor(leftImage.getBoundingClientRect().width / 8);
+      const gap = minMax(_gap, 32, 128);
       root.style.setProperty("--gap", `${gap}px`);
 
-      cardsEl.style.padding = "64px 96px 32px 96px";
+      [
+        ...document.querySelectorAll(".drop"),
+        ...document.querySelectorAll(".card"),
+      ]
+        .filter((drop) => {
+          const img = drop.querySelector("img");
+          return !img || img.style.display === "none";
+        })
+        .forEach((drop) => {
+          drop.style.width = "32px";
+        });
     }
+    root.style.setProperty("--border", `unset`);
+    cardsEl.style.padding = "64px 128px 32px 128px";
+    cardRow.style.overflowX = "unset";
 
-    const blob = await domtoimage.toBlob(cardsEl);
+    const blob = await domtoimage.toBlob(cardsEl, {
+      filter: (node) => {
+        if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
+          return false;
+        }
+        return true;
+      },
+    });
     navigator.clipboard.write([
       new ClipboardItem({
         "image/png": blob,
@@ -57,14 +83,28 @@ const copyAsImage = async (useFullSize = false) => {
       setElementWidths(elementsToAdjustWidth, "100%");
       root.style.setProperty("--text-fontsize", `15pt`);
       root.style.setProperty("--gap", `32px`);
-      cardsEl.style.padding = "32px 32px 16px 32px";
     }
+    cardsEl.style.padding = "32px 32px 16px 32px";
+    cardRow.style.overflowX = "scroll";
+    root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
+
+    [
+      ...document.querySelectorAll(".drop"),
+      ...document.querySelectorAll(".card"),
+    ]
+      .filter((drop) => {
+        const img = drop.querySelector("img");
+        return !img || img.style.display === "none";
+      })
+      .forEach((drop) => {
+        drop.style.width = "100%";
+      });
   } catch (error) {
     console.error(error);
   }
 };
 
-const renderCards = () => {
+const addEventListenersToCards = () => {
   const cards = document.querySelectorAll("#cards > div > .card");
 
   [...cards].forEach((card) => {
@@ -107,7 +147,40 @@ const renderCards = () => {
   });
 };
 
-renderCards();
+addEventListenersToCards();
+
+const createCard = () => {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const drop = document.createElement("div");
+  drop.className = "drop";
+
+  const img = document.createElement("img");
+  img.style.display = "none";
+  drop.appendChild(img);
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.className = "file-input";
+  input.hidden = true;
+
+  const textarea = document.createElement("textarea");
+  textarea.autocomplete = "off";
+  textarea.autocorrect = "off";
+  textarea.spellcheck = false;
+  textarea.autocapitalize = "off";
+  textarea.rows = 5;
+  textarea.textContent = "";
+
+  card.appendChild(drop);
+  card.appendChild(input);
+  card.appendChild(textarea);
+
+  cardRow.appendChild(card);
+
+  addEventListenersToCards();
+};
 
 document.onpaste = function (event) {
   const items = (event.clipboardData || event.originalEvent.clipboardData)

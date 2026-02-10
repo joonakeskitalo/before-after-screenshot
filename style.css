@@ -1,6 +1,7 @@
 :root {
     --text-fontsize: 15pt;
     --gap: 64px;
+    --border: 1px dashed rgb(167, 165, 165);
 }
 
 body {
@@ -33,7 +34,7 @@ textarea {
     resize: none;
     text-align: center;
     border-radius: 0.2em;
-    padding: 4px;
+    padding: 32px;
 }
 
 textarea:hover {
@@ -60,6 +61,7 @@ textarea:hover {
         display: flex;
         flex-direction: row;
         gap: var(--gap);
+        overflow-x: scroll;
     }
 }
 
@@ -79,7 +81,7 @@ textarea:hover {
         width: 100%;
         display: flex;
         justify-content: center;
-        border: 1px dashed rgb(167, 165, 165);
+        border: var(--border)
     }
 
     &>input[type="text"] {
