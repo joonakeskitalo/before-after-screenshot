@@ -79,6 +79,7 @@ textarea:hover {
     &>.drop {
         height: 100%;
         width: 100%;
+        flex: 1;
         justify-content: center;
         border: var(--border);
         box-sizing: border-box;
