@@ -258,3 +258,17 @@ cardsEl.addEventListener(
     passive: false,
   },
 );
+
+function debounce(func, timeout = 300) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      func.apply(this, args);
+    }, timeout);
+  };
+}
+
+const changeBackgroundColor = debounce((e) => {
+  root.style.setProperty("--background-color", e.value);
+}, 100);

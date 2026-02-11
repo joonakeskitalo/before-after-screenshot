@@ -25,7 +25,12 @@
           "
         >
           <h1>Before & After Preview</h1>
-          <div>
+          <div style="align-items: center; display: flex; gap: 16px">
+            <input
+              oninput="changeBackgroundColor(this)"
+              type="color"
+              id="background-color-select"
+            />
             <button onclick="createCard()">Add</button>
             <button onclick="copyAsImage(false)">Copy</button>
             <button onclick="copyAsImage(true)">Copy full size</button>
