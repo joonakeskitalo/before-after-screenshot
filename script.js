@@ -4,8 +4,6 @@ const cardsEl = document.getElementById("cards");
 const cardRow = document.getElementById("card-row");
 const content = document.querySelector(".content");
 
-let pasteLeftImage = false;
-
 const left = document.querySelector("#left");
 const leftDrop = left.querySelector(".drop");
 const leftImage = left.querySelector("img");
@@ -135,27 +133,16 @@ const addEventListenersToCards = () => {
         };
       }
     });
+
     dropZone.addEventListener("click", () => inputElement.click());
     dropZone.addEventListener("dragover", (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
     });
 
-    dropZone.addEventListener("drop", (e) => {
+    dropZone.addEventListener("drop", async (e) => {
       e.preventDefault();
       dropZone.style.border = "unset";
-
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const file = e.dataTransfer.files[0];
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onloadend = function () {
-          img.style.display = "flex";
-          img.src = this.result;
-          img.alt = file.name;
-        };
-        return;
-      }
 
       const src = e.dataTransfer.getData("text/plain");
       if (src) {
@@ -192,16 +179,43 @@ const addEventListenersToCards = () => {
             }
           }
         }
+
+        const srcCard = e.dataTransfer.getData("id")
+          ? document
+              .getElementById(e.dataTransfer.getData("id"))
+              .closest(".card")
+          : dropZone.closest(".card");
+        const srcTextarea = srcCard.querySelector("textarea");
+        if (srcTextarea) {
+          srcTextarea.value = "";
+        }
+
+        const destCard = dropZone.closest(".card");
+        if (destCard) {
+          const destTextarea = destCard.querySelector("textarea");
+          if (destTextarea) {
+            destTextarea.value = e.dataTransfer.getData("note");
+          }
+        }
+      }
+
+      const destCard = dropZone.closest(".card");
+      if (destCard) {
+        destCard.dataset.textContent = src;
       }
     });
-
     img.draggable = true;
     img.addEventListener("dragstart", (e) => {
       if (!img.id) {
         img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
       }
+
+      const card = e.target.parentNode.parentNode;
+      const textArea = card.querySelector("textarea");
+
       e.dataTransfer.setData("text/plain", img.src);
       e.dataTransfer.setData("id", img.id);
+      e.dataTransfer.setData("note", textArea.value);
       e.dataTransfer.effectAllowed = "move";
     });
 
@@ -219,9 +233,14 @@ const attachDragTo = (img) => {
     if (!img.id) {
       img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
     }
+
+    const card = e.target.parentNode.parentNode;
+    const textArea = card.querySelector("textarea");
+
     e.dataTransfer.setData("text/plain", img.src);
     e.dataTransfer.setData("id", img.id);
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("note", textArea.value);
   });
 };
 
