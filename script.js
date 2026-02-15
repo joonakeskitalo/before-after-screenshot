@@ -338,10 +338,12 @@ document.onpaste = function (event) {
       const blob = item.getAsFile();
       const reader = new FileReader();
       reader.onload = function (event) {
-        const leftImagePresent = leftImage.src.startsWith("data");
-        const rightImagePresent = rightImage.src.startsWith("data");
+        const left = document.querySelector("#left img");
+        const right = document.querySelector("#right img");
+        const leftImagePresent = left && left?.src.startsWith("data");
+        const rightImagePresent = right && right?.src.startsWith("data");
 
-        if (!leftImagePresent || !rightImagePresent) {
+        if ((left && !leftImagePresent) || (right && !rightImagePresent)) {
           if (!leftImagePresent) {
             leftImage.src = event.target.result;
             leftImage.style.display = "flex";
