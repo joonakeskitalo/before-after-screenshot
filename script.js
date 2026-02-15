@@ -150,6 +150,10 @@ const addEventListenersToCards = () => {
         img.src = src;
         img.alt = "";
 
+        if (e.dataTransfer.getData("id") === img.id) {
+          return;
+        }
+
         if (e.dataTransfer.getData("id")) {
           const srcImg = document.getElementById(e.dataTransfer.getData("id"));
           if (srcImg) {
