@@ -118,6 +118,9 @@ const addEventListenersToCards = () => {
     const inputElement = card.querySelector(".file-input");
     const img = card.querySelector("img");
 
+    img.addEventListener("click", (e) => clearImage(img, dropZone, e));
+    dropZone.addEventListener("click", (e) => removeCard(card, e));
+
     inputElement.addEventListener("change", function (e) {
       const clickFile = this.files[0];
       if (clickFile) {
@@ -135,25 +138,113 @@ const addEventListenersToCards = () => {
     dropZone.addEventListener("click", () => inputElement.click());
     dropZone.addEventListener("dragover", (e) => {
       e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
     });
+
     dropZone.addEventListener("drop", (e) => {
       e.preventDefault();
-      img.style.display = "flex";
       dropZone.style.border = "unset";
-      let file = e.dataTransfer.files[0];
 
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onloadend = function () {
-        e.preventDefault();
-        img.src = this.result;
-        img.alt = file.name;
-      };
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onloadend = function () {
+          img.style.display = "flex";
+          img.src = this.result;
+          img.alt = file.name;
+        };
+        return;
+      }
+
+      const src = e.dataTransfer.getData("text/plain");
+      if (src) {
+        img.style.display = "flex";
+        img.src = src;
+        img.alt = "";
+
+        if (e.dataTransfer.getData("id")) {
+          const srcImg = document.getElementById(e.dataTransfer.getData("id"));
+          if (srcImg) {
+            srcImg.removeAttribute("src");
+            srcImg.style.display = "none";
+            srcImg.alt = "";
+            const parent = srcImg.closest(".drop");
+            if (parent) {
+              parent.style.border = "1px dashed rgb(167, 165, 165)";
+              parent.style.width = "100%";
+            }
+          }
+        } else {
+          const all = document.querySelectorAll("img");
+          for (const a of all) {
+            if (a === img) continue;
+            if (a.src === src) {
+              a.removeAttribute("src");
+              a.style.display = "none";
+              a.alt = "";
+              const parent = a.closest(".drop");
+              if (parent) {
+                parent.style.border = "1px dashed rgb(167, 165, 165)";
+                parent.style.width = "100%";
+              }
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    img.draggable = true;
+    img.addEventListener("dragstart", (e) => {
+      if (!img.id) {
+        img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
+      }
+      e.dataTransfer.setData("text/plain", img.src);
+      e.dataTransfer.setData("id", img.id);
+      e.dataTransfer.effectAllowed = "move";
+    });
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
     });
   });
 };
 
-addEventListenersToCards();
+const attachDragTo = (img) => {
+  if (!img) return;
+  img.draggable = true;
+  img.addEventListener("dragstart", (e) => {
+    if (!img.id) {
+      img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
+    }
+    e.dataTransfer.setData("text/plain", img.src);
+    e.dataTransfer.setData("id", img.id);
+    e.dataTransfer.effectAllowed = "move";
+  });
+};
+
+attachDragTo(leftImage);
+attachDragTo(rightImage);
+
+const removeCard = (card, event) => {
+  if (event.shiftKey) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    card.remove();
+  }
+};
+
+const clearImage = (img, drop, event) => {
+  if (event.shiftKey) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    img.src = "";
+    img.style.display = "none";
+    drop.style.border = "var(--border)";
+  }
+};
 
 const createCard = () => {
   const card = document.createElement("div");
@@ -164,6 +255,7 @@ const createCard = () => {
 
   const img = document.createElement("img");
   img.style.display = "none";
+  attachDragTo(img);
   drop.appendChild(img);
 
   const input = document.createElement("input");
@@ -186,78 +278,17 @@ const createCard = () => {
   cardRow.appendChild(card);
 
   addEventListenersToCards();
+
+  return {
+    image: img,
+    drop,
+  };
 };
 
-document.onpaste = function (event) {
-  const items = (event.clipboardData || event.originalEvent.clipboardData)
-    .items;
-  for (const index in items) {
-    const item = items[index];
-    if (item.kind === "file") {
-      const blob = item.getAsFile();
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        if (pasteLeftImage) {
-          rightImage.src = event.target.result;
-          rightImage.style.display = "flex";
-          rightDrop.style.border = "unset";
-        } else {
-          leftImage.src = event.target.result;
-          leftImage.style.display = "flex";
-          leftDrop.style.border = "unset";
-        }
-        pasteLeftImage = !pasteLeftImage;
-      };
-      reader.readAsDataURL(blob);
-    }
-  }
-};
+addEventListenersToCards();
 
-cardsEl.addEventListener(
-  "contextmenu",
-  async (e) => {
-    if (e.button === 2) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      e.stopPropagation();
-
-      if (e.target.tagName === "INPUT") {
-        return;
-      }
-
-      const el = document.createElement("input");
-      el.type = "text";
-      el.className = "note";
-      el.style = `top:${e.pageY}px;left:${e.pageX}px;z-index:3;position:absolute;`;
-
-      el.oncontextmenu = () => {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        e.stopPropagation();
-        el.remove();
-      };
-
-      const move = (ev) => {
-        el.style.left = `${el.offsetLeft + ev.movementX}px`;
-        el.style.top = `${el.offsetTop + ev.movementY}px`;
-      };
-
-      const dragStart = (ev) => el.setPointerCapture(ev.pointerId);
-      const drag = (ev) => el.hasPointerCapture(ev.pointerId) && move(ev);
-      const dragEnd = (ev) => el.releasePointerCapture(ev.pointerId);
-
-      el.addEventListener("pointerdown", dragStart);
-      el.addEventListener("pointermove", drag);
-      el.addEventListener("pointerup", dragEnd);
-
-      cardsEl.appendChild(el);
-      el.focus();
-    }
-  },
-  {
-    passive: false,
-  },
-);
+attachDragTo(leftImage);
+attachDragTo(rightImage);
 
 function debounce(func, timeout = 300) {
   let timer;
@@ -272,3 +303,39 @@ function debounce(func, timeout = 300) {
 const changeBackgroundColor = debounce((e) => {
   root.style.setProperty("--background-color", e.value);
 }, 100);
+
+document.onpaste = function (event) {
+  const items = (event.clipboardData || event.originalEvent.clipboardData)
+    .items;
+
+  for (const index in items) {
+    const item = items[index];
+
+    if (item.kind === "file") {
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const leftImagePresent = leftImage.src.startsWith("data");
+        const rightImagePresent = rightImage.src.startsWith("data");
+
+        if (!leftImagePresent || !rightImagePresent) {
+          if (!leftImagePresent) {
+            leftImage.src = event.target.result;
+            leftImage.style.display = "flex";
+            leftDrop.style.border = "unset";
+          } else if (!rightImagePresent) {
+            rightImage.src = event.target.result;
+            rightImage.style.display = "flex";
+            rightDrop.style.border = "unset";
+          }
+        } else {
+          const { image, drop } = createCard();
+          image.src = event.target.result;
+          image.style.display = "flex";
+          drop.style.border = "unset";
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
