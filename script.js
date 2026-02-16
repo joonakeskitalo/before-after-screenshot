@@ -144,6 +144,23 @@ const addEventListenersToCards = () => {
       e.preventDefault();
       dropZone.style.border = "unset";
 
+      const droppedFile = e.dataTransfer.files?.[0];
+      if (droppedFile && droppedFile.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = function () {
+          img.style.display = "flex";
+          img.src = this.result;
+          img.alt = droppedFile.name;
+
+          const destCard = dropZone.closest(".card");
+          if (destCard) {
+            destCard.dataset.textContent = this.result;
+          }
+        };
+        reader.readAsDataURL(droppedFile);
+        return;
+      }
+
       const src = e.dataTransfer.getData("text/plain");
       if (src) {
         img.style.display = "flex";
