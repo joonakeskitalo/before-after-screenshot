@@ -36,14 +36,17 @@ const minMax = (value, min, max) => {
 const copyAsImage = async (useFullSize = false) => {
   try {
     const cardCount = cardRow.querySelectorAll(".card").length;
-    const gap = Math.floor(cardCount * 48 * 0.5);
+    const gap = Math.floor(cardCount * 48 * 0.7);
+    root.style.setProperty(
+      "--gap",
+      `${useFullSize ? Math.floor(gap * 1.2) : gap}px`,
+    );
     root.style.setProperty("--image-max-width", "unset");
 
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, "unset");
       const fontSize = minMax(Math.floor(cardsEl.clientWidth / 70), 20, 36);
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
-      root.style.setProperty("--gap", `${gap}px`);
 
       [
         ...document.querySelectorAll(".drop"),
