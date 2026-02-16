@@ -74,9 +74,13 @@ const copyAsImage = async (useFullSize = false) => {
         if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
           return false;
         }
+
+        if (node.tagName === "SPAN") return false;
+
         return true;
       },
     });
+
     navigator.clipboard.write([
       new ClipboardItem({
         "image/png": blob,
@@ -115,8 +119,9 @@ const addEventListenersToCards = () => {
     const dropZone = card.querySelector(".drop");
     const inputElement = card.querySelector(".file-input");
     const img = card.querySelector("img");
+    const span = card.querySelector("span");
 
-    img.addEventListener("click", (e) => clearImage(img, dropZone, e));
+    img.addEventListener("click", (e) => clearImage(e, img, dropZone, span));
     dropZone.addEventListener("click", (e) => removeCard(card, e));
 
     inputElement.addEventListener("change", function (e) {
@@ -150,6 +155,7 @@ const addEventListenersToCards = () => {
           img.style.display = "flex";
           img.src = this.result;
           img.alt = droppedFile.name;
+          span.style.display = "none";
 
           const destCard = dropZone.closest(".card");
           if (destCard) {
@@ -165,6 +171,7 @@ const addEventListenersToCards = () => {
         img.style.display = "flex";
         img.src = src;
         img.alt = "";
+        span.style.display = "none";
 
         if (e.dataTransfer.getData("id") === img.id) {
           return;
@@ -264,9 +271,6 @@ const attachDragTo = (img) => {
   });
 };
 
-attachDragTo(leftImage);
-attachDragTo(rightImage);
-
 const removeCard = (card, event) => {
   if (event.shiftKey) {
     event.preventDefault();
@@ -275,13 +279,14 @@ const removeCard = (card, event) => {
   }
 };
 
-const clearImage = (img, drop, event) => {
+const clearImage = (event, img, drop, span) => {
   if (event.shiftKey) {
     event.preventDefault();
     event.stopImmediatePropagation();
     img.src = "";
     img.style.display = "none";
     drop.style.border = "var(--border)";
+    span.style.display = "block";
   }
 };
 
@@ -291,6 +296,10 @@ const createCard = () => {
 
   const drop = document.createElement("div");
   drop.className = "drop";
+
+  const span = document.createElement("span");
+  span.innerText = "Drop image here…";
+  drop.appendChild(span);
 
   const img = document.createElement("img");
   img.style.display = "none";
@@ -321,6 +330,7 @@ const createCard = () => {
   return {
     image: img,
     drop,
+    span,
   };
 };
 
@@ -369,10 +379,11 @@ document.onpaste = function (event) {
             rightDrop.style.border = "unset";
           }
         } else {
-          const { image, drop } = createCard();
+          const { image, drop, span } = createCard();
           image.src = event.target.result;
           image.style.display = "flex";
           drop.style.border = "unset";
+          span.style.display = "none";
         }
       };
       reader.readAsDataURL(blob);
@@ -392,12 +403,13 @@ const dropNewImage = (e) => {
     .forEach((droppedFile) => {
       const reader = new FileReader();
       reader.onloadend = function () {
-        const { image, drop } = createCard();
+        const { image, drop, span } = createCard();
 
         image.style.display = "flex";
         image.src = this.result;
         image.alt = droppedFile.name;
         drop.style.border = "unset";
+        span.style.display = "none";
       };
       reader.readAsDataURL(droppedFile);
       return;
