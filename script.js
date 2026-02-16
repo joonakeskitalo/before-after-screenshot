@@ -388,20 +388,21 @@ const dropNewImage = (e) => {
     return;
   }
 
-  const droppedFile = e.dataTransfer.files?.[0];
-  if (droppedFile && droppedFile.type.startsWith("image/")) {
-    const reader = new FileReader();
-    reader.onloadend = function () {
-      const { image, drop } = createCard();
+  [...e.dataTransfer.files]
+    .filter((x) => x.type.startsWith("image/"))
+    .forEach((droppedFile) => {
+      const reader = new FileReader();
+      reader.onloadend = function () {
+        const { image, drop } = createCard();
 
-      image.style.display = "flex";
-      image.src = this.result;
-      image.alt = droppedFile.name;
-      drop.style.border = "unset";
-    };
-    reader.readAsDataURL(droppedFile);
-    return;
-  }
+        image.style.display = "flex";
+        image.src = this.result;
+        image.alt = droppedFile.name;
+        drop.style.border = "unset";
+      };
+      reader.readAsDataURL(droppedFile);
+      return;
+    });
 };
 
 document.body.addEventListener("drop", dropNewImage);
