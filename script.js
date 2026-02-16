@@ -162,7 +162,7 @@ const addEventListenersToCards = () => {
             srcImg.alt = "";
             const parent = srcImg.closest(".drop");
             if (parent) {
-              parent.style.border = "1px dashed rgb(167, 165, 165)";
+              parent.style.border = "var(--border)";
               parent.style.width = "100%";
             }
           }
@@ -176,7 +176,7 @@ const addEventListenersToCards = () => {
               a.alt = "";
               const parent = a.closest(".drop");
               if (parent) {
-                parent.style.border = "1px dashed rgb(167, 165, 165)";
+                parent.style.border = "var(--border)";
                 parent.style.width = "100%";
               }
               break;
@@ -309,7 +309,6 @@ const createCard = () => {
 };
 
 addEventListenersToCards();
-
 attachDragTo(leftImage);
 attachDragTo(rightImage);
 
