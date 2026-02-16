@@ -37,6 +37,7 @@ const copyAsImage = async (useFullSize = false) => {
   try {
     const cardCount = cardRow.querySelectorAll(".card").length;
     const gap = Math.floor(cardCount * 48 * 0.5);
+    root.style.setProperty("--image-max-width", "unset");
 
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, "unset");
@@ -89,6 +90,7 @@ const copyAsImage = async (useFullSize = false) => {
     cardsEl.style.padding = "32px 32px 16px 32px";
     cardRow.style.overflowX = "scroll";
     root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
+    root.style.setProperty("--image-max-width", "60dvh");
 
     [
       ...document.querySelectorAll(".drop"),

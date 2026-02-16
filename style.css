@@ -3,6 +3,7 @@
     --gap: 48px;
     --border: 1px dashed rgb(167, 165, 165);
     --background-color: #f0f0f0;
+    --image-max-width: 60dvh;
 }
 
 body {
@@ -93,6 +94,10 @@ textarea:hover {
 
         &>span {
             font-size: 9pt;
+        }
+
+        &>img {
+            max-height: var(--image-max-width);
         }
     }
 
