@@ -4,7 +4,6 @@ const cardsEl = document.getElementById("cards");
 const cardRow = document.getElementById("card-row");
 const content = document.querySelector(".content");
 
-
 const elementsToAdjustWidth = [cardsEl, content];
 
 const setElementWidths = (arr, size) => {
@@ -36,14 +35,13 @@ const minMax = (value, min, max) => {
 
 const copyAsImage = async (useFullSize = false) => {
   try {
+    const cardCount = cardRow.querySelectorAll(".card").length;
+    const gap = Math.floor(cardCount * 48 * 0.5);
+
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, "unset");
-      const rect = cardsEl.getBoundingClientRect();
-      const fontSize = minMax(Math.floor(rect.width / 70), 20, 48);
+      const fontSize = minMax(Math.floor(cardsEl.clientWidth / 70), 20, 36);
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
-
-      const _gap = Math.floor(leftImage.getBoundingClientRect().width / 8);
-      const gap = minMax(_gap, 32, 128);
       root.style.setProperty("--gap", `${gap}px`);
 
       [
@@ -59,8 +57,11 @@ const copyAsImage = async (useFullSize = false) => {
         });
     }
     root.style.setProperty("--border", `unset`);
-    cardsEl.style.padding = "64px 128px 32px 128px";
     cardRow.style.overflowX = "unset";
+
+    cardsEl.style.padding = useFullSize
+      ? `${gap}px ${gap * 2}px`
+      : `${gap / 2}px ${gap}px`;
 
     const blob = await domtoimage.toBlob(cardsEl, {
       filter: (node) => {
@@ -83,7 +84,7 @@ const copyAsImage = async (useFullSize = false) => {
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, "100%");
       root.style.setProperty("--text-fontsize", `15pt`);
-      root.style.setProperty("--gap", `32px`);
+      root.style.setProperty("--gap", `48px`);
     }
     cardsEl.style.padding = "32px 32px 16px 32px";
     cardRow.style.overflowX = "scroll";
@@ -309,7 +310,7 @@ const createCard = () => {
   textarea.autocorrect = "off";
   textarea.spellcheck = false;
   textarea.autocapitalize = "off";
-  textarea.rows = 5;
+  textarea.rows = 2;
   textarea.textContent = "";
 
   card.appendChild(drop);
