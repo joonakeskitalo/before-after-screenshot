@@ -17,7 +17,6 @@ body {
     justify-content: center;
     box-sizing: border-box;
     flex: 1;
-    height: 100%;
 
     &>.content {
         width: 100%;
