@@ -134,7 +134,6 @@ const addEventListenersToCards = () => {
       }
     });
 
-    dropZone.addEventListener("click", () => inputElement.click());
     dropZone.addEventListener("dragover", (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
