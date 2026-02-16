@@ -4,13 +4,6 @@ const cardsEl = document.getElementById("cards");
 const cardRow = document.getElementById("card-row");
 const content = document.querySelector(".content");
 
-const left = document.querySelector("#left");
-const leftDrop = left.querySelector(".drop");
-const leftImage = left.querySelector("img");
-
-const right = document.querySelector("#right");
-const rightDrop = right.querySelector(".drop");
-const rightImage = right.querySelector("img");
 
 const elementsToAdjustWidth = [cardsEl, content];
 
@@ -334,10 +327,6 @@ const createCard = () => {
   };
 };
 
-addEventListenersToCards();
-attachDragTo(leftImage);
-attachDragTo(rightImage);
-
 function debounce(func, timeout = 300) {
   let timer;
   return (...args) => {
@@ -363,28 +352,11 @@ document.onpaste = function (event) {
       const blob = item.getAsFile();
       const reader = new FileReader();
       reader.onload = function (event) {
-        const left = document.querySelector("#left img");
-        const right = document.querySelector("#right img");
-        const leftImagePresent = left && left?.src.startsWith("data");
-        const rightImagePresent = right && right?.src.startsWith("data");
-
-        if ((left && !leftImagePresent) || (right && !rightImagePresent)) {
-          if (!leftImagePresent) {
-            leftImage.src = event.target.result;
-            leftImage.style.display = "flex";
-            leftDrop.style.border = "unset";
-          } else if (!rightImagePresent) {
-            rightImage.src = event.target.result;
-            rightImage.style.display = "flex";
-            rightDrop.style.border = "unset";
-          }
-        } else {
-          const { image, drop, span } = createCard();
-          image.src = event.target.result;
-          image.style.display = "flex";
-          drop.style.border = "unset";
-          span.style.display = "none";
-        }
+        const { image, drop, span } = createCard();
+        image.src = event.target.result;
+        image.style.display = "flex";
+        drop.style.border = "unset";
+        span.style.display = "none";
       };
       reader.readAsDataURL(blob);
     }
