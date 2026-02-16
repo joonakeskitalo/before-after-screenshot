@@ -380,3 +380,32 @@ document.onpaste = function (event) {
     }
   }
 };
+
+const dropNewImage = (e) => {
+  e.preventDefault();
+
+  if (e.target.className === "drop" || e.target.tagName === "IMG") {
+    return;
+  }
+
+  const droppedFile = e.dataTransfer.files?.[0];
+  if (droppedFile && droppedFile.type.startsWith("image/")) {
+    const reader = new FileReader();
+    reader.onloadend = function () {
+      const { image, drop } = createCard();
+
+      image.style.display = "flex";
+      image.src = this.result;
+      image.alt = droppedFile.name;
+      drop.style.border = "unset";
+    };
+    reader.readAsDataURL(droppedFile);
+    return;
+  }
+};
+
+document.body.addEventListener("drop", dropNewImage);
+
+document.body.addEventListener("dragover", function (event) {
+  event.preventDefault();
+});
