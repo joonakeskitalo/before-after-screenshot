@@ -29,7 +29,7 @@ const minMax = (value, min, max) => {
   return value;
 };
 
-const copyAsImage = async (useFullSize = false) => {
+const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   try {
     root.style.setProperty("--image-max-width", "unset");
 
@@ -37,7 +37,9 @@ const copyAsImage = async (useFullSize = false) => {
       setElementWidths(elementsToAdjustWidth, "unset");
       const fontSize = minMax(Math.floor(cardsEl.clientWidth / 70), 20, 36);
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
-      root.style.setProperty("--gap", "128px");
+
+      const gap = 128 * resolutionScale;
+      root.style.setProperty("--gap", `${gap}px`);
 
       [
         ...document.querySelectorAll(".drop"),
@@ -50,10 +52,25 @@ const copyAsImage = async (useFullSize = false) => {
         .forEach((drop) => {
           drop.style.width = "32px";
         });
+
+      if (resolutionScale !== 1) {
+        [...cardsEl.querySelectorAll("img")].forEach((img) => {
+          img.style.width =
+            Math.floor(img.naturalWidth * resolutionScale) + "px";
+        });
+      }
     }
     root.style.setProperty("--border", `unset`);
     cardRow.style.overflowX = "unset";
-    cardsEl.style.padding = useFullSize ? "8px 192px" : "8px 64px";
+
+    cardRow.style.justifyContent = "center";
+
+    const initialPadding = useFullSize ? 192 : 64;
+    const padding = Math.floor(initialPadding * resolutionScale);
+
+    cardsEl.style.padding = useFullSize
+      ? `8px ${padding}px`
+      : `8px ${padding}px`;
 
     const blob = await domtoimage.toBlob(cardsEl, {
       filter: (node) => {
@@ -72,6 +89,8 @@ const copyAsImage = async (useFullSize = false) => {
         "image/png": blob,
       }),
     ]);
+
+    cardRow.style.justifyContent = null;
 
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, null);

@@ -28,7 +28,7 @@
             <h1>Before & After Preview</h1>
             <span>Paste or drag & drop images</span>
           </div>
-          <div style="align-items: center; display: flex; gap: 16px">
+          <div style="align-items: center; display: flex; gap: 8px">
             <input
               oninput="changeBackgroundColor(this)"
               type="color"
@@ -36,7 +36,9 @@
             />
             <button onclick="createCard()">Add</button>
             <button onclick="copyAsImage(false)">Copy</button>
-            <button onclick="copyAsImage(true)">Copy full size</button>
+            <button onclick="copyAsImage(true, 0.4)">40%</button>
+            <button onclick="copyAsImage(true, 0.5)">50%</button>
+            <button onclick="copyAsImage(true)">100%</button>
           </div>
         </div>
 
