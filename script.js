@@ -20,22 +20,15 @@ const setElementWidths = (arr, size) => {
   });
 };
 
-const minMax = (value, min, max) => {
-  if (value < min) {
-    return min;
-  } else if (value > max) {
-    return max;
-  }
-  return value;
-};
-
 const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   try {
     root.style.setProperty("--image-max-width", "unset");
 
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, "unset");
-      const fontSize = minMax(Math.floor(cardsEl.clientWidth / 70), 20, 36);
+
+      const fontScale = resolutionScale === 1 ? 0.4 : resolutionScale + 0.7;
+      const fontSize = Math.floor(20 / fontScale);
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
       const gap = 128 * resolutionScale;
