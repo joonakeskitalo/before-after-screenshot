@@ -29,11 +29,22 @@
             <span>Paste or drag & drop images</span>
           </div>
           <div style="align-items: center; display: flex; gap: 8px">
-            <input
-              oninput="changeBackgroundColor(this)"
-              type="color"
-              id="background-color-select"
-            />
+            <select onchange="setColors(this)">
+              <option selected value="#f0f0f0">Grey</option>
+              <option value="#7f7f7f;white">Grey 50%</option>
+              <option value="#ffffff">White</option>
+              <option value="oklch(26.8% 0.007 34.298);oklch(98.5% 0 0)">Stone</option>
+              <option value="#000000;oklch(98.5% 0 0)">Black</option>
+              <option value="oklch(98% 0.016 73.684)">Orange</option>
+              <option value="oklch(97.7% 0.017 320.058)">Fuchsia</option>
+              <option value="oklch(94.1% 0.03 12.58)">Rose</option>
+              <option value="oklch(95.3% 0.051 180.801)">Teal</option>
+              <option value="oklch(98.6% 0.031 120.757)">Green</option>
+              <option value="oklch(39.3% 0.095 152.535);oklch(98.5% 0 0)">Dark green</option>
+              <option value="oklch(25.8% 0.092 26.042);oklch(98.5% 0 0)">Red</option>
+              <option value="oklch(25.7% 0.09 281.288);oklch(98.5% 0 0)">Indigo</option>
+            </select>
+
             <button onclick="createCard()">Add</button>
             <button onclick="copyAsImage(false)">Copy</button>
             <button onclick="copyAsImage(true, 0.4)">40%</button>

@@ -321,19 +321,16 @@ const createCard = () => {
   };
 };
 
-function debounce(func, timeout = 300) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      func.apply(this, args);
-    }, timeout);
-  };
-}
+const setColors = (e) => {
+  const [background, text] = e.value.split(";");
+  root.style.setProperty("--background-color", background);
 
-const changeBackgroundColor = debounce((e) => {
-  root.style.setProperty("--background-color", e.value);
-}, 100);
+  if (text) {
+    root.style.setProperty("--text-color", text);
+  } else {
+    root.style.setProperty("--text-color", "#000000");
+  }
+};
 
 document.onpaste = function (event) {
   const items = (event.clipboardData || event.originalEvent.clipboardData)
