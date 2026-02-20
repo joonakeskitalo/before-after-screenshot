@@ -108,7 +108,10 @@ const addEventListenersToCards = () => {
     const img = card.querySelector("img");
     const span = card.querySelector("span");
 
-    img.addEventListener("click", (e) => clearImage(e, img, dropZone, span));
+    img.addEventListener(
+      "click",
+      async (e) => await clearOrCopyImage(e, img, dropZone, span, card),
+    );
     dropZone.addEventListener("click", (e) => removeCard(card, e));
 
     inputElement.addEventListener("change", function (e) {
@@ -259,17 +262,52 @@ const attachDragTo = (img) => {
 };
 
 const removeCard = (card, event) => {
+  event.preventDefault();
+  event.stopImmediatePropagation();
   if (event.shiftKey) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
     card.remove();
   }
 };
 
-const clearImage = (event, img, drop, span) => {
-  if (event.shiftKey) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
+const clearOrCopyImage = async (event, img, drop, span) => {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  if (event.shiftKey && event.metaKey) {
+    setElementWidths(elementsToAdjustWidth, "unset");
+    root.style.setProperty("--image-max-width", "unset");
+
+    const blob = await domtoimage.toBlob(img);
+
+    navigator.clipboard.write([
+      new ClipboardItem({
+        "image/png": blob,
+      }),
+    ]);
+
+    root.style.setProperty("--image-max-width", "60dvh");
+    setElementWidths(elementsToAdjustWidth, null);
+  }
+
+  if (event.metaKey && !event.shiftKey) {
+    setElementWidths(elementsToAdjustWidth, "unset");
+    root.style.setProperty("--image-max-width", "unset");
+
+    const width = Math.floor(img.naturalWidth * 0.5) + "px";
+    img.style.width = width;
+
+    const blob = await domtoimage.toBlob(img);
+
+    navigator.clipboard.write([
+      new ClipboardItem({
+        "image/png": blob,
+      }),
+    ]);
+
+    img.style.width = null;
+    root.style.setProperty("--image-max-width", "60dvh");
+    setElementWidths(elementsToAdjustWidth, null);
+  } else if (!event.metaKey && event.shiftKey) {
     img.src = "";
     img.style.display = "none";
     drop.style.border = "var(--border)";
