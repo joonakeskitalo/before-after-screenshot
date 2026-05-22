@@ -6,11 +6,14 @@ const content = document.querySelector(".content");
 
 const elementsToAdjustWidth = [cardsEl, content];
 
+let activeRow = cardRow;
+
 const setElementWidths = (arr, size) => {
   const images = cardsEl.querySelectorAll("img");
   const drops = cardsEl.querySelectorAll("div.drop");
+  const rows = cardsEl.querySelectorAll(".row");
 
-  const elementsWithoutTextareas = [...arr, ...images, ...drops].filter(
+  const elementsWithoutTextareas = [...arr, ...images, ...drops, ...rows].filter(
     (el) => el.tagName !== "TEXTAREA",
   );
 
@@ -54,9 +57,12 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       }
     }
     root.style.setProperty("--border", `unset`);
-    cardRow.style.overflowX = "unset";
-
-    cardRow.style.justifyContent = "center";
+    const allRows = cardsEl.querySelectorAll(".row");
+    allRows.forEach((row) => {
+      row.style.overflowX = "unset";
+      row.style.justifyContent = "flex-start";
+      row.classList.remove("active-row");
+    });
 
     const initialPadding = useFullSize ? 192 : 64;
     const padding = Math.floor(initialPadding * resolutionScale);
@@ -83,7 +89,9 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       }),
     ]);
 
-    cardRow.style.justifyContent = null;
+    allRows.forEach((row) => {
+      row.style.justifyContent = null;
+    });
 
     if (useFullSize) {
       setElementWidths(elementsToAdjustWidth, null);
@@ -91,16 +99,19 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       root.style.setProperty("--gap", `48px`);
     }
     cardsEl.style.padding = "16px";
-    cardRow.style.overflowX = "scroll";
+    allRows.forEach((row) => {
+      row.style.overflowX = "scroll";
+    });
     root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
     root.style.setProperty("--image-max-width", "60dvh");
+    activeRow.classList.add("active-row");
   } catch (error) {
     console.error(error);
   }
 };
 
 const addEventListenersToCards = () => {
-  const cards = document.querySelectorAll("#cards > div > .card");
+  const cards = document.querySelectorAll("#cards .row > .card");
 
   [...cards].forEach((card) => {
     const dropZone = card.querySelector(".drop");
@@ -348,7 +359,7 @@ const createCard = () => {
   card.appendChild(input);
   card.appendChild(textarea);
 
-  cardRow.appendChild(card);
+  activeRow.appendChild(card);
 
   addEventListenersToCards();
 
@@ -368,6 +379,40 @@ const setColors = (e) => {
   } else {
     root.style.setProperty("--text-color", "#000000");
   }
+};
+
+const addRow = () => {
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const placeholder = document.createElement("div");
+  placeholder.className = "placeholder";
+  const placeholderSpan = document.createElement("span");
+  placeholderSpan.textContent = "Paste or drag and drop images";
+  placeholder.appendChild(placeholderSpan);
+  row.appendChild(placeholder);
+
+  cardsEl.appendChild(row);
+  setActiveRow(row);
+};
+
+const setActiveRow = (row) => {
+  const allRows = cardsEl.querySelectorAll(".row");
+  allRows.forEach((r) => r.classList.remove("active-row"));
+  activeRow = row;
+  activeRow.classList.add("active-row");
+};
+
+const removeActiveRow = () => {
+  const allRows = [...cardsEl.querySelectorAll(".row")];
+  if (allRows.length <= 1) return;
+
+  const index = allRows.indexOf(activeRow);
+  activeRow.remove();
+
+  const remaining = [...cardsEl.querySelectorAll(".row")];
+  const nextRow = remaining[Math.min(index, remaining.length - 1)];
+  setActiveRow(nextRow);
 };
 
 document.onpaste = function (event) {
@@ -421,4 +466,15 @@ document.body.addEventListener("drop", dropNewImage);
 
 document.body.addEventListener("dragover", function (event) {
   event.preventDefault();
+});
+
+// Set initial active row
+setActiveRow(cardRow);
+
+// Click on a row to make it active
+cardsEl.addEventListener("click", (e) => {
+  const row = e.target.closest(".row");
+  if (row) {
+    setActiveRow(row);
+  }
 });

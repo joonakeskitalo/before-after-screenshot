@@ -16,14 +16,7 @@
   <body>
     <div class="content-container">
       <div class="content">
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 8px;
-          "
-        >
+        <div class="toolbar">
           <div>
             <h1>Before & After Preview</h1>
             <span>Paste or drag & drop images</span>
@@ -46,6 +39,8 @@
             </select>
 
             <button onclick="createCard()">Add</button>
+            <button onclick="addRow()">Add Row</button>
+            <button onclick="removeActiveRow()">Delete Row</button>
             <button onclick="copyAsImage(false)">Copy</button>
             <button onclick="copyAsImage(true, 0.4)">40%</button>
             <button onclick="copyAsImage(true, 0.5)">50%</button>
@@ -63,8 +58,8 @@
             rows="2"
             style="margin-bottom: 48px"
           ></textarea>
-          <div class="row" id="card-row">
-            <div id="placeholder">
+          <div class="row active-row" id="card-row">
+            <div class="placeholder">
               <span>Paste or drag and drop images</span>
             </div>
           </div>

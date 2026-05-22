@@ -29,6 +29,17 @@ body {
     }
 }
 
+.toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: var(--background-color);
+    padding: 16px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 textarea {
     box-sizing: border-box;
     resize: none;
@@ -51,12 +62,12 @@ textarea:hover {
     background-color: #e1e1e169;
 }
 
-#placeholder {
+.placeholder {
     display: none;
 }
 
 
-#placeholder:only-child {
+.placeholder:only-child {
     display: flex;
     flex: 1;
     justify-content: center;
@@ -73,6 +84,7 @@ textarea:hover {
     flex-direction: column;
     flex: 1;
     display: flex;
+    gap: var(--gap);
 
     &>textarea {
         margin-top: 8px;
@@ -88,6 +100,13 @@ textarea:hover {
         flex-direction: row;
         gap: var(--gap);
         overflow-x: scroll;
+        padding: 8px;
+        border-radius: 8px;
+        outline: 2px solid transparent;
+    }
+
+    &>.row.active-row {
+        outline: 2px solid oklch(70% 0.1 250);
     }
 }
 
