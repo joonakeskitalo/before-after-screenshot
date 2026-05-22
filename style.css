@@ -389,3 +389,8 @@ body {
         border-radius: 8px;
     }
 }
+
+.card-zoom-overlay {
+    border-radius: 12px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}

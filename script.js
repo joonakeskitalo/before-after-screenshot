@@ -606,9 +606,9 @@ const removeZoom = (item) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Shift") {
-    const hovered = bottomToolbarInner.querySelector(".bottom-toolbar-item:hover");
-    if (hovered) {
-      applyZoom(hovered);
+    const hoveredToolbar = bottomToolbarInner.querySelector(".bottom-toolbar-item:hover");
+    if (hoveredToolbar) {
+      applyZoom(hoveredToolbar);
     }
   }
 });
@@ -635,5 +635,91 @@ bottomToolbarInner.addEventListener("mouseout", (e) => {
   const item = e.target.closest(".bottom-toolbar-item");
   if (item && !item.contains(e.relatedTarget)) {
     removeZoom(item);
+  }
+});
+
+// --- Shift+Hover Zoom for Card Images ---
+let cardZoomOverlay = null;
+
+const applyCardZoom = (dropEl) => {
+  if (!dropEl || cardZoomOverlay) return;
+  const img = dropEl.querySelector("img");
+  if (!img || !img.src || img.style.display === "none") return;
+
+  const rect = dropEl.getBoundingClientRect();
+
+  cardZoomOverlay = document.createElement("div");
+  cardZoomOverlay.className = "zoom-overlay card-zoom-overlay";
+  const clone = img.cloneNode(true);
+  clone.style.display = "flex";
+  cardZoomOverlay.appendChild(clone);
+
+  // Use natural image dimensions, capped to viewport
+  const maxW = window.innerWidth * 0.8;
+  const maxH = window.innerHeight * 0.8;
+  let width = img.naturalWidth;
+  let height = img.naturalHeight;
+
+  if (width > maxW) {
+    height = height * (maxW / width);
+    width = maxW;
+  }
+  if (height > maxH) {
+    width = width * (maxH / height);
+    height = maxH;
+  }
+
+  // Center in viewport
+  cardZoomOverlay.style.left = `${(window.innerWidth - width) / 2}px`;
+  cardZoomOverlay.style.top = `${(window.innerHeight - height) / 2}px`;
+  cardZoomOverlay.style.width = `${width}px`;
+  cardZoomOverlay.style.height = `${height}px`;
+
+  document.body.appendChild(cardZoomOverlay);
+  dropEl.dataset.zoomed = "true";
+};
+
+const removeCardZoom = (dropEl) => {
+  if (cardZoomOverlay) {
+    cardZoomOverlay.remove();
+    cardZoomOverlay = null;
+  }
+  if (dropEl) {
+    delete dropEl.dataset.zoomed;
+  }
+};
+
+gridEl.addEventListener("mouseover", (e) => {
+  const drop = e.target.closest(".grid-cell .drop");
+  if (drop && e.shiftKey) {
+    const current = gridEl.querySelector('.drop[data-zoomed]');
+    if (current !== drop) {
+      removeCardZoom(current);
+      applyCardZoom(drop);
+    }
+  }
+});
+
+gridEl.addEventListener("mouseout", (e) => {
+  const drop = e.target.closest(".grid-cell .drop");
+  if (drop && !drop.contains(e.relatedTarget)) {
+    removeCardZoom(drop);
+  }
+});
+
+// Also handle shift press/release while hovering a card image
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Shift") {
+    const hovered = document.querySelector(".grid-cell .drop:hover");
+    if (hovered) {
+      applyCardZoom(hovered);
+    }
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.key === "Shift") {
+    const zoomed = gridEl.querySelector('.drop[data-zoomed]');
+    removeCardZoom(zoomed);
   }
 });
