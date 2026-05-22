@@ -82,6 +82,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 
     // Remove fixed grid row sizing so rows expand to fit content
     gridEl.style.gridTemplateRows = "auto";
+    // Use auto-sized columns for capture so they don't overlap with fit-content
+    gridEl.style.gridTemplateColumns = `repeat(${gridCols}, auto)`;
 
     const initialPadding = useFullSize ? 192 : 64;
     const padding = Math.floor(initialPadding * resolutionScale);
@@ -133,6 +135,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     cardsEl.style.width = null;
     gridEl.style.outline = null;
     gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+    gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(250px, 1fr))`;
     root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
     root.style.setProperty("--image-max-width", "60dvh");
   } catch (error) {
@@ -358,7 +361,7 @@ const buildGrid = () => {
   });
 
   gridEl.innerHTML = "";
-  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(150px, 1fr))`;
   gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
 
   for (let r = 0; r < gridRows; r++) {
