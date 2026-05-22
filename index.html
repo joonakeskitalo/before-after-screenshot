@@ -17,11 +17,9 @@
     <div class="content-container">
       <div class="content">
         <div class="toolbar">
-          <div>
-            <h1>Before & After Preview</h1>
-            <span>Paste or drag & drop images into grid cells</span>
-          </div>
-          <div style="align-items: center; display: flex; gap: 8px">
+          <span class="toolbar-title">Before & After</span>
+
+          <div class="toolbar-controls">
             <select onchange="setColors(this)">
               <option selected value="#f0f0f0">Grey</option>
               <option value="#7f7f7f;white">Grey 50%</option>
@@ -38,14 +36,16 @@
               <option value="oklch(25.7% 0.09 281.288);oklch(98.5% 0 0)">Indigo</option>
             </select>
 
-            <label style="font-size: 11pt; display: flex; align-items: center; gap: 4px;">
+            <label class="toolbar-label">
               Cols
-              <input type="number" id="grid-cols" value="3" min="1" max="10" style="width: 48px; height: 36px; font-size: 12pt; border-radius: 8px; border: 1px solid oklch(92.8% 0.006 264.531); text-align: center;" onchange="updateGrid()" />
+              <input type="number" id="grid-cols" value="3" min="1" max="10" onchange="updateGrid()" />
             </label>
-            <label style="font-size: 11pt; display: flex; align-items: center; gap: 4px;">
+            <label class="toolbar-label">
               Rows
-              <input type="number" id="grid-rows" value="2" min="1" max="10" style="width: 48px; height: 36px; font-size: 12pt; border-radius: 8px; border: 1px solid oklch(92.8% 0.006 264.531); text-align: center;" onchange="updateGrid()" />
+              <input type="number" id="grid-rows" value="2" min="1" max="10" onchange="updateGrid()" />
             </label>
+
+            <div class="toolbar-divider"></div>
 
             <button onclick="copyAsImage(false)">Copy</button>
             <button onclick="copyAsImage(true, 0.1)">10%</button>
