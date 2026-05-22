@@ -124,6 +124,7 @@ textarea:hover {
     gap: var(--gap);
     padding: 8px;
     border-radius: 8px;
+    overflow-x: auto;
 }
 
 .grid-cell {
