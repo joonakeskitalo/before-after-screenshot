@@ -23,7 +23,7 @@ body {
     &>.content {
         width: 100%;
         box-sizing: border-box;
-        padding: 32px;
+        padding: 0 32px 12px 32px;
         display: flex;
         flex-direction: column;
     }
@@ -218,4 +218,112 @@ select {
     justify-content: center;
     border-radius: 8px;
     border: 1px solid oklch(92.8% 0.006 264.531);
+}
+
+/* Bottom toolbar for staging images */
+.bottom-toolbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background-color: #ffffff;
+    border-top: 1px solid oklch(92.8% 0.006 264.531);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+    padding: 12px 16px;
+    min-height: 80px;
+}
+
+.bottom-toolbar-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    min-height: 64px;
+}
+
+.bottom-toolbar-inner::-webkit-scrollbar {
+    height: 6px;
+}
+
+.bottom-toolbar-inner::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.bottom-toolbar-drop {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    height: 56px;
+    border: var(--border);
+    border-radius: 8px;
+    flex-shrink: 0;
+
+    & > span {
+        font-size: 9pt;
+        opacity: 0.6;
+        white-space: nowrap;
+    }
+}
+
+.bottom-toolbar-item {
+    position: relative;
+    flex-shrink: 0;
+    width: 80px;
+    height: 56px;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: grab;
+    border: 1px solid oklch(92.8% 0.006 264.531);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    &:active {
+        cursor: grabbing;
+    }
+
+    & > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        pointer-events: none;
+    }
+
+    & > .toolbar-item-remove {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 16px;
+        height: 16px;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        font-size: 10px;
+        line-height: 16px;
+        text-align: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    &:hover > .toolbar-item-remove {
+        opacity: 1;
+    }
+}
+
+/* Add padding to body so content isn't hidden behind the toolbar */
+body {
+    padding-bottom: 100px;
 }

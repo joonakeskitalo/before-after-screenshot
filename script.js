@@ -257,12 +257,20 @@ const setupCell = (cell) => {
       img.alt = "";
       span.style.display = "none";
 
-      if (e.dataTransfer.getData("id") === img.id) {
+      // Check if dragged from toolbar — remove from toolbar
+      const source = e.dataTransfer.getData("source");
+      const draggedId = e.dataTransfer.getData("id");
+      if (source === "toolbar" && draggedId) {
+        removeToolbarItemById(draggedId);
         return;
       }
 
-      if (e.dataTransfer.getData("id")) {
-        const srcImg = document.getElementById(e.dataTransfer.getData("id"));
+      if (draggedId === img.id) {
+        return;
+      }
+
+      if (draggedId) {
+        const srcImg = document.getElementById(draggedId);
         if (srcImg) {
           srcImg.removeAttribute("src");
           srcImg.style.display = "none";
@@ -398,62 +406,17 @@ const setColors = (e) => {
   }
 };
 
-// Paste images into the next empty cell
-document.onpaste = function (event) {
-  const items = (event.clipboardData || event.originalEvent.clipboardData)
-    .items;
-
-  for (const index in items) {
-    const item = items[index];
-
-    if (item.kind === "file") {
-      const blob = item.getAsFile();
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        // Find the first empty cell
-        const cells = gridEl.querySelectorAll(".grid-cell");
-        let targetCell = null;
-        for (const cell of cells) {
-          const img = cell.querySelector("img");
-          if (!img.src || img.style.display === "none") {
-            targetCell = cell;
-            break;
-          }
-        }
-
-        if (!targetCell) {
-          // All cells full, expand grid by adding a row
-          gridRows++;
-          document.getElementById("grid-rows").value = gridRows;
-          buildGrid();
-          const allCells = gridEl.querySelectorAll(".grid-cell");
-          for (const cell of allCells) {
-            const img = cell.querySelector("img");
-            if (!img.src || img.style.display === "none") {
-              targetCell = cell;
-              break;
-            }
-          }
-        }
-
-        if (targetCell) {
-          const img = targetCell.querySelector("img");
-          const drop = targetCell.querySelector(".drop");
-          const span = targetCell.querySelector("span");
-          img.src = event.target.result;
-          img.style.display = "flex";
-          drop.style.border = "unset";
-          span.style.display = "none";
-        }
-      };
-      reader.readAsDataURL(blob);
-    }
-  }
-};
+// Paste images into the toolbar for staging
+// (handled in the bottom toolbar section below)
 
 // Drop new images onto the grid area
 const dropNewImage = (e) => {
   e.preventDefault();
+
+  // Don't handle drops on the bottom toolbar
+  if (e.target.closest(".bottom-toolbar")) {
+    return;
+  }
 
   if (e.target.className === "drop" || e.target.tagName === "IMG") {
     return;
@@ -464,41 +427,7 @@ const dropNewImage = (e) => {
     .forEach((droppedFile) => {
       const reader = new FileReader();
       reader.onloadend = function () {
-        // Find the first empty cell
-        const cells = gridEl.querySelectorAll(".grid-cell");
-        let targetCell = null;
-        for (const cell of cells) {
-          const img = cell.querySelector("img");
-          if (!img.src || img.style.display === "none") {
-            targetCell = cell;
-            break;
-          }
-        }
-
-        if (!targetCell) {
-          gridRows++;
-          document.getElementById("grid-rows").value = gridRows;
-          buildGrid();
-          const allCells = gridEl.querySelectorAll(".grid-cell");
-          for (const cell of allCells) {
-            const img = cell.querySelector("img");
-            if (!img.src || img.style.display === "none") {
-              targetCell = cell;
-              break;
-            }
-          }
-        }
-
-        if (targetCell) {
-          const img = targetCell.querySelector("img");
-          const drop = targetCell.querySelector(".drop");
-          const span = targetCell.querySelector("span");
-          img.style.display = "flex";
-          img.src = this.result;
-          img.alt = droppedFile.name;
-          drop.style.border = "unset";
-          span.style.display = "none";
-        }
+        addImageToToolbar(this.result, droppedFile.name);
       };
       reader.readAsDataURL(droppedFile);
     });
@@ -510,5 +439,129 @@ document.body.addEventListener("dragover", function (event) {
   event.preventDefault();
 });
 
+// Forward declarations for toolbar functions (defined fully in toolbar section below)
+let removeToolbarItemById = () => {};
+let addImageToToolbar = () => {};
+
 // Build initial grid
 buildGrid();
+
+// --- Bottom Toolbar Logic ---
+const bottomToolbar = document.getElementById("bottom-toolbar");
+const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
+const bottomToolbarDrop = document.getElementById("bottom-toolbar-drop");
+
+addImageToToolbar = (dataUrl, fileName = "") => {
+  const item = document.createElement("div");
+  item.className = "bottom-toolbar-item";
+  item.draggable = true;
+  const id = `toolbar-img-${Math.random().toString(36).slice(2)}`;
+  item.dataset.id = id;
+
+  const img = document.createElement("img");
+  img.src = dataUrl;
+  img.alt = fileName;
+  img.draggable = false;
+
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "toolbar-item-remove";
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    item.remove();
+  });
+
+  item.appendChild(img);
+  item.appendChild(removeBtn);
+
+  item.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", dataUrl);
+    e.dataTransfer.setData("id", id);
+    e.dataTransfer.setData("source", "toolbar");
+    e.dataTransfer.effectAllowed = "move";
+  });
+
+  // Insert before the drop zone
+  bottomToolbarInner.insertBefore(item, bottomToolbarDrop);
+};
+
+removeToolbarItemById = (id) => {
+  const item = bottomToolbarInner.querySelector(`[data-id="${id}"]`);
+  if (item) item.remove();
+};
+
+// Handle drops onto the toolbar drop zone
+bottomToolbarDrop.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+
+bottomToolbarDrop.addEventListener("drop", (e) => {
+  e.preventDefault();
+
+  // Handle file drops
+  const files = [...e.dataTransfer.files].filter((f) =>
+    f.type.startsWith("image/"),
+  );
+  if (files.length) {
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = function () {
+        addImageToToolbar(this.result, file.name);
+      };
+      reader.readAsDataURL(file);
+    });
+    return;
+  }
+
+  // Handle data URL drops (from grid cells back to toolbar)
+  const src = e.dataTransfer.getData("text/plain");
+  if (src && src.startsWith("data:")) {
+    addImageToToolbar(src);
+  }
+});
+
+// Also allow dropping files anywhere on the toolbar
+bottomToolbar.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+
+bottomToolbar.addEventListener("drop", (e) => {
+  // Only handle if not already handled by the drop zone
+  if (e.target === bottomToolbarDrop || bottomToolbarDrop.contains(e.target)) {
+    return;
+  }
+  e.preventDefault();
+
+  const files = [...e.dataTransfer.files].filter((f) =>
+    f.type.startsWith("image/"),
+  );
+  if (files.length) {
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = function () {
+        addImageToToolbar(this.result, file.name);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+});
+
+// Override paste to also add to toolbar when no grid cell is focused
+const originalOnPaste = document.onpaste;
+document.onpaste = function (event) {
+  const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+
+  for (const index in items) {
+    const item = items[index];
+    if (item.kind === "file") {
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        addImageToToolbar(event.target.result);
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
