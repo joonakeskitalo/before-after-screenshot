@@ -451,6 +451,48 @@ const bottomToolbar = document.getElementById("bottom-toolbar");
 const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
 const bottomToolbarDrop = document.getElementById("bottom-toolbar-drop");
 
+// --- Resize handle for bottom toolbar ---
+const resizeHandle = document.getElementById("bottom-toolbar-resize-handle");
+let isResizing = false;
+let startY = 0;
+let startHeight = 0;
+
+resizeHandle.addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  isResizing = true;
+  startY = e.clientY;
+  startHeight = bottomToolbar.offsetHeight;
+  document.body.style.cursor = "ns-resize";
+  document.body.style.userSelect = "none";
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!isResizing) return;
+  const delta = startY - e.clientY;
+  const newHeight = Math.max(100, startHeight + delta);
+  bottomToolbar.style.height = newHeight + "px";
+  bottomToolbarInner.style.minHeight = (newHeight - 24) + "px";
+
+  // Resize toolbar images and drop zone to match
+  const imgHeight = (newHeight - 24 - 24) + "px"; // account for padding
+  bottomToolbarInner.querySelectorAll(".bottom-toolbar-item").forEach((item) => {
+    item.style.height = imgHeight;
+  });
+  const dropZone = bottomToolbarInner.querySelector(".bottom-toolbar-drop");
+  if (dropZone) dropZone.style.height = imgHeight;
+
+  // Update body padding so content isn't hidden behind the toolbar
+  document.body.style.paddingBottom = (newHeight + 32) + "px";
+  cardsEl.style.paddingBottom = (newHeight + 32) + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  if (!isResizing) return;
+  isResizing = false;
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
+});
+
 addImageToToolbar = (dataUrl, fileName = "") => {
   const item = document.createElement("div");
   item.className = "bottom-toolbar-item";
