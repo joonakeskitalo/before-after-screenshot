@@ -19,7 +19,7 @@
         <div class="toolbar">
           <div>
             <h1>Before & After Preview</h1>
-            <span>Paste or drag & drop images</span>
+            <span>Paste or drag & drop images into grid cells</span>
           </div>
           <div style="align-items: center; display: flex; gap: 8px">
             <select onchange="setColors(this)">
@@ -38,10 +38,17 @@
               <option value="oklch(25.7% 0.09 281.288);oklch(98.5% 0 0)">Indigo</option>
             </select>
 
-            <button onclick="createCard()">Add</button>
-            <button onclick="addRow()">Add Row</button>
-            <button onclick="removeActiveRow()">Delete Row</button>
+            <label style="font-size: 11pt; display: flex; align-items: center; gap: 4px;">
+              Cols
+              <input type="number" id="grid-cols" value="3" min="1" max="10" style="width: 48px; height: 36px; font-size: 12pt; border-radius: 8px; border: 1px solid oklch(92.8% 0.006 264.531); text-align: center;" onchange="updateGrid()" />
+            </label>
+            <label style="font-size: 11pt; display: flex; align-items: center; gap: 4px;">
+              Rows
+              <input type="number" id="grid-rows" value="2" min="1" max="10" style="width: 48px; height: 36px; font-size: 12pt; border-radius: 8px; border: 1px solid oklch(92.8% 0.006 264.531); text-align: center;" onchange="updateGrid()" />
+            </label>
+
             <button onclick="copyAsImage(false)">Copy</button>
+            <button onclick="copyAsImage(true, 0.3)">30%</button>
             <button onclick="copyAsImage(true, 0.4)">40%</button>
             <button onclick="copyAsImage(true, 0.5)">50%</button>
             <button onclick="copyAsImage(true, 0.8)">80%</button>
@@ -56,13 +63,9 @@
             spellcheck="false"
             autocapitalize="off"
             rows="2"
-            style="margin-bottom: 48px"
+            style="margin-bottom: 16px"
           ></textarea>
-          <div class="row active-row" id="card-row">
-            <div class="placeholder">
-              <span>Paste or drag and drop images</span>
-            </div>
-          </div>
+          <div class="grid" id="grid"></div>
         </div>
       </div>
     </div>

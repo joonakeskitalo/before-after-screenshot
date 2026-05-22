@@ -46,35 +46,18 @@ textarea {
     background-color: unset;
     font-size: var(--text-fontsize);
     transition: background-color ease-in-out 0.2s;
-    background-color: unset;
     border: unset;
-    resize: none;
     text-align: center;
     border-radius: 0.2em;
     width: 100%;
     field-sizing: content;
     overflow: hidden;
-    padding: 24px 0;
+    padding: 12px 0;
     color: var(--text-color);
 }
 
 textarea:hover {
     background-color: #e1e1e169;
-}
-
-.placeholder {
-    display: none;
-}
-
-
-.placeholder:only-child {
-    display: flex;
-    flex: 1;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    opacity: 0.5;
-    font-style: italic;
 }
 
 #cards {
@@ -84,7 +67,7 @@ textarea:hover {
     flex-direction: column;
     flex: 1;
     display: flex;
-    gap: var(--gap);
+    gap: 16px;
 
     &>textarea {
         margin-top: 8px;
@@ -93,32 +76,22 @@ textarea:hover {
         width: 100%;
         box-sizing: border-box;
     }
-
-
-    &>.row {
-        display: flex;
-        flex-direction: row;
-        gap: var(--gap);
-        overflow-x: scroll;
-        padding: 8px;
-        border-radius: 8px;
-        outline: 2px solid transparent;
-    }
-
-    &>.row.active-row {
-        outline: 2px solid oklch(70% 0.1 250);
-    }
 }
 
-.card {
+.grid {
+    display: grid;
+    gap: var(--gap);
+    padding: 8px;
+    border-radius: 8px;
+}
+
+.grid-cell {
     box-sizing: border-box;
-    min-height: 600px;
-    min-width: 300px;
+    min-height: 300px;
     display: flex;
     flex-direction: column;
     gap: 8px;
     align-items: center;
-    display: flex;
     overflow: hidden;
 
     &>.drop {
@@ -135,18 +108,12 @@ textarea:hover {
 
         &>span {
             font-size: 9pt;
+            opacity: 0.6;
         }
 
         &>img {
             max-height: var(--image-max-width);
         }
-    }
-
-    &>input[type="text"] {
-        border: none;
-        padding: 8px 4px;
-        text-align: center;
-        background-color: unset;
     }
 
     & img {
@@ -155,7 +122,6 @@ textarea:hover {
         object-fit: contain;
     }
 }
-
 
 button {
     appearance: none;
@@ -215,18 +181,6 @@ button:before {
 
 button:-webkit-details-marker {
     display: none;
-}
-
-.note {
-    border: unset;
-    padding: 8px 8px;
-    border-radius: 1em;
-    opacity: 0.9;
-    border: 1px solid #f5e5c1;
-    background-color: #fffbd3;
-    font-size: 12pt;
-    field-sizing: content;
-    min-width: 16px;
 }
 
 input[type="color"] {

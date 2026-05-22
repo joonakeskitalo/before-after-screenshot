@@ -1,23 +1,23 @@
 let root = document.documentElement;
 
 const cardsEl = document.getElementById("cards");
-const cardRow = document.getElementById("card-row");
+const gridEl = document.getElementById("grid");
 const content = document.querySelector(".content");
 
 const elementsToAdjustWidth = [cardsEl, content];
 
-let activeRow = cardRow;
+let gridCols = 3;
+let gridRows = 2;
 
 const setElementWidths = (arr, size) => {
   const images = cardsEl.querySelectorAll("img");
   const drops = cardsEl.querySelectorAll("div.drop");
-  const rows = cardsEl.querySelectorAll(".row");
 
-  const elementsWithoutTextareas = [...arr, ...images, ...drops, ...rows].filter(
+  const elements = [...arr, ...images, ...drops].filter(
     (el) => el.tagName !== "TEXTAREA",
   );
 
-  elementsWithoutTextareas.forEach((x) => {
+  elements.forEach((x) => {
     x.style.width = size;
     x.style.height = size;
   });
@@ -27,9 +27,31 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   try {
     root.style.setProperty("--image-max-width", "unset");
 
-    if (useFullSize) {
-      setElementWidths(elementsToAdjustWidth, "unset");
+    // Remove overflow and size constraints so nothing gets clipped
+    const allCells = gridEl.querySelectorAll(".grid-cell");
+    allCells.forEach((cell) => {
+      cell.style.overflow = "visible";
+      cell.style.minHeight = "unset";
+    });
 
+    // Let images size naturally for the capture
+    const allImages = cardsEl.querySelectorAll("img");
+    allImages.forEach((img) => {
+      if (img.src && img.style.display !== "none") {
+        img.style.objectFit = "contain";
+        img.style.height = "auto";
+        img.style.maxHeight = "unset";
+      }
+    });
+
+    // Remove height constraint on drop zones
+    const allDrops = cardsEl.querySelectorAll(".drop");
+    allDrops.forEach((drop) => {
+      drop.style.overflow = "visible";
+      drop.style.height = "auto";
+    });
+
+    if (useFullSize) {
       const fontScale = resolutionScale === 1 ? 0.4 : resolutionScale + 0.7;
       const fontSize = Math.floor(20 / fontScale);
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
@@ -37,48 +59,44 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       const gap = 128 * resolutionScale;
       root.style.setProperty("--gap", `${gap}px`);
 
-      [
-        ...document.querySelectorAll(".drop"),
-        ...document.querySelectorAll(".card"),
-      ]
-        .filter((drop) => {
-          const img = drop.querySelector("img");
-          return !img || img.style.display === "none";
-        })
-        .forEach((drop) => {
+      // Collapse empty drops
+      allDrops.forEach((drop) => {
+        const img = drop.querySelector("img");
+        if (!img || !img.src || img.style.display === "none") {
           drop.style.width = "32px";
-        });
+          drop.style.height = "32px";
+        }
+      });
 
       if (resolutionScale !== 1) {
-        [...cardsEl.querySelectorAll("img")].forEach((img) => {
-          img.style.width =
-            Math.floor(img.naturalWidth * resolutionScale) + "px";
+        allImages.forEach((img) => {
+          if (img.src && img.style.display !== "none") {
+            img.style.width =
+              Math.floor(img.naturalWidth * resolutionScale) + "px";
+            img.style.height = "auto";
+          }
         });
       }
     }
+
     root.style.setProperty("--border", `unset`);
-    const allRows = cardsEl.querySelectorAll(".row");
-    allRows.forEach((row) => {
-      row.style.overflowX = "unset";
-      row.style.justifyContent = "flex-start";
-      row.classList.remove("active-row");
-    });
+    gridEl.style.outline = "none";
+
+    // Remove fixed grid row sizing so rows expand to fit content
+    gridEl.style.gridTemplateRows = "auto";
 
     const initialPadding = useFullSize ? 192 : 64;
     const padding = Math.floor(initialPadding * resolutionScale);
 
-    cardsEl.style.padding = useFullSize
-      ? `8px ${padding}px`
-      : `8px ${padding}px`;
+    cardsEl.style.padding = `8px ${padding}px`;
+    cardsEl.style.width = "fit-content";
 
     const blob = await domtoimage.toBlob(cardsEl, {
       filter: (node) => {
         if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
           return false;
         }
-
         if (node.tagName === "SPAN") return false;
-
         return true;
       },
     });
@@ -89,169 +107,39 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       }),
     ]);
 
-    allRows.forEach((row) => {
-      row.style.justifyContent = null;
-    });
-
+    // Restore all styles
     if (useFullSize) {
-      setElementWidths(elementsToAdjustWidth, null);
       root.style.setProperty("--text-fontsize", `15pt`);
       root.style.setProperty("--gap", `48px`);
     }
-    cardsEl.style.padding = "16px";
-    allRows.forEach((row) => {
-      row.style.overflowX = "scroll";
+
+    allCells.forEach((cell) => {
+      cell.style.overflow = null;
+      cell.style.minHeight = null;
     });
+
+    allImages.forEach((img) => {
+      img.style.objectFit = null;
+      img.style.height = null;
+      img.style.maxHeight = null;
+      img.style.width = null;
+    });
+
+    allDrops.forEach((drop) => {
+      drop.style.overflow = null;
+      drop.style.height = null;
+      drop.style.width = null;
+    });
+
+    cardsEl.style.padding = "16px";
+    cardsEl.style.width = null;
+    gridEl.style.outline = null;
+    gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
     root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
     root.style.setProperty("--image-max-width", "60dvh");
-    activeRow.classList.add("active-row");
   } catch (error) {
     console.error(error);
   }
-};
-
-const addEventListenersToCards = () => {
-  const cards = document.querySelectorAll("#cards .row > .card");
-
-  [...cards].forEach((card) => {
-    const dropZone = card.querySelector(".drop");
-    const inputElement = card.querySelector(".file-input");
-    const img = card.querySelector("img");
-    const span = card.querySelector("span");
-
-    img.addEventListener(
-      "click",
-      async (e) => await clearOrCopyImage(e, img, dropZone, span, card),
-    );
-    dropZone.addEventListener("click", (e) => removeCard(card, e));
-
-    inputElement.addEventListener("change", function (e) {
-      const clickFile = this.files[0];
-      if (clickFile) {
-        img.style.display = "flex";
-        dropZone.style.border = "unset";
-
-        const reader = new FileReader();
-        reader.readAsDataURL(clickFile);
-        reader.onloadend = function () {
-          img.src = this.result;
-          img.alt = clickFile.name;
-        };
-      }
-    });
-
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-    });
-
-    dropZone.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      dropZone.style.border = "unset";
-
-      const droppedFile = e.dataTransfer.files?.[0];
-      if (droppedFile && droppedFile.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onloadend = function () {
-          img.style.display = "flex";
-          img.src = this.result;
-          img.alt = droppedFile.name;
-          span.style.display = "none";
-
-          const destCard = dropZone.closest(".card");
-          if (destCard) {
-            destCard.dataset.textContent = this.result;
-          }
-        };
-        reader.readAsDataURL(droppedFile);
-        return;
-      }
-
-      const src = e.dataTransfer.getData("text/plain");
-      if (src) {
-        img.style.display = "flex";
-        img.src = src;
-        img.alt = "";
-        span.style.display = "none";
-
-        if (e.dataTransfer.getData("id") === img.id) {
-          return;
-        }
-
-        if (e.dataTransfer.getData("id")) {
-          const srcImg = document.getElementById(e.dataTransfer.getData("id"));
-          if (srcImg) {
-            srcImg.removeAttribute("src");
-            srcImg.style.display = "none";
-            srcImg.alt = "";
-            const parent = srcImg.closest(".drop");
-            if (parent) {
-              parent.style.border = "var(--border)";
-              parent.style.width = "100%";
-            }
-          }
-        } else {
-          const all = document.querySelectorAll("img");
-          for (const a of all) {
-            if (a === img) continue;
-            if (a.src === src) {
-              a.removeAttribute("src");
-              a.style.display = "none";
-              a.alt = "";
-              const parent = a.closest(".drop");
-              if (parent) {
-                parent.style.border = "var(--border)";
-                parent.style.width = "100%";
-              }
-              break;
-            }
-          }
-        }
-
-        const srcCard = e.dataTransfer.getData("id")
-          ? document
-              .getElementById(e.dataTransfer.getData("id"))
-              .closest(".card")
-          : dropZone.closest(".card");
-        const srcTextarea = srcCard.querySelector("textarea");
-        if (srcTextarea) {
-          srcTextarea.value = "";
-        }
-
-        const destCard = dropZone.closest(".card");
-        if (destCard) {
-          const destTextarea = destCard.querySelector("textarea");
-          if (destTextarea) {
-            destTextarea.value = e.dataTransfer.getData("note");
-          }
-        }
-      }
-
-      const destCard = dropZone.closest(".card");
-      if (destCard) {
-        destCard.dataset.textContent = src;
-      }
-    });
-    img.draggable = true;
-    img.addEventListener("dragstart", (e) => {
-      if (!img.id) {
-        img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
-      }
-
-      const card = e.target.parentNode.parentNode;
-      const textArea = card.querySelector("textarea");
-
-      e.dataTransfer.setData("text/plain", img.src);
-      e.dataTransfer.setData("id", img.id);
-      e.dataTransfer.setData("note", textArea.value);
-      e.dataTransfer.effectAllowed = "move";
-    });
-
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-    });
-  });
 };
 
 const attachDragTo = (img) => {
@@ -262,22 +150,14 @@ const attachDragTo = (img) => {
       img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
     }
 
-    const card = e.target.parentNode.parentNode;
-    const textArea = card.querySelector("textarea");
+    const cell = e.target.closest(".grid-cell");
+    const textArea = cell ? cell.querySelector("textarea") : null;
 
     e.dataTransfer.setData("text/plain", img.src);
     e.dataTransfer.setData("id", img.id);
+    e.dataTransfer.setData("note", textArea ? textArea.value : "");
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("note", textArea.value);
   });
-};
-
-const removeCard = (card, event) => {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  if (event.shiftKey) {
-    card.remove();
-  }
 };
 
 const clearOrCopyImage = async (event, img, drop, span) => {
@@ -326,26 +206,118 @@ const clearOrCopyImage = async (event, img, drop, span) => {
   }
 };
 
-const createCard = () => {
-  const card = document.createElement("div");
-  card.className = "card";
+const setupCell = (cell) => {
+  const drop = cell.querySelector(".drop");
+  const img = cell.querySelector("img");
+  const span = cell.querySelector("span");
+
+  img.addEventListener(
+    "click",
+    async (e) => await clearOrCopyImage(e, img, drop, span),
+  );
+
+  drop.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.shiftKey) {
+      // Clear the cell content
+      img.src = "";
+      img.style.display = "none";
+      drop.style.border = "var(--border)";
+      span.style.display = "block";
+      const textarea = cell.querySelector("textarea");
+      if (textarea) textarea.value = "";
+    }
+  });
+
+  drop.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  });
+
+  drop.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    drop.style.border = "unset";
+
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile && droppedFile.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = function () {
+        img.style.display = "flex";
+        img.src = this.result;
+        img.alt = droppedFile.name;
+        span.style.display = "none";
+      };
+      reader.readAsDataURL(droppedFile);
+      return;
+    }
+
+    const src = e.dataTransfer.getData("text/plain");
+    if (src) {
+      img.style.display = "flex";
+      img.src = src;
+      img.alt = "";
+      span.style.display = "none";
+
+      if (e.dataTransfer.getData("id") === img.id) {
+        return;
+      }
+
+      if (e.dataTransfer.getData("id")) {
+        const srcImg = document.getElementById(e.dataTransfer.getData("id"));
+        if (srcImg) {
+          srcImg.removeAttribute("src");
+          srcImg.style.display = "none";
+          srcImg.alt = "";
+          const parent = srcImg.closest(".drop");
+          if (parent) {
+            parent.style.border = "var(--border)";
+            const parentSpan = parent.querySelector("span");
+            if (parentSpan) parentSpan.style.display = "block";
+          }
+        }
+      }
+
+      // Transfer note text
+      const noteText = e.dataTransfer.getData("note");
+      if (noteText) {
+        const destTextarea = cell.querySelector("textarea");
+        if (destTextarea) destTextarea.value = noteText;
+
+        // Clear source textarea
+        const srcImgEl = e.dataTransfer.getData("id")
+          ? document.getElementById(e.dataTransfer.getData("id"))
+          : null;
+        if (srcImgEl) {
+          const srcCell = srcImgEl.closest(".grid-cell");
+          if (srcCell) {
+            const srcTextarea = srcCell.querySelector("textarea");
+            if (srcTextarea) srcTextarea.value = "";
+          }
+        }
+      }
+    }
+  });
+
+  attachDragTo(img);
+};
+
+const createCell = (row, col) => {
+  const cell = document.createElement("div");
+  cell.className = "grid-cell";
+  cell.dataset.row = row;
+  cell.dataset.col = col;
 
   const drop = document.createElement("div");
   drop.className = "drop";
 
   const span = document.createElement("span");
-  span.innerText = "Drop image here…";
+  span.innerText = "Drop here";
   drop.appendChild(span);
 
   const img = document.createElement("img");
   img.style.display = "none";
-  attachDragTo(img);
   drop.appendChild(img);
-
-  const input = document.createElement("input");
-  input.type = "file";
-  input.className = "file-input";
-  input.hidden = true;
 
   const textarea = document.createElement("textarea");
   textarea.autocomplete = "off";
@@ -355,19 +327,66 @@ const createCard = () => {
   textarea.rows = 2;
   textarea.textContent = "";
 
-  card.appendChild(drop);
-  card.appendChild(input);
-  card.appendChild(textarea);
+  cell.appendChild(drop);
+  cell.appendChild(textarea);
 
-  activeRow.appendChild(card);
+  setupCell(cell);
 
-  addEventListenersToCards();
+  return cell;
+};
 
-  return {
-    image: img,
-    drop,
-    span,
-  };
+const buildGrid = () => {
+  // Save existing cell data
+  const existingData = [];
+  const existingCells = gridEl.querySelectorAll(".grid-cell");
+  existingCells.forEach((cell) => {
+    const img = cell.querySelector("img");
+    const textarea = cell.querySelector("textarea");
+    existingData.push({
+      row: parseInt(cell.dataset.row),
+      col: parseInt(cell.dataset.col),
+      imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
+      imgAlt: img ? img.alt : "",
+      text: textarea ? textarea.value : "",
+    });
+  });
+
+  gridEl.innerHTML = "";
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+  gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const cell = createCell(r, c);
+      gridEl.appendChild(cell);
+
+      // Restore data if it existed at this position
+      const existing = existingData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        const img = cell.querySelector("img");
+        const drop = cell.querySelector(".drop");
+        const span = cell.querySelector("span");
+        const textarea = cell.querySelector("textarea");
+
+        if (existing.imgSrc) {
+          img.src = existing.imgSrc;
+          img.alt = existing.imgAlt;
+          img.style.display = "flex";
+          drop.style.border = "unset";
+          span.style.display = "none";
+        }
+        if (existing.text) {
+          textarea.value = existing.text;
+        }
+      }
+    }
+  }
+};
+
+const updateGrid = () => {
+  gridCols = parseInt(document.getElementById("grid-cols").value) || 3;
+  gridRows = parseInt(document.getElementById("grid-rows").value) || 2;
+  buildGrid();
 };
 
 const setColors = (e) => {
@@ -381,40 +400,7 @@ const setColors = (e) => {
   }
 };
 
-const addRow = () => {
-  const row = document.createElement("div");
-  row.className = "row";
-
-  const placeholder = document.createElement("div");
-  placeholder.className = "placeholder";
-  const placeholderSpan = document.createElement("span");
-  placeholderSpan.textContent = "Paste or drag and drop images";
-  placeholder.appendChild(placeholderSpan);
-  row.appendChild(placeholder);
-
-  cardsEl.appendChild(row);
-  setActiveRow(row);
-};
-
-const setActiveRow = (row) => {
-  const allRows = cardsEl.querySelectorAll(".row");
-  allRows.forEach((r) => r.classList.remove("active-row"));
-  activeRow = row;
-  activeRow.classList.add("active-row");
-};
-
-const removeActiveRow = () => {
-  const allRows = [...cardsEl.querySelectorAll(".row")];
-  if (allRows.length <= 1) return;
-
-  const index = allRows.indexOf(activeRow);
-  activeRow.remove();
-
-  const remaining = [...cardsEl.querySelectorAll(".row")];
-  const nextRow = remaining[Math.min(index, remaining.length - 1)];
-  setActiveRow(nextRow);
-};
-
+// Paste images into the next empty cell
 document.onpaste = function (event) {
   const items = (event.clipboardData || event.originalEvent.clipboardData)
     .items;
@@ -426,17 +412,48 @@ document.onpaste = function (event) {
       const blob = item.getAsFile();
       const reader = new FileReader();
       reader.onload = function (event) {
-        const { image, drop, span } = createCard();
-        image.src = event.target.result;
-        image.style.display = "flex";
-        drop.style.border = "unset";
-        span.style.display = "none";
+        // Find the first empty cell
+        const cells = gridEl.querySelectorAll(".grid-cell");
+        let targetCell = null;
+        for (const cell of cells) {
+          const img = cell.querySelector("img");
+          if (!img.src || img.style.display === "none") {
+            targetCell = cell;
+            break;
+          }
+        }
+
+        if (!targetCell) {
+          // All cells full, expand grid by adding a row
+          gridRows++;
+          document.getElementById("grid-rows").value = gridRows;
+          buildGrid();
+          const allCells = gridEl.querySelectorAll(".grid-cell");
+          for (const cell of allCells) {
+            const img = cell.querySelector("img");
+            if (!img.src || img.style.display === "none") {
+              targetCell = cell;
+              break;
+            }
+          }
+        }
+
+        if (targetCell) {
+          const img = targetCell.querySelector("img");
+          const drop = targetCell.querySelector(".drop");
+          const span = targetCell.querySelector("span");
+          img.src = event.target.result;
+          img.style.display = "flex";
+          drop.style.border = "unset";
+          span.style.display = "none";
+        }
       };
       reader.readAsDataURL(blob);
     }
   }
 };
 
+// Drop new images onto the grid area
 const dropNewImage = (e) => {
   e.preventDefault();
 
@@ -449,16 +466,43 @@ const dropNewImage = (e) => {
     .forEach((droppedFile) => {
       const reader = new FileReader();
       reader.onloadend = function () {
-        const { image, drop, span } = createCard();
+        // Find the first empty cell
+        const cells = gridEl.querySelectorAll(".grid-cell");
+        let targetCell = null;
+        for (const cell of cells) {
+          const img = cell.querySelector("img");
+          if (!img.src || img.style.display === "none") {
+            targetCell = cell;
+            break;
+          }
+        }
 
-        image.style.display = "flex";
-        image.src = this.result;
-        image.alt = droppedFile.name;
-        drop.style.border = "unset";
-        span.style.display = "none";
+        if (!targetCell) {
+          gridRows++;
+          document.getElementById("grid-rows").value = gridRows;
+          buildGrid();
+          const allCells = gridEl.querySelectorAll(".grid-cell");
+          for (const cell of allCells) {
+            const img = cell.querySelector("img");
+            if (!img.src || img.style.display === "none") {
+              targetCell = cell;
+              break;
+            }
+          }
+        }
+
+        if (targetCell) {
+          const img = targetCell.querySelector("img");
+          const drop = targetCell.querySelector(".drop");
+          const span = targetCell.querySelector("span");
+          img.style.display = "flex";
+          img.src = this.result;
+          img.alt = droppedFile.name;
+          drop.style.border = "unset";
+          span.style.display = "none";
+        }
       };
       reader.readAsDataURL(droppedFile);
-      return;
     });
 };
 
@@ -468,13 +512,5 @@ document.body.addEventListener("dragover", function (event) {
   event.preventDefault();
 });
 
-// Set initial active row
-setActiveRow(cardRow);
-
-// Click on a row to make it active
-cardsEl.addEventListener("click", (e) => {
-  const row = e.target.closest(".row");
-  if (row) {
-    setActiveRow(row);
-  }
-});
+// Build initial grid
+buildGrid();
