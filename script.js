@@ -52,8 +52,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     });
 
     if (useFullSize) {
-      const fontScale = resolutionScale === 1 ? 0.4 : resolutionScale + 0.7;
-      const fontSize = Math.floor(20 / fontScale);
+      const baseFontSize = 15;
+      const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * 3));
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
       const gap = 128 * resolutionScale;
@@ -68,15 +68,13 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         }
       });
 
-      if (resolutionScale !== 1) {
-        allImages.forEach((img) => {
-          if (img.src && img.style.display !== "none") {
-            img.style.width =
-              Math.floor(img.naturalWidth * resolutionScale) + "px";
-            img.style.height = "auto";
-          }
-        });
-      }
+      allImages.forEach((img) => {
+        if (img.src && img.style.display !== "none") {
+          img.style.width =
+            Math.floor(img.naturalWidth * resolutionScale) + "px";
+          img.style.height = "auto";
+        }
+      });
     }
 
     root.style.setProperty("--border", `unset`);
