@@ -19,6 +19,7 @@ body {
     justify-content: center;
     box-sizing: border-box;
     flex: 1;
+    padding-bottom: 256px;
 
     &>.content {
         width: 100%;
@@ -329,7 +330,7 @@ select {
 
 /* Add padding to body so content isn't hidden behind the toolbar */
 body {
-    padding-bottom: 100px;
+    padding-bottom: 256px;
 }
 
 /* Zoom overlay for shift-hover preview */
