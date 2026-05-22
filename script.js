@@ -611,7 +611,7 @@ document.onpaste = function (event) {
   }
 };
 
-// Shift-key zoom for toolbar previews
+// ctrl-key zoom for toolbar previews
 let zoomOverlay = null;
 
 const applyZoom = (item) => {
@@ -650,7 +650,7 @@ const removeZoom = (item) => {
 };
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Shift") {
+  if (e.key === "Ctrl") {
     const hoveredToolbar = bottomToolbarInner.querySelector(".bottom-toolbar-item:hover");
     if (hoveredToolbar) {
       applyZoom(hoveredToolbar);
@@ -659,7 +659,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keyup", (e) => {
-  if (e.key === "Shift") {
+  if (e.key === "Ctrl") {
     const zoomed = bottomToolbarInner.querySelector('.bottom-toolbar-item[data-zoomed]');
     removeZoom(zoomed);
   }
@@ -667,7 +667,7 @@ document.addEventListener("keyup", (e) => {
 
 bottomToolbarInner.addEventListener("mouseover", (e) => {
   const item = e.target.closest(".bottom-toolbar-item");
-  if (item && e.shiftKey) {
+  if (item && e.ctrlKey) {
     const current = bottomToolbarInner.querySelector('.bottom-toolbar-item[data-zoomed]');
     if (current !== item) {
       removeZoom(current);
@@ -683,7 +683,7 @@ bottomToolbarInner.addEventListener("mouseout", (e) => {
   }
 });
 
-// --- Shift+Hover Zoom for Card Images ---
+// --- Ctrl+Hover Zoom for Card Images ---
 let cardZoomOverlay = null;
 
 const applyCardZoom = (dropEl) => {
@@ -736,7 +736,7 @@ const removeCardZoom = (dropEl) => {
 
 gridEl.addEventListener("mouseover", (e) => {
   const drop = e.target.closest(".grid-cell .drop");
-  if (drop && e.shiftKey) {
+  if (drop && e.ctrlKey) {
     const current = gridEl.querySelector('.drop[data-zoomed]');
     if (current !== drop) {
       removeCardZoom(current);
@@ -752,9 +752,9 @@ gridEl.addEventListener("mouseout", (e) => {
   }
 });
 
-// Also handle shift press/release while hovering a card image
+// Also handle ctrl press/release while hovering a card image
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Shift") {
+  if (e.key === "Ctrl") {
     const hovered = document.querySelector(".grid-cell .drop:hover");
     if (hovered) {
       applyCardZoom(hovered);
@@ -763,7 +763,8 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keyup", (e) => {
-  if (e.key === "Shift") {
+  console.log(`🟣 todo-nav-script:766 `, { e: e.key });
+  if (e.key === "Ctrl") {
     const zoomed = gridEl.querySelector('.drop[data-zoomed]');
     removeCardZoom(zoomed);
   }
