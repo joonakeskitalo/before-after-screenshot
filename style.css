@@ -239,10 +239,10 @@ select {
     align-items: center;
     gap: 12px;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
     white-space: nowrap;
     padding-bottom: 4px;
-    min-height: 64px;
+    min-height: 90px;
 }
 
 .bottom-toolbar-inner::-webkit-scrollbar {
@@ -259,7 +259,7 @@ select {
     align-items: center;
     justify-content: center;
     min-width: 160px;
-    height: 56px;
+    height: 90px;
     border: var(--border);
     border-radius: 8px;
     flex-shrink: 0;
@@ -274,17 +274,23 @@ select {
 .bottom-toolbar-item {
     position: relative;
     flex-shrink: 0;
-    width: 80px;
-    height: 56px;
+    width: 120px;
+    height: 90px;
     border-radius: 6px;
     overflow: hidden;
     cursor: grab;
     border: 1px solid oklch(92.8% 0.006 264.531);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 
     &:hover {
         transform: scale(1.05);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    &.zoomed {
+        transform: scale(2.5);
+        z-index: 300;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     }
 
     &:active {

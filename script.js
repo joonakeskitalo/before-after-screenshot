@@ -565,3 +565,33 @@ document.onpaste = function (event) {
     }
   }
 };
+
+// Shift-key zoom for toolbar previews
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Shift") {
+    const hovered = bottomToolbarInner.querySelector(".bottom-toolbar-item:hover");
+    if (hovered) hovered.classList.add("zoomed");
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.key === "Shift") {
+    bottomToolbarInner.querySelectorAll(".bottom-toolbar-item.zoomed").forEach((el) => {
+      el.classList.remove("zoomed");
+    });
+  }
+});
+
+bottomToolbarInner.addEventListener("mouseover", (e) => {
+  const item = e.target.closest(".bottom-toolbar-item");
+  if (item && e.shiftKey) {
+    item.classList.add("zoomed");
+  }
+});
+
+bottomToolbarInner.addEventListener("mouseout", (e) => {
+  const item = e.target.closest(".bottom-toolbar-item");
+  if (item) {
+    item.classList.remove("zoomed");
+  }
+});
