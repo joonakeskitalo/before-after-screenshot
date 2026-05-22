@@ -567,31 +567,73 @@ document.onpaste = function (event) {
 };
 
 // Shift-key zoom for toolbar previews
+let zoomOverlay = null;
+
+const applyZoom = (item) => {
+  if (!item || zoomOverlay) return;
+  const img = item.querySelector("img");
+  if (!img) return;
+
+  const rect = item.getBoundingClientRect();
+
+  zoomOverlay = document.createElement("div");
+  zoomOverlay.className = "zoom-overlay";
+  const clone = img.cloneNode(true);
+  zoomOverlay.appendChild(clone);
+
+  // Position above the item, centered horizontally
+  const scale = 3;
+  const width = rect.width * scale;
+  const height = rect.height * scale;
+  zoomOverlay.style.left = `${rect.left + rect.width / 2 - width / 2}px`;
+  zoomOverlay.style.top = `${rect.top - height - 8}px`;
+  zoomOverlay.style.width = `${width}px`;
+  zoomOverlay.style.height = `${height}px`;
+
+  document.body.appendChild(zoomOverlay);
+  item.dataset.zoomed = "true";
+};
+
+const removeZoom = (item) => {
+  if (zoomOverlay) {
+    zoomOverlay.remove();
+    zoomOverlay = null;
+  }
+  if (item) {
+    delete item.dataset.zoomed;
+  }
+};
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Shift") {
     const hovered = bottomToolbarInner.querySelector(".bottom-toolbar-item:hover");
-    if (hovered) hovered.classList.add("zoomed");
+    if (hovered) {
+      applyZoom(hovered);
+    }
   }
 });
 
 document.addEventListener("keyup", (e) => {
   if (e.key === "Shift") {
-    bottomToolbarInner.querySelectorAll(".bottom-toolbar-item.zoomed").forEach((el) => {
-      el.classList.remove("zoomed");
-    });
+    const zoomed = bottomToolbarInner.querySelector('.bottom-toolbar-item[data-zoomed]');
+    removeZoom(zoomed);
   }
 });
 
 bottomToolbarInner.addEventListener("mouseover", (e) => {
   const item = e.target.closest(".bottom-toolbar-item");
   if (item && e.shiftKey) {
-    item.classList.add("zoomed");
+    const current = bottomToolbarInner.querySelector('.bottom-toolbar-item[data-zoomed]');
+    if (current !== item) {
+      removeZoom(current);
+      applyZoom(item);
+    }
   }
 });
 
 bottomToolbarInner.addEventListener("mouseout", (e) => {
   const item = e.target.closest(".bottom-toolbar-item");
-  if (item) {
-    item.classList.remove("zoomed");
+  if (item && !item.contains(e.relatedTarget)) {
+    removeZoom(item);
   }
 });
