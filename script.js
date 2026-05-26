@@ -228,20 +228,36 @@ let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 3;
 
-// Track shift key for drawing mode
+const enableDrawingMode = () => {
+  drawingMode = true;
+  document.body.classList.add("drawing-mode");
+  document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
+};
+
+const disableDrawingMode = () => {
+  drawingMode = false;
+  document.body.classList.remove("drawing-mode");
+  document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
+};
+
+// Toggle drawing mode with Shift key, exit with Escape
 document.addEventListener("keydown", (e) => {
   if (e.key === "Shift" && !e.repeat && !e.target.matches("textarea, input")) {
-    drawingMode = true;
-    document.body.classList.add("drawing-mode");
-    document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
+    if (drawingMode) {
+      disableDrawingMode();
+    } else {
+      enableDrawingMode();
+    }
+  }
+  if (e.key === "Escape" && drawingMode) {
+    disableDrawingMode();
   }
 });
 
-document.addEventListener("keyup", (e) => {
-  if (e.key === "Shift") {
-    drawingMode = false;
-    document.body.classList.remove("drawing-mode");
-    document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
+// Exit drawing mode when clicking outside a canvas
+document.addEventListener("mousedown", (e) => {
+  if (drawingMode && !e.target.closest(".drawing-canvas")) {
+    disableDrawingMode();
   }
 });
 
