@@ -236,7 +236,7 @@ let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
 let drawTool = "freehand"; // "freehand", "arrow", or "text"
-let drawFontSize = 13;
+let drawFontSize = 12;
 
 const enableDrawingMode = () => {
   drawingMode = true;
@@ -365,7 +365,7 @@ textModeBtn.addEventListener("click", (e) => {
 });
 
 drawFontSizeInput.addEventListener("input", (e) => {
-  drawFontSize = parseInt(e.target.value) || 16;
+  drawFontSize = parseInt(e.target.value) || 12;
 });
 
 // Each canvas stores its paths as normalized coordinates (0-1 range relative to the IMAGE)
@@ -441,7 +441,7 @@ const redrawCanvas = (canvas, dpr) => {
 
     if (path.type === "text") {
       // Draw text annotation (multiline support)
-      const fontSize = (path.fontSize || 13) * dpr;
+      const fontSize = (path.fontSize || 12) * dpr;
       const lineHeight = fontSize * 1.3;
       ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
       ctx.textBaseline = "top";
