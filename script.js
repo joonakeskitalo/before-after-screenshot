@@ -2195,8 +2195,8 @@ document.addEventListener("keydown", (e) => {
       toggleStagingArea();
       break;
     case "z":
-      // Toggle zoom between 100% and 300%
-      applyGridZoom(gridZoom === 300 ? 100 : 300);
+      // Toggle zoom between 100% and 200%
+      applyGridZoom(gridZoom === 200 ? 100 : 200);
       break;
     case "x": {
       // Cycle through preset colors
