@@ -414,6 +414,29 @@ select {
     }
 }
 
+.insert-all-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border: 1px solid oklch(92.8% 0.006 264.531);
+    border-radius: 6px;
+    background: #ffffff;
+    color: #24292e;
+    font-size: 9pt;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        background: #f0f0f0;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    &:active {
+        background: #e4e4e4;
+    }
+}
+
 /* Add padding to body so content isn't hidden behind the toolbar */
 body {
     padding-bottom: 256px;

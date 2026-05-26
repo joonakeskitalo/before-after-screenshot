@@ -2109,6 +2109,57 @@ stagingToggleBtn.addEventListener("click", (e) => {
   toggleStagingArea();
 });
 
+// --- Insert All Staged Images ---
+const insertAllBtn = document.getElementById("insert-all-btn");
+
+insertAllBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+
+  // Gather all staged images from the toolbar
+  const items = [...bottomToolbarInner.querySelectorAll(".bottom-toolbar-item")];
+  if (items.length === 0) return;
+
+  // Count how many empty cells are currently available
+  const cells = [...gridEl.querySelectorAll(".grid-cell")];
+  let emptyCells = cells.filter((cell) => {
+    const img = cell.querySelector("img");
+    return !img || !img.src || img.style.display === "none";
+  });
+
+  // If not enough empty cells, increase rows to fit all staged images
+  const needed = items.length - emptyCells.length;
+  if (needed > 0) {
+    const extraRows = Math.ceil(needed / gridCols);
+    gridRows += extraRows;
+    document.getElementById("grid-rows").value = gridRows;
+    buildGrid();
+    // Re-query empty cells after rebuilding
+    emptyCells = [...gridEl.querySelectorAll(".grid-cell")].filter((cell) => {
+      const img = cell.querySelector("img");
+      return !img || !img.src || img.style.display === "none";
+    });
+  }
+
+  // Insert each staged image into the next empty cell
+  items.forEach((item, i) => {
+    if (i >= emptyCells.length) return;
+    const cell = emptyCells[i];
+    const cellImg = cell.querySelector("img");
+    const drop = cell.querySelector(".drop");
+    const span = cell.querySelector("span");
+    const stagedImg = item.querySelector("img");
+
+    cellImg.src = stagedImg.src;
+    cellImg.alt = stagedImg.alt || "";
+    cellImg.style.display = "flex";
+    drop.style.border = "unset";
+    if (span) span.style.display = "none";
+
+    // Remove from staging
+    item.remove();
+  });
+});
+
 // --- Hotkeys ---
 document.addEventListener("keydown", (e) => {
   // Skip hotkeys when typing in an input, textarea, or contenteditable
