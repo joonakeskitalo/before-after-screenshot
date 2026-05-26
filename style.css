@@ -282,9 +282,9 @@ select {
     background-color: #ffffffe0;
     border-top: 1px solid oklch(92.8% 0.006 264.531);
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
-    padding: 12px 16px;
-    padding-top: 16px;
-    min-height: 168px;
+    padding: 4px 16px;
+    padding-top: 8px;
+    min-height: 40px;
     overflow: visible;
 }
 
@@ -322,8 +322,8 @@ select {
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    padding: 12px 0;
-    min-height: 168px;
+    padding: 4px 0;
+    min-height: 20px;
     clip-path: none;
     /* border: 1px solid blue; */
 }
@@ -352,6 +352,14 @@ select {
         opacity: 0.6;
         white-space: nowrap;
     }
+}
+
+.bottom-toolbar.compact .bottom-toolbar-drop > span {
+    display: none;
+}
+
+.bottom-toolbar.compact .bottom-toolbar-drop {
+    min-width: 40px;
 }
 
 .bottom-toolbar-item {

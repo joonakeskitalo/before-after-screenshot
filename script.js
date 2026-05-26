@@ -1755,9 +1755,16 @@ resizeHandle.addEventListener("mousedown", (e) => {
 document.addEventListener("mousemove", (e) => {
   if (!isResizing) return;
   const delta = startY - e.clientY;
-  const newHeight = Math.max(100, startHeight + delta);
+  const newHeight = Math.max(40, startHeight + delta);
   bottomToolbar.style.height = newHeight + "px";
   bottomToolbarInner.style.minHeight = (newHeight - 24) + "px";
+
+  // Add compact class when toolbar is narrow
+  if (newHeight < 100) {
+    bottomToolbar.classList.add("compact");
+  } else {
+    bottomToolbar.classList.remove("compact");
+  }
 
   // Resize toolbar images and drop zone to match
   const imgHeight = (newHeight - 24 - 24) + "px"; // account for padding
