@@ -452,6 +452,16 @@ body.drawing-mode .grid-cell .drop {
     cursor: crosshair;
 }
 
+/* Text tool cursor */
+body.drawing-mode.text-tool .grid-cell .drop,
+body.drawing-mode.text-tool {
+    cursor: text;
+}
+
+body.drawing-mode.text-tool .drawing-canvas.active {
+    cursor: text;
+}
+
 /* Clear drawing button per image */
 .clear-drawing-btn {
     position: absolute;

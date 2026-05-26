@@ -104,6 +104,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         }
         if (node.tagName === "SPAN") return false;
         if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
+        if (node.classList && node.classList.contains("drawing-text-input")) return false;
         if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
       },
@@ -234,17 +235,20 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
-let drawTool = "freehand"; // "freehand" or "arrow"
+let drawTool = "freehand"; // "freehand", "arrow", or "text"
+let drawFontSize = 16;
 
 const enableDrawingMode = () => {
   drawingMode = true;
   document.body.classList.add("drawing-mode");
+  if (drawTool === "text") document.body.classList.add("text-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
 };
 
 const disableDrawingMode = () => {
   drawingMode = false;
   document.body.classList.remove("drawing-mode");
+  document.body.classList.remove("text-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
 };
 
@@ -264,7 +268,7 @@ document.addEventListener("keydown", (e) => {
 
 // Exit drawing mode when clicking outside a canvas
 document.addEventListener("mousedown", (e) => {
-  if (drawingMode && !e.target.closest(".drawing-canvas")) {
+  if (drawingMode && !e.target.closest(".drawing-canvas") && !e.target.closest(".drawing-text-input")) {
     disableDrawingMode();
   }
 });
@@ -305,7 +309,34 @@ arrowModeBtn.addEventListener("click", (e) => {
   } else {
     drawTool = "arrow";
     arrowModeBtn.classList.add("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
   }
+});
+
+// Text mode toggle
+const textModeBtn = document.getElementById("text-mode-btn");
+const drawFontSizeInput = document.getElementById("draw-font-size");
+
+textModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "text") {
+    drawTool = "freehand";
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+  } else {
+    drawTool = "text";
+    textModeBtn.classList.add("active");
+    arrowModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "";
+    if (drawingMode) document.body.classList.add("text-tool");
+  }
+});
+
+drawFontSizeInput.addEventListener("input", (e) => {
+  drawFontSize = parseInt(e.target.value) || 16;
 });
 
 // Each canvas stores its paths as normalized coordinates (0-1 range relative to the IMAGE)
@@ -379,7 +410,16 @@ const redrawCanvas = (canvas, dpr) => {
     const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
     const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
 
-    if (path.type === "arrow") {
+    if (path.type === "text") {
+      // Draw text annotation
+      const fontSize = (path.fontSize || 16) * dpr;
+      ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+      ctx.fillStyle = path.color;
+      ctx.textBaseline = "top";
+      const x = toCanvasX(path.position.x);
+      const y = toCanvasY(path.position.y);
+      ctx.fillText(path.text, x, y);
+    } else if (path.type === "arrow") {
       // Draw arrow: line + arrowhead
       const fromX = toCanvasX(path.from.x);
       const fromY = toCanvasY(path.from.y);
@@ -424,6 +464,96 @@ const drawArrow = (ctx, x1, y1, x2, y2, lineWidth) => {
     y2 - headLength * Math.sin(angle + Math.PI / 6)
   );
   ctx.stroke();
+};
+
+// Show an inline text input overlay on the canvas for the text tool
+const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
+  // Remove any existing text input
+  const existing = drop.querySelector(".drawing-text-input");
+  if (existing) existing.remove();
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "drawing-text-input";
+  input.style.position = "absolute";
+  input.style.zIndex = "30";
+  input.style.background = "rgba(255,255,255,0.9)";
+  input.style.border = `2px solid ${drawColor}`;
+  input.style.borderRadius = "4px";
+  input.style.padding = "2px 6px";
+  input.style.fontSize = drawFontSize + "px";
+  input.style.fontWeight = "bold";
+  input.style.fontFamily = "Inter, system-ui, sans-serif";
+  input.style.color = drawColor;
+  input.style.outline = "none";
+  input.style.minWidth = "20px";
+  input.style.width = "20px";
+
+  // Position relative to the drop container
+  const dropRect = drop.getBoundingClientRect();
+  input.style.left = (clientX - dropRect.left) + "px";
+  input.style.top = (clientY - dropRect.top) + "px";
+
+  // Hidden measuring span to auto-size the input
+  const measurer = document.createElement("span");
+  measurer.style.position = "absolute";
+  measurer.style.visibility = "hidden";
+  measurer.style.whiteSpace = "pre";
+  measurer.style.fontSize = drawFontSize + "px";
+  measurer.style.fontWeight = "bold";
+  measurer.style.fontFamily = "Inter, system-ui, sans-serif";
+  measurer.style.padding = "2px 6px";
+  drop.appendChild(measurer);
+
+  const resizeInput = () => {
+    measurer.textContent = input.value || " ";
+    input.style.width = Math.max(20, measurer.offsetWidth + 4) + "px";
+  };
+
+  drop.appendChild(input);
+  input.focus();
+
+  input.addEventListener("input", resizeInput);
+
+  const commitText = () => {
+    const text = input.value.trim();
+    if (text) {
+      const data = canvasDataMap.get(canvas);
+      if (data) {
+        data.paths.push({
+          type: "text",
+          color: drawColor,
+          fontSize: drawFontSize,
+          position: { x: normX, y: normY },
+          text: text,
+        });
+        const dpr = window.devicePixelRatio || 1;
+        redrawCanvas(canvas, dpr);
+      }
+    }
+    input.remove();
+    measurer.remove();
+  };
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitText();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      input.remove();
+    }
+    e.stopPropagation();
+  });
+
+  input.addEventListener("blur", () => {
+    commitText();
+  });
+
+  // Prevent drawing mode from deactivating when clicking the input
+  input.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  });
 };
 
 const initDrawingCanvas = (drop) => {
@@ -474,7 +604,6 @@ const initDrawingCanvas = (drop) => {
     if (!drawingMode) return;
     e.preventDefault();
     e.stopPropagation();
-    isDrawing = true;
 
     // Store coordinates relative to the visible image content (accounting for object-fit)
     const img = drop.querySelector("img");
@@ -492,6 +621,14 @@ const initDrawingCanvas = (drop) => {
       x = (e.clientX - rect.left) / rect.width;
       y = (e.clientY - rect.top) / rect.height;
     }
+
+    if (drawTool === "text") {
+      // Show an inline input to type text at the clicked position
+      showTextInput(drop, canvas, x, y, e.clientX, e.clientY);
+      return;
+    }
+
+    isDrawing = true;
 
     if (drawTool === "arrow") {
       arrowStart = { x, y };
@@ -677,7 +814,13 @@ const redrawAllCanvasesForExport = (scale) => {
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
 
-        if (path.type === "arrow") {
+        if (path.type === "text") {
+          const fontSize = (path.fontSize || 16) * dprNoImg;
+          ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+          ctx.fillStyle = path.color;
+          ctx.textBaseline = "top";
+          ctx.fillText(path.text, path.position.x * canvas.width, path.position.y * canvas.height);
+        } else if (path.type === "arrow") {
           const fromX = path.from.x * canvas.width;
           const fromY = path.from.y * canvas.height;
           const toX = path.to.x * canvas.width;
@@ -716,7 +859,15 @@ const redrawAllCanvasesForExport = (scale) => {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      if (path.type === "arrow") {
+      if (path.type === "text") {
+        const fontSize = (path.fontSize || 16) * dpr;
+        ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+        ctx.fillStyle = path.color;
+        ctx.textBaseline = "top";
+        const x = path.position.x * imgRect.width * dpr;
+        const y = path.position.y * imgRect.height * dpr;
+        ctx.fillText(path.text, x, y);
+      } else if (path.type === "arrow") {
         const fromX = path.from.x * imgRect.width * dpr;
         const fromY = path.from.y * imgRect.height * dpr;
         const toX = path.to.x * imgRect.width * dpr;
