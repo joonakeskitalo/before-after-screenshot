@@ -535,8 +535,9 @@ const redrawAllCanvasesForExport = (scale) => {
     if (!img || !img.src || img.style.display === "none") {
       // No image — keep canvas as-is with simple redraw
       const dropRect = drop.getBoundingClientRect();
-      canvas.width = dropRect.width;
-      canvas.height = dropRect.height;
+      const dprNoImg = window.devicePixelRatio || 1;
+      canvas.width = dropRect.width * dprNoImg;
+      canvas.height = dropRect.height * dprNoImg;
       canvas.style.width = dropRect.width + "px";
       canvas.style.height = dropRect.height + "px";
 
@@ -545,7 +546,7 @@ const redrawAllCanvasesForExport = (scale) => {
       for (const path of data.paths) {
         if (path.points.length < 2) continue;
         ctx.strokeStyle = path.color;
-        ctx.lineWidth = path.lineWidth * scale;
+        ctx.lineWidth = path.lineWidth * dprNoImg;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
@@ -558,29 +559,30 @@ const redrawAllCanvasesForExport = (scale) => {
       return;
     }
 
-    // Bake drawing onto the image: create a temp canvas at the image's rendered size,
-    // draw the image, then draw the paths on top, and replace img.src with the result.
+    // Bake drawing onto the image: create a temp canvas at the image's rendered size
+    // multiplied by dpr so line thickness matches what the user sees on screen.
     const imgRect = img.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
 
     const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = imgRect.width;
-    tempCanvas.height = imgRect.height;
+    tempCanvas.width = imgRect.width * dpr;
+    tempCanvas.height = imgRect.height * dpr;
     const ctx = tempCanvas.getContext("2d");
 
-    // Draw the original image
-    ctx.drawImage(img, 0, 0, imgRect.width, imgRect.height);
+    // Draw the original image at full backing-store resolution
+    ctx.drawImage(img, 0, 0, imgRect.width * dpr, imgRect.height * dpr);
 
     // Draw paths on top — coords are already image-relative (0-1)
     for (const path of data.paths) {
       if (path.points.length < 2) continue;
       ctx.strokeStyle = path.color;
-      ctx.lineWidth = path.lineWidth * scale;
+      ctx.lineWidth = path.lineWidth * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      ctx.moveTo(path.points[0].x * imgRect.width, path.points[0].y * imgRect.height);
+      ctx.moveTo(path.points[0].x * imgRect.width * dpr, path.points[0].y * imgRect.height * dpr);
       for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(path.points[i].x * imgRect.width, path.points[i].y * imgRect.height);
+        ctx.lineTo(path.points[i].x * imgRect.width * dpr, path.points[i].y * imgRect.height * dpr);
       }
       ctx.stroke();
     }
