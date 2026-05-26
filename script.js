@@ -228,7 +228,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 // --- Drawing Logic ---
 let drawingMode = false;
 let drawColor = "#ff0000";
-let drawLineWidth = 3;
+let drawLineWidth = 2;
 
 const enableDrawingMode = () => {
   drawingMode = true;
