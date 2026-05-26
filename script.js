@@ -295,22 +295,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Exit drawing mode when clicking outside a canvas (but not on toolbar tool buttons)
-document.addEventListener("mousedown", (e) => {
-  if (drawingMode && !e.target.closest(".drawing-canvas") && !e.target.closest(".drawing-text-input") && !e.target.closest(".tool-mode-btn")) {
-    disableDrawingMode();
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
-    document.body.classList.remove("text-tool");
-  }
-});
+
 
 // Wire up toolbar drawing controls
 const drawColorInput = document.getElementById("draw-color");
