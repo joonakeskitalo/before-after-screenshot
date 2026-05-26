@@ -443,10 +443,18 @@ const redrawCanvas = (canvas, dpr) => {
       // Draw text annotation
       const fontSize = (path.fontSize || 16) * dpr;
       ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
-      ctx.fillStyle = path.color;
       ctx.textBaseline = "top";
       const x = toCanvasX(path.position.x);
       const y = toCanvasY(path.position.y);
+      // Draw semi-transparent background
+      const metrics = ctx.measureText(path.text);
+      const padding = 4 * dpr;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+      const radius = fontSize * 0.2;
+      ctx.beginPath();
+      ctx.roundRect(x - padding, y - padding, metrics.width + padding * 2, fontSize + padding * 2, radius);
+      ctx.fill();
+      ctx.fillStyle = path.color;
       ctx.fillText(path.text, x, y);
     } else if (path.type === "arrow") {
       // Draw arrow: line + arrowhead
@@ -846,9 +854,19 @@ const redrawAllCanvasesForExport = (scale) => {
         if (path.type === "text") {
           const fontSize = (path.fontSize || 16) * dprNoImg;
           ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
-          ctx.fillStyle = path.color;
           ctx.textBaseline = "top";
-          ctx.fillText(path.text, path.position.x * canvas.width, path.position.y * canvas.height);
+          const tx = path.position.x * canvas.width;
+          const ty = path.position.y * canvas.height;
+          // Draw semi-transparent background
+          const metrics = ctx.measureText(path.text);
+          const padding = 4 * dprNoImg;
+          ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+          const radius = fontSize * 0.2;
+          ctx.beginPath();
+          ctx.roundRect(tx - padding, ty - padding, metrics.width + padding * 2, fontSize + padding * 2, radius);
+          ctx.fill();
+          ctx.fillStyle = path.color;
+          ctx.fillText(path.text, tx, ty);
         } else if (path.type === "arrow") {
           const fromX = path.from.x * canvas.width;
           const fromY = path.from.y * canvas.height;
@@ -891,10 +909,18 @@ const redrawAllCanvasesForExport = (scale) => {
       if (path.type === "text") {
         const fontSize = (path.fontSize || 16) * dpr;
         ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
-        ctx.fillStyle = path.color;
         ctx.textBaseline = "top";
         const x = path.position.x * imgRect.width * dpr;
         const y = path.position.y * imgRect.height * dpr;
+        // Draw semi-transparent background
+        const metrics = ctx.measureText(path.text);
+        const padding = 4 * dpr;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        const radius = fontSize * 0.2;
+        ctx.beginPath();
+        ctx.roundRect(x - padding, y - padding, metrics.width + padding * 2, fontSize + padding * 2, radius);
+        ctx.fill();
+        ctx.fillStyle = path.color;
         ctx.fillText(path.text, x, y);
       } else if (path.type === "arrow") {
         const fromX = path.from.x * imgRect.width * dpr;
