@@ -5,6 +5,7 @@
     --background-color: #f0f0f0;
     --text-color: #000000;
     --image-max-width: 60dvh;
+    --grid-zoom-cell-height: 300px;
 }
 
 body {
@@ -138,7 +139,7 @@ textarea:hover {
 
 .grid-cell {
     box-sizing: border-box;
-    min-height: 300px;
+    min-height: var(--grid-zoom-cell-height);
     display: flex;
     flex-direction: column;
     gap: 8px;

@@ -51,6 +51,16 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       drop.style.height = "auto";
     });
 
+    root.style.setProperty("--border", `unset`);
+    gridEl.style.outline = "none";
+
+    // Reset zoom for capture
+    const prevZoom = gridZoom;
+    root.style.setProperty("--image-max-width", "unset");
+    root.style.setProperty("--gap", `48px`);
+    root.style.setProperty("--text-fontsize", `15pt`);
+    root.style.setProperty("--grid-zoom-cell-height", `300px`);
+
     if (useFullSize) {
       const baseFontSize = 15;
       const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * 3));
@@ -76,9 +86,6 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         }
       });
     }
-
-    root.style.setProperty("--border", `unset`);
-    gridEl.style.outline = "none";
 
     // Remove fixed grid row sizing so rows expand to fit content
     gridEl.style.gridTemplateRows = "auto";
@@ -117,10 +124,6 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     ]);
 
     // Restore all styles
-    if (useFullSize) {
-      root.style.setProperty("--text-fontsize", `15pt`);
-      root.style.setProperty("--gap", `48px`);
-    }
 
     allCells.forEach((cell) => {
       cell.style.overflow = null;
@@ -144,9 +147,10 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     cardsEl.style.width = null;
     gridEl.style.outline = null;
     gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
-    gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(350px, 1fr))`;
     root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
-    root.style.setProperty("--image-max-width", "60dvh");
+
+    // Restore zoom (also restores gridTemplateColumns, --image-max-width, --gap, etc.)
+    applyGridZoom(prevZoom);
 
     // Restore drawing canvases to display size
     restoreAllCanvases();
@@ -1213,7 +1217,7 @@ const buildGrid = () => {
   });
 
   gridEl.innerHTML = "";
-  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(350px, 1fr))`;
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(${Math.round(350 * gridZoom / 100)}px, 1fr))`;
   gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
 
   for (let r = 0; r < gridRows; r++) {
@@ -1261,6 +1265,37 @@ const updateGrid = () => {
   gridRows = parseInt(document.getElementById("grid-rows").value) || 1;
   buildGrid();
 };
+
+// --- Grid Zoom ---
+let gridZoom = 100;
+const gridZoomInput = document.getElementById("grid-zoom");
+const gridZoomLabel = document.getElementById("grid-zoom-label");
+
+const applyGridZoom = (zoom) => {
+  gridZoom = Math.max(20, Math.min(100, zoom));
+  gridZoomInput.value = gridZoom;
+  gridZoomLabel.textContent = gridZoom + "%";
+
+  const scale = gridZoom / 100;
+  // Scale the grid column min-width, cell min-height, image max-height, and gap
+  const minColWidth = Math.round(350 * scale);
+  const minCellHeight = Math.round(300 * scale);
+  const imageMaxHeight = Math.round(60 * scale);
+  const gap = Math.round(48 * scale);
+
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(${minColWidth}px, 1fr))`;
+  root.style.setProperty("--grid-zoom-cell-height", `${minCellHeight}px`);
+  root.style.setProperty("--image-max-width", `${imageMaxHeight}dvh`);
+  root.style.setProperty("--gap", `${gap}px`);
+
+  // Scale font size for cell textareas
+  const fontSize = Math.round(15 * scale);
+  root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+};
+
+gridZoomInput.addEventListener("input", (e) => {
+  applyGridZoom(parseInt(e.target.value));
+});
 
 const setColors = (e) => {
   const [background, text] = e.value.split(";");
@@ -1730,6 +1765,16 @@ document.addEventListener("keydown", (e) => {
         gridColsInput.value = gridCols;
         buildGrid();
       }
+      e.preventDefault();
+      break;
+    case "[":
+      // Zoom out
+      applyGridZoom(gridZoom - 10);
+      e.preventDefault();
+      break;
+    case "]":
+      // Zoom in
+      applyGridZoom(gridZoom + 10);
       e.preventDefault();
       break;
     case "h":
