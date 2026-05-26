@@ -249,7 +249,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
-let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", or "text"
+let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", or "text"
 let drawFontSize = 13;
 
 const enableDrawingMode = () => {
@@ -273,6 +273,7 @@ const lineModeBtn = document.getElementById("line-mode-btn");
 const rectModeBtn = document.getElementById("rect-mode-btn");
 const rectstrokeModeBtn = document.getElementById("rectstroke-mode-btn");
 const ovalModeBtn = document.getElementById("oval-mode-btn");
+const ovalfillModeBtn = document.getElementById("ovalfill-mode-btn");
 const textModeBtn = document.getElementById("text-mode-btn");
 const drawFontSizeInput = document.getElementById("draw-font-size");
 
@@ -287,6 +288,7 @@ document.addEventListener("keydown", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -303,6 +305,7 @@ document.addEventListener("mousedown", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -349,6 +352,7 @@ penModeBtn.addEventListener("click", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -370,6 +374,7 @@ arrowModeBtn.addEventListener("click", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -391,6 +396,7 @@ lineModeBtn.addEventListener("click", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -412,6 +418,7 @@ rectModeBtn.addEventListener("click", (e) => {
     lineModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -433,6 +440,7 @@ rectstrokeModeBtn.addEventListener("click", (e) => {
     lineModeBtn.classList.remove("active");
     rectModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -454,6 +462,29 @@ ovalModeBtn.addEventListener("click", (e) => {
     lineModeBtn.classList.remove("active");
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    enableDrawingMode();
+  }
+});
+
+// Solid oval mode toggle
+ovalfillModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "ovalfill" && drawingMode) {
+    disableDrawingMode();
+    ovalfillModeBtn.classList.remove("active");
+  } else {
+    drawTool = "ovalfill";
+    ovalfillModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    ovalModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -478,6 +509,7 @@ textModeBtn.addEventListener("click", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "";
     enableDrawingMode();
   }
@@ -624,6 +656,16 @@ const redrawCanvas = (canvas, dpr) => {
       ctx.beginPath();
       ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (path.type === "ovalfill") {
+      // Draw filled oval
+      const x = toCanvasX(Math.min(path.from.x, path.to.x));
+      const y = toCanvasY(Math.min(path.from.y, path.to.y));
+      const w = toCanvasX(Math.max(path.from.x, path.to.x)) - x;
+      const h = toCanvasY(Math.max(path.from.y, path.to.y)) - y;
+      ctx.fillStyle = path.color;
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       // Freehand path
       if (path.points.length < 2) continue;
@@ -837,7 +879,7 @@ const initDrawingCanvas = (drop) => {
 
     isDrawing = true;
 
-    if (drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval") {
+    if (drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval" || drawTool === "ovalfill") {
       arrowStart = { x, y };
     } else {
       currentPath = {
@@ -992,6 +1034,31 @@ const initDrawingCanvas = (drop) => {
       ctx.beginPath();
       ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (drawTool === "ovalfill" && arrowStart) {
+      // Preview solid oval
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+
+      const ctx = canvas.getContext("2d");
+      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+        const fitRect = getObjectFitRect(img);
+        contentOffsetX = fitRect.x;
+        contentOffsetY = fitRect.y;
+        contentWidth = fitRect.width;
+        contentHeight = fitRect.height;
+      }
+      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+
+      const rx = toCanvasX(Math.min(arrowStart.x, x));
+      const ry = toCanvasY(Math.min(arrowStart.y, y));
+      const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
+      const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
+      ctx.fillStyle = drawColor;
+      ctx.beginPath();
+      ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
     } else if (currentPath) {
       currentPath.points.push({ x, y });
 
@@ -1031,7 +1098,7 @@ const initDrawingCanvas = (drop) => {
     if (!isDrawing) return;
     isDrawing = false;
 
-    if ((drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval") && arrowStart) {
+    if ((drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval" || drawTool === "ovalfill") && arrowStart) {
       // Get final position
       const img = drop.querySelector("img");
       let x, y;
@@ -1177,6 +1244,15 @@ const redrawAllCanvasesForExport = (scale) => {
           ctx.beginPath();
           ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
           ctx.stroke();
+        } else if (path.type === "ovalfill") {
+          const rx = Math.min(path.from.x, path.to.x) * canvas.width;
+          const ry = Math.min(path.from.y, path.to.y) * canvas.height;
+          const rw = Math.abs(path.to.x - path.from.x) * canvas.width;
+          const rh = Math.abs(path.to.y - path.from.y) * canvas.height;
+          ctx.fillStyle = path.color;
+          ctx.beginPath();
+          ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
         } else {
           if (path.points.length < 2) continue;
           ctx.beginPath();
@@ -1266,6 +1342,15 @@ const redrawAllCanvasesForExport = (scale) => {
         ctx.beginPath();
         ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
         ctx.stroke();
+      } else if (path.type === "ovalfill") {
+        const rx = Math.min(path.from.x, path.to.x) * imgRect.width * dpr;
+        const ry = Math.min(path.from.y, path.to.y) * imgRect.height * dpr;
+        const rw = Math.abs(path.to.x - path.from.x) * imgRect.width * dpr;
+        const rh = Math.abs(path.to.y - path.from.y) * imgRect.height * dpr;
+        ctx.fillStyle = path.color;
+        ctx.beginPath();
+        ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
       } else {
         if (path.points.length < 2) continue;
         ctx.beginPath();
@@ -2050,6 +2135,10 @@ document.addEventListener("keydown", (e) => {
     case "o":
       // Enable oval tool
       ovalModeBtn.click();
+      break;
+    case "O":
+      // Enable solid oval tool
+      ovalfillModeBtn.click();
       break;
     case "t":
       // Enable text tool
