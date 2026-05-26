@@ -111,7 +111,6 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         }
         if (node.tagName === "SPAN") return false;
         if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
-        if (node.classList && node.classList.contains("swap-btn")) return false;
         if (node.classList && node.classList.contains("drawing-text-input")) return false;
         if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
@@ -1455,94 +1454,35 @@ const setupCell = (cell) => {
 
     const src = e.dataTransfer.getData("text/plain");
     if (src) {
-      img.style.display = "flex";
-      img.src = src;
-      img.alt = "";
-      span.style.display = "none";
-
-      // Check if dragged from toolbar — remove from toolbar
+      // Check if dragged from toolbar — insert from toolbar
       const source = e.dataTransfer.getData("source");
       const draggedId = e.dataTransfer.getData("id");
       if (source === "toolbar" && draggedId) {
+        img.style.display = "flex";
+        img.src = src;
+        img.alt = "";
+        span.style.display = "none";
         removeToolbarItemById(draggedId);
         return;
       }
 
-      if (draggedId === img.id) {
-        return;
-      }
-
+      // Dragged from another grid cell — swap the two cells
       if (draggedId) {
         const srcImg = document.getElementById(draggedId);
-        if (srcImg) {
-          srcImg.removeAttribute("src");
-          srcImg.style.display = "none";
-          srcImg.alt = "";
-          const parent = srcImg.closest(".drop");
-          if (parent) {
-            parent.style.border = "var(--border)";
-            const parentSpan = parent.querySelector("span");
-            if (parentSpan) parentSpan.style.display = "block";
+        if (srcImg && srcImg !== img) {
+          const srcCell = srcImg.closest(".grid-cell");
+          if (srcCell && srcCell !== cell) {
+            swapCells(cell, srcCell);
+            return;
           }
         }
       }
 
-      // Transfer note text
-      const noteText = e.dataTransfer.getData("note");
-      if (noteText) {
-        const destTextarea = cell.querySelector("textarea");
-        if (destTextarea) destTextarea.value = noteText;
-
-        // Clear source textarea
-        const srcImgEl = e.dataTransfer.getData("id")
-          ? document.getElementById(e.dataTransfer.getData("id"))
-          : null;
-        if (srcImgEl) {
-          const srcCell = srcImgEl.closest(".grid-cell");
-          if (srcCell) {
-            const srcTextarea = srcCell.querySelector("textarea");
-            if (srcTextarea) srcTextarea.value = "";
-          }
-        }
-      }
-
-      // Transfer drawing paths to destination canvas and clear source
-      const drawingsJson = e.dataTransfer.getData("drawings");
-      if (drawingsJson) {
-        try {
-          const paths = JSON.parse(drawingsJson);
-          const destCanvas = cell.querySelector(".drawing-canvas");
-          if (destCanvas && paths.length > 0) {
-            const destData = canvasDataMap.get(destCanvas);
-            if (destData) {
-              destData.paths = paths;
-              const dpr = window.devicePixelRatio || 1;
-              redrawCanvas(destCanvas, dpr);
-            }
-          }
-        } catch (err) {
-          // ignore invalid JSON
-        }
-
-        // Clear drawings from source cell
-        const srcImgForDrawing = draggedId
-          ? document.getElementById(draggedId)
-          : null;
-        if (srcImgForDrawing) {
-          const srcCell = srcImgForDrawing.closest(".grid-cell");
-          if (srcCell) {
-            const srcCanvas = srcCell.querySelector(".drawing-canvas");
-            if (srcCanvas) {
-              const srcData = canvasDataMap.get(srcCanvas);
-              if (srcData) {
-                srcData.paths = [];
-                const dpr = window.devicePixelRatio || 1;
-                redrawCanvas(srcCanvas, dpr);
-              }
-            }
-          }
-        }
-      }
+      // Fallback: just set the image (e.g. external drop)
+      img.style.display = "flex";
+      img.src = src;
+      img.alt = "";
+      span.style.display = "none";
     }
   });
 
@@ -1679,31 +1619,8 @@ const createCell = (row, col) => {
   textarea.rows = 2;
   textarea.textContent = "";
 
-  // Swap buttons
-  const swapLeft = document.createElement("button");
-  swapLeft.className = "swap-btn swap-btn-left";
-  swapLeft.title = "Swap with left";
-  swapLeft.textContent = "←";
-  swapLeft.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const adjacent = getAdjacentCell(cell, "left");
-    if (adjacent) swapCells(cell, adjacent);
-  });
-
-  const swapRight = document.createElement("button");
-  swapRight.className = "swap-btn swap-btn-right";
-  swapRight.title = "Swap with right";
-  swapRight.textContent = "→";
-  swapRight.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const adjacent = getAdjacentCell(cell, "right");
-    if (adjacent) swapCells(cell, adjacent);
-  });
-
   cell.appendChild(drop);
   cell.appendChild(textarea);
-  cell.appendChild(swapLeft);
-  cell.appendChild(swapRight);
 
   setupCell(cell);
 
