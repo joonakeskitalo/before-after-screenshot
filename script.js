@@ -252,24 +252,34 @@ const disableDrawingMode = () => {
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
 };
 
-// Toggle drawing mode with Shift key, exit with Escape
+// Get tool button references early so event listeners can use them
+const penModeBtn = document.getElementById("pen-mode-btn");
+const arrowModeBtn = document.getElementById("arrow-mode-btn");
+const textModeBtn = document.getElementById("text-mode-btn");
+const drawFontSizeInput = document.getElementById("draw-font-size");
+
+// Exit drawing mode with Escape
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Shift" && !e.repeat && !e.target.matches("textarea, input")) {
-    if (drawingMode) {
-      disableDrawingMode();
-    } else {
-      enableDrawingMode();
-    }
-  }
   if (e.key === "Escape" && drawingMode) {
     disableDrawingMode();
+    // Deactivate all tool buttons
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
   }
 });
 
-// Exit drawing mode when clicking outside a canvas
+// Exit drawing mode when clicking outside a canvas (but not on toolbar tool buttons)
 document.addEventListener("mousedown", (e) => {
-  if (drawingMode && !e.target.closest(".drawing-canvas") && !e.target.closest(".drawing-text-input")) {
+  if (drawingMode && !e.target.closest(".drawing-canvas") && !e.target.closest(".drawing-text-input") && !e.target.closest(".tool-mode-btn")) {
     disableDrawingMode();
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
   }
 });
 
@@ -299,39 +309,58 @@ document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) =
   });
 });
 
+// Pen mode toggle
+penModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "freehand" && drawingMode) {
+    // Deactivate pen — exit drawing mode
+    disableDrawingMode();
+    penModeBtn.classList.remove("active");
+  } else {
+    drawTool = "freehand";
+    penModeBtn.classList.add("active");
+    arrowModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    enableDrawingMode();
+  }
+});
+
 // Arrow mode toggle
-const arrowModeBtn = document.getElementById("arrow-mode-btn");
 arrowModeBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-  if (drawTool === "arrow") {
-    drawTool = "freehand";
+  if (drawTool === "arrow" && drawingMode) {
+    // Deactivate arrow — exit drawing mode
+    disableDrawingMode();
     arrowModeBtn.classList.remove("active");
   } else {
     drawTool = "arrow";
     arrowModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    enableDrawingMode();
   }
 });
 
 // Text mode toggle
-const textModeBtn = document.getElementById("text-mode-btn");
-const drawFontSizeInput = document.getElementById("draw-font-size");
-
 textModeBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-  if (drawTool === "text") {
-    drawTool = "freehand";
+  if (drawTool === "text" && drawingMode) {
+    // Deactivate text — exit drawing mode
+    disableDrawingMode();
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
   } else {
     drawTool = "text";
     textModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
     arrowModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "";
-    if (drawingMode) document.body.classList.add("text-tool");
+    enableDrawingMode();
   }
 });
 
