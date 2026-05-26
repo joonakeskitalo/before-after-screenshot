@@ -1445,6 +1445,8 @@ addImageToToolbar = (dataUrl, fileName = "") => {
         if (span) span.style.display = "none";
         // Remove from toolbar
         item.remove();
+        // Scroll the added image into view
+        cell.scrollIntoView({ behavior: "smooth", block: "nearest" });
         return;
       }
     }
