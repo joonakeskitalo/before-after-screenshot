@@ -440,22 +440,29 @@ const redrawCanvas = (canvas, dpr) => {
     const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
 
     if (path.type === "text") {
-      // Draw text annotation
-      const fontSize = (path.fontSize || 16) * dpr;
-      ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+      // Draw text annotation (multiline support)
+      const fontSize = (path.fontSize || 13) * dpr;
+      const lineHeight = fontSize * 1.3;
+      ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
       ctx.textBaseline = "top";
       const x = toCanvasX(path.position.x);
       const y = toCanvasY(path.position.y);
-      // Draw semi-transparent background
-      const metrics = ctx.measureText(path.text);
+      const lines = path.text.split("\n");
+      // Measure widest line for background
+      const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+      const totalHeight = fontSize + (lines.length - 1) * lineHeight;
       const padding = 4 * dpr;
-      ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+      // Draw semi-transparent background
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       const radius = fontSize * 0.2;
       ctx.beginPath();
-      ctx.roundRect(x - padding, y - padding, metrics.width + padding * 2, fontSize + padding * 2, radius);
+      ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
       ctx.fill();
+      // Draw each line
       ctx.fillStyle = path.color;
-      ctx.fillText(path.text, x, y);
+      lines.forEach((line, i) => {
+        ctx.fillText(line, x, y + i * lineHeight);
+      });
     } else if (path.type === "arrow") {
       // Draw arrow: line + arrowhead
       const fromX = toCanvasX(path.from.x);
@@ -509,22 +516,28 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
   const existing = drop.querySelector(".drawing-text-input");
   if (existing) existing.remove();
 
-  const input = document.createElement("input");
-  input.type = "text";
+  const input = document.createElement("textarea");
   input.className = "drawing-text-input";
+  input.setAttribute("wrap", "off");
   input.style.position = "absolute";
   input.style.zIndex = "30";
   input.style.background = "rgba(255,255,255,0.9)";
-  input.style.border = `2px solid ${drawColor}`;
+  input.style.border = `1px solid ${drawColor}`;
   input.style.borderRadius = "4px";
   input.style.padding = "2px 6px";
   input.style.fontSize = drawFontSize + "px";
-  input.style.fontWeight = "bold";
+  input.style.fontWeight = "500";
   input.style.fontFamily = "Inter, system-ui, sans-serif";
   input.style.color = drawColor;
   input.style.outline = "none";
   input.style.minWidth = "20px";
   input.style.width = "20px";
+  input.style.resize = "none";
+  input.style.overflow = "hidden";
+  input.style.whiteSpace = "pre";
+  input.style.lineHeight = "1.3";
+  input.style.textAlign = "left";
+  input.rows = 1;
 
   // Position relative to the drop container
   const dropRect = drop.getBoundingClientRect();
@@ -537,14 +550,17 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
   measurer.style.visibility = "hidden";
   measurer.style.whiteSpace = "pre";
   measurer.style.fontSize = drawFontSize + "px";
-  measurer.style.fontWeight = "bold";
+  measurer.style.fontWeight = "500";
   measurer.style.fontFamily = "Inter, system-ui, sans-serif";
   measurer.style.padding = "2px 6px";
   drop.appendChild(measurer);
 
   const resizeInput = () => {
-    measurer.textContent = input.value || " ";
+    const lines = input.value.split("\n");
+    const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, " ");
+    measurer.textContent = longestLine || " ";
     input.style.width = Math.max(20, measurer.offsetWidth + 4) + "px";
+    input.style.height = (lines.length * drawFontSize * 1.3 + 12) + "px";
   };
 
   drop.appendChild(input);
@@ -573,12 +589,13 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
   };
 
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       commitText();
     } else if (e.key === "Escape") {
       e.preventDefault();
       input.remove();
+      measurer.remove();
     }
     e.stopPropagation();
   });
@@ -853,20 +870,24 @@ const redrawAllCanvasesForExport = (scale) => {
 
         if (path.type === "text") {
           const fontSize = (path.fontSize || 16) * dprNoImg;
-          ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+          const lineHeight = fontSize * 1.3;
+          ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
           ctx.textBaseline = "top";
           const tx = path.position.x * canvas.width;
           const ty = path.position.y * canvas.height;
-          // Draw semi-transparent background
-          const metrics = ctx.measureText(path.text);
+          const lines = path.text.split("\n");
+          const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+          const totalHeight = fontSize + (lines.length - 1) * lineHeight;
           const padding = 4 * dprNoImg;
           ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
           const radius = fontSize * 0.2;
           ctx.beginPath();
-          ctx.roundRect(tx - padding, ty - padding, metrics.width + padding * 2, fontSize + padding * 2, radius);
+          ctx.roundRect(tx - padding, ty - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
           ctx.fill();
           ctx.fillStyle = path.color;
-          ctx.fillText(path.text, tx, ty);
+          lines.forEach((line, i) => {
+            ctx.fillText(line, tx, ty + i * lineHeight);
+          });
         } else if (path.type === "arrow") {
           const fromX = path.from.x * canvas.width;
           const fromY = path.from.y * canvas.height;
@@ -908,20 +929,24 @@ const redrawAllCanvasesForExport = (scale) => {
 
       if (path.type === "text") {
         const fontSize = (path.fontSize || 16) * dpr;
-        ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+        const lineHeight = fontSize * 1.3;
+        ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
         ctx.textBaseline = "top";
         const x = path.position.x * imgRect.width * dpr;
         const y = path.position.y * imgRect.height * dpr;
-        // Draw semi-transparent background
-        const metrics = ctx.measureText(path.text);
+        const lines = path.text.split("\n");
+        const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+        const totalHeight = fontSize + (lines.length - 1) * lineHeight;
         const padding = 4 * dpr;
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         const radius = fontSize * 0.2;
         ctx.beginPath();
-        ctx.roundRect(x - padding, y - padding, metrics.width + padding * 2, fontSize + padding * 2, radius);
+        ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
         ctx.fill();
         ctx.fillStyle = path.color;
-        ctx.fillText(path.text, x, y);
+        lines.forEach((line, i) => {
+          ctx.fillText(line, x, y + i * lineHeight);
+        });
       } else if (path.type === "arrow") {
         const fromX = path.from.x * imgRect.width * dpr;
         const fromY = path.from.y * imgRect.height * dpr;
