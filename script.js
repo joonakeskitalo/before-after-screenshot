@@ -1380,6 +1380,31 @@ addImageToToolbar = (dataUrl, fileName = "") => {
     e.dataTransfer.effectAllowed = "move";
   });
 
+  // Shift+click to add image to the first empty grid cell
+  item.addEventListener("click", (e) => {
+    if (!e.shiftKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Find the first empty grid cell
+    const cells = gridEl.querySelectorAll(".grid-cell");
+    for (const cell of cells) {
+      const cellImg = cell.querySelector("img");
+      if (!cellImg || !cellImg.src || cellImg.style.display === "none") {
+        const drop = cell.querySelector(".drop");
+        const span = cell.querySelector("span");
+        cellImg.src = dataUrl;
+        cellImg.alt = fileName;
+        cellImg.style.display = "flex";
+        drop.style.border = "unset";
+        if (span) span.style.display = "none";
+        // Remove from toolbar
+        item.remove();
+        return;
+      }
+    }
+  });
+
   // Insert before the drop zone
   bottomToolbarInner.insertBefore(item, bottomToolbarDrop);
 };
