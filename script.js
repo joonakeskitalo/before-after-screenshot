@@ -1648,6 +1648,29 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
+// --- Toggle Staging Area ---
+const stagingToggleBtn = document.getElementById("staging-toggle-btn");
+
+const toggleStagingArea = () => {
+  const isHidden = bottomToolbar.style.display === "none";
+  if (isHidden) {
+    bottomToolbar.style.display = "";
+    document.body.style.paddingBottom = "";
+    cardsEl.style.paddingBottom = "";
+    stagingToggleBtn.classList.remove("active");
+  } else {
+    bottomToolbar.style.display = "none";
+    document.body.style.paddingBottom = "32px";
+    cardsEl.style.paddingBottom = "32px";
+    stagingToggleBtn.classList.add("active");
+  }
+};
+
+stagingToggleBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleStagingArea();
+});
+
 // --- Hotkeys ---
 document.addEventListener("keydown", (e) => {
   // Skip hotkeys when typing in an input, textarea, or contenteditable
@@ -1698,6 +1721,10 @@ document.addEventListener("keydown", (e) => {
         buildGrid();
       }
       e.preventDefault();
+      break;
+    case "h":
+      // Toggle staging area visibility
+      toggleStagingArea();
       break;
   }
 });
