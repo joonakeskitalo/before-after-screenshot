@@ -155,6 +155,16 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   }
 };
 
+const copyWithScale = () => {
+  const select = document.getElementById("copy-scale");
+  const scale = parseFloat(select.value);
+  if (scale >= 1) {
+    copyAsImage(false);
+  } else {
+    copyAsImage(true, scale);
+  }
+};
+
 const attachDragTo = (img) => {
   if (!img) return;
   img.draggable = true;

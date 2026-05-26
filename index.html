@@ -63,13 +63,16 @@
           </div>
 
           <div class="toolbar-copy">
-            <button onclick="copyAsImage(false)">Copy</button>
-            <button onclick="copyAsImage(true, 0.1)">10%</button>
-            <button onclick="copyAsImage(true, 0.2)">20%</button>
-            <button onclick="copyAsImage(true, 0.3)">30%</button>
-            <button onclick="copyAsImage(true, 0.4)">40%</button>
-            <button onclick="copyAsImage(true, 0.5)">50%</button>
-            <button onclick="copyAsImage(true, 0.8)">80%</button>
+            <select id="copy-scale">
+              <option value="1">100%</option>
+              <option value="0.8">80%</option>
+              <option value="0.5">50%</option>
+              <option value="0.4" selected>40%</option>
+              <option value="0.3">30%</option>
+              <option value="0.2">20%</option>
+              <option value="0.1">10%</option>
+            </select>
+            <button onclick="copyWithScale()">Copy</button>
           </div>
         </div>
 
