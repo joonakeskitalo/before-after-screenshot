@@ -246,7 +246,7 @@ let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
 let drawTool = "freehand"; // "freehand", "arrow", or "text"
-let drawFontSize = 12;
+let drawFontSize = 13;
 
 const enableDrawingMode = () => {
   drawingMode = true;
@@ -375,7 +375,7 @@ textModeBtn.addEventListener("click", (e) => {
 });
 
 drawFontSizeInput.addEventListener("input", (e) => {
-  drawFontSize = parseInt(e.target.value) || 12;
+  drawFontSize = parseInt(e.target.value) || 13;
 });
 
 // Each canvas stores its paths as normalized coordinates (0-1 range relative to the IMAGE)
@@ -451,7 +451,7 @@ const redrawCanvas = (canvas, dpr) => {
 
     if (path.type === "text") {
       // Draw text annotation (multiline support)
-      const fontSize = (path.fontSize || 12) * dpr;
+      const fontSize = (path.fontSize || 13) * dpr;
       const lineHeight = fontSize * 1.3;
       ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
       ctx.textBaseline = "top";
@@ -889,7 +889,7 @@ const redrawAllCanvasesForExport = (scale) => {
           const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
           const totalHeight = fontSize + (lines.length - 1) * lineHeight;
           const padding = 4 * dprNoImg;
-          ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+          ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
           const radius = fontSize * 0.2;
           ctx.beginPath();
           ctx.roundRect(tx - padding, ty - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
@@ -948,7 +948,7 @@ const redrawAllCanvasesForExport = (scale) => {
         const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
         const totalHeight = fontSize + (lines.length - 1) * lineHeight;
         const padding = 4 * dpr;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
         const radius = fontSize * 0.2;
         ctx.beginPath();
         ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
