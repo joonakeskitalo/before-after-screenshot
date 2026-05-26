@@ -57,7 +57,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     // Reset zoom for capture
     const prevZoom = gridZoom;
     root.style.setProperty("--image-max-width", "unset");
-    root.style.setProperty("--gap", `48px`);
+    root.style.setProperty("--gap", `96px`);
     root.style.setProperty("--text-fontsize", `15pt`);
     root.style.setProperty("--grid-zoom-cell-height", `300px`);
 
@@ -66,7 +66,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * 3));
       root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
-      const gap = 128 * resolutionScale;
+      const gap = 192 * resolutionScale;
       root.style.setProperty("--gap", `${gap}px`);
 
       // Collapse empty drops
@@ -1272,7 +1272,7 @@ const gridZoomInput = document.getElementById("grid-zoom");
 const gridZoomLabel = document.getElementById("grid-zoom-label");
 
 const applyGridZoom = (zoom) => {
-  gridZoom = Math.max(20, Math.min(100, zoom));
+  gridZoom = Math.max(20, Math.min(300, zoom));
   gridZoomInput.value = gridZoom;
   gridZoomLabel.textContent = gridZoom + "%";
 
@@ -1780,6 +1780,10 @@ document.addEventListener("keydown", (e) => {
     case "h":
       // Toggle staging area visibility
       toggleStagingArea();
+      break;
+    case "z":
+      // Toggle zoom between 100% and 300%
+      applyGridZoom(gridZoom === 300 ? 100 : 300);
       break;
   }
 });

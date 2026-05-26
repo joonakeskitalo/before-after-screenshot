@@ -20,6 +20,14 @@
           <span class="toolbar-title">Before & After</span>
 
           <div class="toolbar-controls">
+            <label class="toolbar-label">
+              Zoom
+              <input type="range" id="grid-zoom" min="20" max="300" value="100" step="10" style="width:168px;height:28px" />
+              <span id="grid-zoom-label" style="min-width:32px;text-align:center;font-variant-numeric:tabular-nums">100%</span>
+            </label>
+            
+            <div class="toolbar-divider"></div>
+            
             <select onchange="setColors(this)">
               <option selected value="#f0f0f0">Grey</option>
               <option value="#7f7f7f;white">Grey 50%</option>
@@ -45,13 +53,6 @@
               <input type="number" id="grid-rows" value="1" min="1"  onchange="updateGrid()" />
             </label>
 
-            <div class="toolbar-divider"></div>
-
-            <label class="toolbar-label">
-              Zoom
-              <input type="range" id="grid-zoom" min="20" max="100" value="100" step="5" style="width:70px;height:28px" />
-              <span id="grid-zoom-label" style="min-width:32px;text-align:center;font-variant-numeric:tabular-nums">100%</span>
-            </label>
 
             <div class="toolbar-divider"></div>
 
