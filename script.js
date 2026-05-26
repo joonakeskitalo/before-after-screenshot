@@ -1817,6 +1817,19 @@ document.addEventListener("mouseup", () => {
   document.body.style.userSelect = "";
 });
 
+const sortStagingArea = () => {
+  const items = [...bottomToolbarInner.querySelectorAll(".bottom-toolbar-item")];
+  if (items.length < 2) return;
+  items.sort((a, b) => {
+    const nameA = (a.querySelector("img")?.alt || "").toLowerCase();
+    const nameB = (b.querySelector("img")?.alt || "").toLowerCase();
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
+  });
+  items.forEach((item) => {
+    bottomToolbarInner.insertBefore(item, bottomToolbarDrop);
+  });
+};
+
 addImageToToolbar = (dataUrl, fileName = "") => {
   const item = document.createElement("div");
   item.className = "bottom-toolbar-item";
@@ -1839,6 +1852,11 @@ addImageToToolbar = (dataUrl, fileName = "") => {
 
   item.appendChild(img);
   item.appendChild(removeBtn);
+
+  const nameLabel = document.createElement("span");
+  nameLabel.className = "toolbar-item-name";
+  nameLabel.textContent = fileName || "";
+  item.appendChild(nameLabel);
 
   item.addEventListener("dragstart", (e) => {
     e.dataTransfer.setData("text/plain", dataUrl);
@@ -1874,8 +1892,9 @@ addImageToToolbar = (dataUrl, fileName = "") => {
     }
   });
 
-  // Insert before the drop zone
+  // Append then sort the entire staging area
   bottomToolbarInner.insertBefore(item, bottomToolbarDrop);
+  sortStagingArea();
 };
 
 removeToolbarItemById = (id) => {
@@ -1952,7 +1971,7 @@ document.onpaste = function (event) {
       const blob = item.getAsFile();
       const reader = new FileReader();
       reader.onload = function (event) {
-        addImageToToolbar(event.target.result);
+        addImageToToolbar(event.target.result, blob.name || "");
       };
       reader.readAsDataURL(blob);
     }
@@ -2138,6 +2157,14 @@ const toggleStagingArea = () => {
 stagingToggleBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   toggleStagingArea();
+});
+
+// --- Sort Staged Images by Name ---
+const sortToolbarBtn = document.getElementById("sort-toolbar-btn");
+
+sortToolbarBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  sortStagingArea();
 });
 
 // --- Insert All Staged Images ---
