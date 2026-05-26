@@ -482,3 +482,20 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     opacity: 1 !important;
     background: rgba(200, 0, 0, 0.8);
 }
+
+/* Tool mode button (arrow, etc.) */
+.tool-mode-btn {
+    font-size: 12pt;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.tool-mode-btn.active {
+    background-color: #e0e7ff;
+    border-color: #4f6ef7;
+    color: #4f6ef7;
+    box-shadow: inset 0 1px 3px rgba(79, 110, 247, 0.2);
+}

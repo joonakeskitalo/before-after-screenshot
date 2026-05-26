@@ -229,6 +229,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
+let drawTool = "freehand"; // "freehand" or "arrow"
 
 const enableDrawingMode = () => {
   drawingMode = true;
@@ -287,6 +288,19 @@ document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) =
       b.style.borderColor = b.dataset.color === drawColor ? "#333" : "transparent";
     });
   });
+});
+
+// Arrow mode toggle
+const arrowModeBtn = document.getElementById("arrow-mode-btn");
+arrowModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "arrow") {
+    drawTool = "freehand";
+    arrowModeBtn.classList.remove("active");
+  } else {
+    drawTool = "arrow";
+    arrowModeBtn.classList.add("active");
+  }
 });
 
 // Each canvas stores its paths as normalized coordinates (0-1 range relative to the IMAGE)
@@ -352,21 +366,59 @@ const redrawCanvas = (canvas, dpr) => {
   }
 
   for (const path of data.paths) {
-    if (path.points.length < 2) continue;
     ctx.strokeStyle = path.color;
     ctx.lineWidth = path.lineWidth * dpr;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.beginPath();
-    // Map image-content-relative coords (0-1) to canvas pixel coords
+
     const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
     const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
-    ctx.moveTo(toCanvasX(path.points[0].x), toCanvasY(path.points[0].y));
-    for (let i = 1; i < path.points.length; i++) {
-      ctx.lineTo(toCanvasX(path.points[i].x), toCanvasY(path.points[i].y));
+
+    if (path.type === "arrow") {
+      // Draw arrow: line + arrowhead
+      const fromX = toCanvasX(path.from.x);
+      const fromY = toCanvasY(path.from.y);
+      const toX = toCanvasX(path.to.x);
+      const toY = toCanvasY(path.to.y);
+
+      drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dpr);
+    } else {
+      // Freehand path
+      if (path.points.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(path.points[0].x), toCanvasY(path.points[0].y));
+      for (let i = 1; i < path.points.length; i++) {
+        ctx.lineTo(toCanvasX(path.points[i].x), toCanvasY(path.points[i].y));
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   }
+};
+
+// Draw an arrow from (x1,y1) to (x2,y2) with an arrowhead
+const drawArrow = (ctx, x1, y1, x2, y2, lineWidth) => {
+  const headLength = Math.max(10, lineWidth * 4);
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+
+  // Draw the line
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  // Draw the arrowhead
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(
+    x2 - headLength * Math.cos(angle - Math.PI / 6),
+    y2 - headLength * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(
+    x2 - headLength * Math.cos(angle + Math.PI / 6),
+    y2 - headLength * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.stroke();
 };
 
 const initDrawingCanvas = (drop) => {
@@ -411,6 +463,7 @@ const initDrawingCanvas = (drop) => {
   // Drawing state
   let isDrawing = false;
   let currentPath = null;
+  let arrowStart = null;
 
   canvas.addEventListener("mousedown", (e) => {
     if (!drawingMode) return;
@@ -434,15 +487,20 @@ const initDrawingCanvas = (drop) => {
       x = (e.clientX - rect.left) / rect.width;
       y = (e.clientY - rect.top) / rect.height;
     }
-    currentPath = {
-      color: drawColor,
-      lineWidth: drawLineWidth,
-      points: [{ x, y }],
-    };
+
+    if (drawTool === "arrow") {
+      arrowStart = { x, y };
+    } else {
+      currentPath = {
+        color: drawColor,
+        lineWidth: drawLineWidth,
+        points: [{ x, y }],
+      };
+    }
   });
 
   canvas.addEventListener("mousemove", (e) => {
-    if (!isDrawing || !currentPath) return;
+    if (!isDrawing) return;
     e.preventDefault();
     e.stopPropagation();
 
@@ -461,17 +519,14 @@ const initDrawingCanvas = (drop) => {
       x = (e.clientX - rect.left) / rect.width;
       y = (e.clientY - rect.top) / rect.height;
     }
-    currentPath.points.push({ x, y });
 
-    // Draw incrementally
-    const ctx = canvas.getContext("2d");
-    const dpr = window.devicePixelRatio || 1;
-    const points = currentPath.points;
-    if (points.length >= 2) {
-      const from = points[points.length - 2];
-      const to = points[points.length - 1];
+    if (drawTool === "arrow" && arrowStart) {
+      // Preview the arrow by redrawing existing paths + the in-progress arrow
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
 
-      // Map image-content-relative coords to canvas pixel coords for live drawing
+      // Draw preview arrow
+      const ctx = canvas.getContext("2d");
       let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const fitRect = getObjectFitRect(img);
@@ -483,25 +538,93 @@ const initDrawingCanvas = (drop) => {
       const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
       const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
 
-      ctx.strokeStyle = currentPath.color;
-      ctx.lineWidth = currentPath.lineWidth * dpr;
+      ctx.strokeStyle = drawColor;
+      ctx.lineWidth = drawLineWidth * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(toCanvasX(from.x), toCanvasY(from.y));
-      ctx.lineTo(toCanvasX(to.x), toCanvasY(to.y));
-      ctx.stroke();
+      drawArrow(ctx, toCanvasX(arrowStart.x), toCanvasY(arrowStart.y), toCanvasX(x), toCanvasY(y), drawLineWidth * dpr);
+    } else if (currentPath) {
+      currentPath.points.push({ x, y });
+
+      // Draw incrementally
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const points = currentPath.points;
+      if (points.length >= 2) {
+        const from = points[points.length - 2];
+        const to = points[points.length - 1];
+
+        // Map image-content-relative coords to canvas pixel coords for live drawing
+        let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+        if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+          const fitRect = getObjectFitRect(img);
+          contentOffsetX = fitRect.x;
+          contentOffsetY = fitRect.y;
+          contentWidth = fitRect.width;
+          contentHeight = fitRect.height;
+        }
+        const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+        const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+
+        ctx.strokeStyle = currentPath.color;
+        ctx.lineWidth = currentPath.lineWidth * dpr;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(toCanvasX(from.x), toCanvasY(from.y));
+        ctx.lineTo(toCanvasX(to.x), toCanvasY(to.y));
+        ctx.stroke();
+      }
     }
   });
 
   const endDraw = (e) => {
     if (!isDrawing) return;
     isDrawing = false;
-    if (currentPath && currentPath.points.length > 1) {
-      const data = canvasDataMap.get(canvas);
-      if (data) data.paths.push(currentPath);
+
+    if (drawTool === "arrow" && arrowStart) {
+      // Get final position
+      const img = drop.querySelector("img");
+      let x, y;
+      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+        const imgElemRect = img.getBoundingClientRect();
+        const fitRect = getObjectFitRect(img);
+        const contentLeft = imgElemRect.left + fitRect.x;
+        const contentTop = imgElemRect.top + fitRect.y;
+        x = (e.clientX - contentLeft) / fitRect.width;
+        y = (e.clientY - contentTop) / fitRect.height;
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        x = (e.clientX - rect.left) / rect.width;
+        y = (e.clientY - rect.top) / rect.height;
+      }
+
+      // Only commit if the arrow has some length
+      const dx = x - arrowStart.x;
+      const dy = y - arrowStart.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 0.005) {
+        const data = canvasDataMap.get(canvas);
+        if (data) {
+          data.paths.push({
+            type: "arrow",
+            color: drawColor,
+            lineWidth: drawLineWidth,
+            from: arrowStart,
+            to: { x, y },
+          });
+        }
+      }
+      arrowStart = null;
+      // Redraw to finalize
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+    } else {
+      if (currentPath && currentPath.points.length > 1) {
+        const data = canvasDataMap.get(canvas);
+        if (data) data.paths.push(currentPath);
+      }
+      currentPath = null;
     }
-    currentPath = null;
   };
 
   canvas.addEventListener("mouseup", endDraw);
@@ -544,17 +667,26 @@ const redrawAllCanvasesForExport = (scale) => {
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const path of data.paths) {
-        if (path.points.length < 2) continue;
         ctx.strokeStyle = path.color;
         ctx.lineWidth = path.lineWidth * dprNoImg;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
-        for (let i = 1; i < path.points.length; i++) {
-          ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+
+        if (path.type === "arrow") {
+          const fromX = path.from.x * canvas.width;
+          const fromY = path.from.y * canvas.height;
+          const toX = path.to.x * canvas.width;
+          const toY = path.to.y * canvas.height;
+          drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dprNoImg);
+        } else {
+          if (path.points.length < 2) continue;
+          ctx.beginPath();
+          ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
+          for (let i = 1; i < path.points.length; i++) {
+            ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
       }
       return;
     }
@@ -574,17 +706,26 @@ const redrawAllCanvasesForExport = (scale) => {
 
     // Draw paths on top — coords are already image-relative (0-1)
     for (const path of data.paths) {
-      if (path.points.length < 2) continue;
       ctx.strokeStyle = path.color;
       ctx.lineWidth = path.lineWidth * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(path.points[0].x * imgRect.width * dpr, path.points[0].y * imgRect.height * dpr);
-      for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(path.points[i].x * imgRect.width * dpr, path.points[i].y * imgRect.height * dpr);
+
+      if (path.type === "arrow") {
+        const fromX = path.from.x * imgRect.width * dpr;
+        const fromY = path.from.y * imgRect.height * dpr;
+        const toX = path.to.x * imgRect.width * dpr;
+        const toY = path.to.y * imgRect.height * dpr;
+        drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dpr);
+      } else {
+        if (path.points.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(path.points[0].x * imgRect.width * dpr, path.points[0].y * imgRect.height * dpr);
+        for (let i = 1; i < path.points.length; i++) {
+          ctx.lineTo(path.points[i].x * imgRect.width * dpr, path.points[i].y * imgRect.height * dpr);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
     }
 
     // Store original src for restoration
