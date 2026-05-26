@@ -111,6 +111,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         }
         if (node.tagName === "SPAN") return false;
         if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
+        if (node.classList && node.classList.contains("swap-btn")) return false;
         if (node.classList && node.classList.contains("drawing-text-input")) return false;
         if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
@@ -1548,6 +1549,111 @@ const setupCell = (cell) => {
   attachDragTo(img);
 };
 
+// --- Swap Grid Items ---
+const getCellData = (cell) => {
+  const img = cell.querySelector("img");
+  const textarea = cell.querySelector("textarea");
+  const canvas = cell.querySelector(".drawing-canvas");
+  const drawingPaths = canvas && canvasDataMap.get(canvas) ? [...canvasDataMap.get(canvas).paths] : [];
+  return {
+    imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
+    imgAlt: img ? img.alt : "",
+    text: textarea ? textarea.value : "",
+    drawingPaths,
+  };
+};
+
+const setCellData = (cell, data) => {
+  const img = cell.querySelector("img");
+  const drop = cell.querySelector(".drop");
+  const span = cell.querySelector("span");
+  const textarea = cell.querySelector("textarea");
+  const canvas = cell.querySelector(".drawing-canvas");
+
+  if (data.imgSrc) {
+    img.src = data.imgSrc;
+    img.alt = data.imgAlt;
+    img.style.display = "flex";
+    drop.style.border = "unset";
+    if (span) span.style.display = "none";
+  } else {
+    img.src = "";
+    img.style.display = "none";
+    img.alt = "";
+    drop.style.border = "var(--border)";
+    if (span) span.style.display = "block";
+  }
+
+  if (textarea) textarea.value = data.text || "";
+
+  if (canvas) {
+    const canvasData = canvasDataMap.get(canvas);
+    if (canvasData) {
+      canvasData.paths = data.drawingPaths || [];
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+    }
+  }
+};
+
+const swapCells = (cellA, cellB) => {
+  if (!cellA || !cellB || cellA === cellB) return;
+
+  // FLIP animation: record initial positions
+  const rectA = cellA.getBoundingClientRect();
+  const rectB = cellB.getBoundingClientRect();
+
+  // Swap data
+  const dataA = getCellData(cellA);
+  const dataB = getCellData(cellB);
+  setCellData(cellA, dataB);
+  setCellData(cellB, dataA);
+
+  // FLIP: content that was in A is now in B, content that was in B is now in A.
+  // To make it look like the content slid over, offset each cell to where its
+  // new content originally was, then animate back to identity.
+  const dx = rectB.left - rectA.left;
+  const dy = rectB.top - rectA.top;
+
+  // cellA now holds what was in B → start it at B's old position relative to A
+  cellA.style.transition = "none";
+  cellB.style.transition = "none";
+  cellA.style.transform = `translate(${dx}px, ${dy}px)`;
+  cellB.style.transform = `translate(${-dx}px, ${-dy}px)`;
+
+  // Force reflow so the browser registers the starting position
+  cellA.offsetHeight;
+
+  // Animate to identity
+  cellA.classList.add("swap-animating");
+  cellB.classList.add("swap-animating");
+  cellA.style.transition = "";
+  cellB.style.transition = "";
+  cellA.style.transform = "";
+  cellB.style.transform = "";
+
+  const cleanup = () => {
+    cellA.classList.remove("swap-animating");
+    cellB.classList.remove("swap-animating");
+    cellA.style.transform = "";
+    cellB.style.transform = "";
+  };
+
+  cellA.addEventListener("transitionend", cleanup, { once: true });
+  // Fallback in case transitionend doesn't fire
+  setTimeout(cleanup, 400);
+};
+
+const getAdjacentCell = (cell, direction) => {
+  const cells = [...gridEl.querySelectorAll(".grid-cell")];
+  const index = cells.indexOf(cell);
+  if (index === -1) return null;
+
+  if (direction === "left" && index > 0) return cells[index - 1];
+  if (direction === "right" && index < cells.length - 1) return cells[index + 1];
+  return null;
+};
+
 const createCell = (row, col) => {
   const cell = document.createElement("div");
   cell.className = "grid-cell";
@@ -1573,8 +1679,31 @@ const createCell = (row, col) => {
   textarea.rows = 2;
   textarea.textContent = "";
 
+  // Swap buttons
+  const swapLeft = document.createElement("button");
+  swapLeft.className = "swap-btn swap-btn-left";
+  swapLeft.title = "Swap with left";
+  swapLeft.textContent = "←";
+  swapLeft.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const adjacent = getAdjacentCell(cell, "left");
+    if (adjacent) swapCells(cell, adjacent);
+  });
+
+  const swapRight = document.createElement("button");
+  swapRight.className = "swap-btn swap-btn-right";
+  swapRight.title = "Swap with right";
+  swapRight.textContent = "→";
+  swapRight.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const adjacent = getAdjacentCell(cell, "right");
+    if (adjacent) swapCells(cell, adjacent);
+  });
+
   cell.appendChild(drop);
   cell.appendChild(textarea);
+  cell.appendChild(swapLeft);
+  cell.appendChild(swapRight);
 
   setupCell(cell);
 
