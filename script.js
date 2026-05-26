@@ -103,6 +103,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
           return false;
         }
         if (node.tagName === "SPAN") return false;
+        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
         return true;
       },
     });
@@ -317,6 +318,21 @@ const initDrawingCanvas = (drop) => {
   const canvas = document.createElement("canvas");
   canvas.className = "drawing-canvas";
   drop.appendChild(canvas);
+
+  // Clear drawing button
+  const clearBtn = document.createElement("button");
+  clearBtn.className = "clear-drawing-btn";
+  clearBtn.title = "Clear drawing";
+  clearBtn.textContent = "✕";
+  clearBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const data = canvasDataMap.get(canvas);
+    if (data) data.paths = [];
+    const dpr = window.devicePixelRatio || 1;
+    redrawCanvas(canvas, dpr);
+  });
+  drop.appendChild(clearBtn);
 
   // Initialize data store
   canvasDataMap.set(canvas, { paths: [] });

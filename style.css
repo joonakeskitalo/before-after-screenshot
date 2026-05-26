@@ -451,3 +451,34 @@ body.drawing-mode {
 body.drawing-mode .grid-cell .drop {
     cursor: crosshair;
 }
+
+/* Clear drawing button per image */
+.clear-drawing-btn {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.55);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 10px;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    padding: 0;
+    box-shadow: none;
+    z-index: 20;
+}
+
+body.drawing-mode .drop:hover .clear-drawing-btn {
+    opacity: 0.7;
+}
+
+.clear-drawing-btn:hover {
+    opacity: 1 !important;
+    background: rgba(200, 0, 0, 0.8);
+}
