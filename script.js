@@ -104,6 +104,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         }
         if (node.tagName === "SPAN") return false;
         if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
+        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
       },
     });
@@ -288,16 +289,67 @@ document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) =
   });
 });
 
-// Each canvas stores its paths as normalized coordinates (0-1 range relative to canvas size)
-// so they can be redrawn at any scale during export.
+// Each canvas stores its paths as normalized coordinates (0-1 range relative to the IMAGE)
+// Each canvas stores its paths as normalized coordinates (0-1 range relative to the
+// visible image content area), accounting for object-fit: contain.
 const canvasDataMap = new WeakMap(); // canvas element -> { paths: [...] }
 
-// Redraw all stored paths on a canvas at current size
+// Store ResizeObservers so we can disconnect them during export
+const canvasObservers = new WeakMap(); // canvas element -> ResizeObserver
+
+// Calculate the rendered content area of an img with object-fit: contain
+// Returns { x, y, width, height } in CSS pixels relative to the img element's box
+const getObjectFitRect = (img) => {
+  const elemWidth = img.clientWidth;
+  const elemHeight = img.clientHeight;
+  const natWidth = img.naturalWidth;
+  const natHeight = img.naturalHeight;
+
+  if (!natWidth || !natHeight || !elemWidth || !elemHeight) {
+    return { x: 0, y: 0, width: elemWidth, height: elemHeight };
+  }
+
+  const elemRatio = elemWidth / elemHeight;
+  const natRatio = natWidth / natHeight;
+
+  let renderWidth, renderHeight;
+  if (natRatio > elemRatio) {
+    // Image is wider than container — width fills, height is letterboxed
+    renderWidth = elemWidth;
+    renderHeight = elemWidth / natRatio;
+  } else {
+    // Image is taller than container — height fills, width is pillarboxed
+    renderHeight = elemHeight;
+    renderWidth = elemHeight * natRatio;
+  }
+
+  const x = (elemWidth - renderWidth) / 2;
+  const y = (elemHeight - renderHeight) / 2;
+
+  return { x, y, width: renderWidth, height: renderHeight };
+};
+
+// Redraw all stored paths on a canvas at current size.
+// Coordinates are relative to the visible image content (0-1), so we map them
+// to canvas space accounting for object-fit positioning.
 const redrawCanvas = (canvas, dpr) => {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const data = canvasDataMap.get(canvas);
   if (!data) return;
+
+  const drop = canvas.parentElement;
+  const img = drop ? drop.querySelector("img") : null;
+
+  // Calculate where the visible image content sits within the canvas
+  let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+  if (drop && img && img.src && img.style.display !== "none" && img.naturalWidth) {
+    const fitRect = getObjectFitRect(img);
+    contentOffsetX = fitRect.x;
+    contentOffsetY = fitRect.y;
+    contentWidth = fitRect.width;
+    contentHeight = fitRect.height;
+  }
 
   for (const path of data.paths) {
     if (path.points.length < 2) continue;
@@ -306,9 +358,12 @@ const redrawCanvas = (canvas, dpr) => {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
-    ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
+    // Map image-content-relative coords (0-1) to canvas pixel coords
+    const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+    const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+    ctx.moveTo(toCanvasX(path.points[0].x), toCanvasY(path.points[0].y));
     for (let i = 1; i < path.points.length; i++) {
-      ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+      ctx.lineTo(toCanvasX(path.points[i].x), toCanvasY(path.points[i].y));
     }
     ctx.stroke();
   }
@@ -351,6 +406,7 @@ const initDrawingCanvas = (drop) => {
   // Use ResizeObserver to keep canvas sized correctly
   const observer = new ResizeObserver(resizeCanvas);
   observer.observe(drop);
+  canvasObservers.set(canvas, observer);
 
   // Drawing state
   let isDrawing = false;
@@ -361,9 +417,23 @@ const initDrawingCanvas = (drop) => {
     e.preventDefault();
     e.stopPropagation();
     isDrawing = true;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
+
+    // Store coordinates relative to the visible image content (accounting for object-fit)
+    const img = drop.querySelector("img");
+    let x, y;
+    if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+      const imgElemRect = img.getBoundingClientRect();
+      const fitRect = getObjectFitRect(img);
+      // The visible content's position in page coords
+      const contentLeft = imgElemRect.left + fitRect.x;
+      const contentTop = imgElemRect.top + fitRect.y;
+      x = (e.clientX - contentLeft) / fitRect.width;
+      y = (e.clientY - contentTop) / fitRect.height;
+    } else {
+      const rect = canvas.getBoundingClientRect();
+      x = (e.clientX - rect.left) / rect.width;
+      y = (e.clientY - rect.top) / rect.height;
+    }
     currentPath = {
       color: drawColor,
       lineWidth: drawLineWidth,
@@ -375,9 +445,22 @@ const initDrawingCanvas = (drop) => {
     if (!isDrawing || !currentPath) return;
     e.preventDefault();
     e.stopPropagation();
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
+
+    // Store coordinates relative to the visible image content
+    const img = drop.querySelector("img");
+    let x, y;
+    if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+      const imgElemRect = img.getBoundingClientRect();
+      const fitRect = getObjectFitRect(img);
+      const contentLeft = imgElemRect.left + fitRect.x;
+      const contentTop = imgElemRect.top + fitRect.y;
+      x = (e.clientX - contentLeft) / fitRect.width;
+      y = (e.clientY - contentTop) / fitRect.height;
+    } else {
+      const rect = canvas.getBoundingClientRect();
+      x = (e.clientX - rect.left) / rect.width;
+      y = (e.clientY - rect.top) / rect.height;
+    }
     currentPath.points.push({ x, y });
 
     // Draw incrementally
@@ -387,13 +470,26 @@ const initDrawingCanvas = (drop) => {
     if (points.length >= 2) {
       const from = points[points.length - 2];
       const to = points[points.length - 1];
+
+      // Map image-content-relative coords to canvas pixel coords for live drawing
+      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+        const fitRect = getObjectFitRect(img);
+        contentOffsetX = fitRect.x;
+        contentOffsetY = fitRect.y;
+        contentWidth = fitRect.width;
+        contentHeight = fitRect.height;
+      }
+      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+
       ctx.strokeStyle = currentPath.color;
       ctx.lineWidth = currentPath.lineWidth * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      ctx.moveTo(from.x * canvas.width, from.y * canvas.height);
-      ctx.lineTo(to.x * canvas.width, to.y * canvas.height);
+      ctx.moveTo(toCanvasX(from.x), toCanvasY(from.y));
+      ctx.lineTo(toCanvasX(to.x), toCanvasY(to.y));
       ctx.stroke();
     }
   });
@@ -414,37 +510,87 @@ const initDrawingCanvas = (drop) => {
   return canvas;
 };
 
-// Redraw all canvases at export scale — called before capture
+// Redraw all canvases at export scale — called before capture.
+// Since drawing coords are stored relative to the image (0-1), we bake them
+// directly onto the image for a pixel-perfect export.
 const redrawAllCanvasesForExport = (scale) => {
+  // Disconnect all ResizeObservers so they don't interfere during export
+  document.querySelectorAll(".drawing-canvas").forEach((canvas) => {
+    const obs = canvasObservers.get(canvas);
+    if (obs) obs.disconnect();
+  });
+
   const canvases = document.querySelectorAll(".drawing-canvas");
   canvases.forEach((canvas) => {
     const drop = canvas.parentElement;
-    const rect = drop.getBoundingClientRect();
-    // Resize canvas to match the current (possibly scaled) drop size
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    canvas.style.width = rect.width + "px";
-    canvas.style.height = rect.height + "px";
+    const img = drop.querySelector("img");
 
     const data = canvasDataMap.get(canvas);
-    if (!data) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!data || data.paths.length === 0) {
+      // No drawings — just hide the canvas for export
+      canvas.style.display = "none";
+      return;
+    }
 
+    if (!img || !img.src || img.style.display === "none") {
+      // No image — keep canvas as-is with simple redraw
+      const dropRect = drop.getBoundingClientRect();
+      canvas.width = dropRect.width;
+      canvas.height = dropRect.height;
+      canvas.style.width = dropRect.width + "px";
+      canvas.style.height = dropRect.height + "px";
+
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const path of data.paths) {
+        if (path.points.length < 2) continue;
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = path.lineWidth * scale;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
+        for (let i = 1; i < path.points.length; i++) {
+          ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+        }
+        ctx.stroke();
+      }
+      return;
+    }
+
+    // Bake drawing onto the image: create a temp canvas at the image's rendered size,
+    // draw the image, then draw the paths on top, and replace img.src with the result.
+    const imgRect = img.getBoundingClientRect();
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = imgRect.width;
+    tempCanvas.height = imgRect.height;
+    const ctx = tempCanvas.getContext("2d");
+
+    // Draw the original image
+    ctx.drawImage(img, 0, 0, imgRect.width, imgRect.height);
+
+    // Draw paths on top — coords are already image-relative (0-1)
     for (const path of data.paths) {
       if (path.points.length < 2) continue;
       ctx.strokeStyle = path.color;
-      // Scale line width proportionally
       ctx.lineWidth = path.lineWidth * scale;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
+      ctx.moveTo(path.points[0].x * imgRect.width, path.points[0].y * imgRect.height);
       for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+        ctx.lineTo(path.points[i].x * imgRect.width, path.points[i].y * imgRect.height);
       }
       ctx.stroke();
     }
+
+    // Store original src for restoration
+    canvas.dataset.originalImgSrc = img.src;
+    // Replace image with composited version
+    img.src = tempCanvas.toDataURL("image/png");
+    // Hide the canvas so dom-to-image doesn't double-render the drawing
+    canvas.style.display = "none";
   });
 };
 
@@ -453,6 +599,18 @@ const restoreAllCanvases = () => {
   const canvases = document.querySelectorAll(".drawing-canvas");
   canvases.forEach((canvas) => {
     const drop = canvas.parentElement;
+    const img = drop.querySelector("img");
+
+    // Restore original image src if we baked drawings onto it
+    if (canvas.dataset.originalImgSrc) {
+      if (img) img.src = canvas.dataset.originalImgSrc;
+      delete canvas.dataset.originalImgSrc;
+    }
+
+    // Show canvas again
+    canvas.style.display = "";
+
+    // Resize to current display dimensions
     const rect = drop.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     canvas.width = rect.width * dpr;
@@ -460,6 +618,10 @@ const restoreAllCanvases = () => {
     canvas.style.width = rect.width + "px";
     canvas.style.height = rect.height + "px";
     redrawCanvas(canvas, dpr);
+
+    // Reconnect ResizeObserver
+    const obs = canvasObservers.get(canvas);
+    if (obs) obs.observe(drop);
   });
 };
 
@@ -480,8 +642,6 @@ const setupCell = (cell) => {
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    console.log(`🟣960 🟣 script:462 e`, { e });
-    
     if (e.metaKey) {
       // Clear the cell content
       img.src = "";
