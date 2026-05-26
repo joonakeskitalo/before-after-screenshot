@@ -236,7 +236,7 @@ let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
 let drawTool = "freehand"; // "freehand", "arrow", or "text"
-let drawFontSize = 16;
+let drawFontSize = 13;
 
 const enableDrawingMode = () => {
   drawingMode = true;
