@@ -2191,5 +2191,21 @@ document.addEventListener("keydown", (e) => {
       // Toggle zoom between 100% and 300%
       applyGridZoom(gridZoom === 300 ? 100 : 300);
       break;
+    case "x": {
+      // Cycle through preset colors
+      const presetColors = Array.from(
+        document.querySelectorAll(".toolbar-controls .preset-color-btn")
+      ).map((btn) => btn.dataset.color);
+      if (presetColors.length > 0) {
+        const currentIndex = presetColors.indexOf(drawColor);
+        const nextIndex = (currentIndex + 1) % presetColors.length;
+        drawColor = presetColors[nextIndex];
+        drawColorInput.value = drawColor;
+        document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
+          b.style.borderColor = b.dataset.color === drawColor ? "#333" : "transparent";
+        });
+      }
+      break;
+    }
   }
 });
