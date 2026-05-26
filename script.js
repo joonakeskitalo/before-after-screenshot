@@ -7,7 +7,7 @@ const content = document.querySelector(".content");
 const elementsToAdjustWidth = [cardsEl, content];
 
 let gridCols = 3;
-let gridRows = 2;
+let gridRows = 1;
 
 const setElementWidths = (arr, size) => {
   const images = cardsEl.querySelectorAll("img");
@@ -91,6 +91,12 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     cardsEl.style.padding = `8px ${padding}px`;
     cardsEl.style.width = "fit-content";
 
+    // Hide drawing controls during export (not needed — controls are in toolbar now)
+
+    // Redraw canvases at export scale so drawings match the scaled images
+    const exportScale = useFullSize ? resolutionScale : 1;
+    redrawAllCanvasesForExport(exportScale);
+
     const blob = await domtoimage.toBlob(cardsEl, {
       filter: (node) => {
         if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
@@ -138,6 +144,9 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(250px, 1fr))`;
     root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
     root.style.setProperty("--image-max-width", "60dvh");
+
+    // Restore drawing canvases to display size
+    restoreAllCanvases();
   } catch (error) {
     console.error(error);
   }
@@ -165,41 +174,48 @@ const clearOrCopyImage = async (event, img, drop, span) => {
   event.preventDefault();
   event.stopImmediatePropagation();
 
-  if (event.shiftKey && event.metaKey) {
-    setElementWidths(elementsToAdjustWidth, "unset");
-    root.style.setProperty("--image-max-width", "unset");
+  // if (event.shiftKey && event.metaKey) {
+  //   setElementWidths(elementsToAdjustWidth, "unset");
+  //   root.style.setProperty("--image-max-width", "unset");
 
-    const blob = await domtoimage.toBlob(img);
+  //   const blob = await domtoimage.toBlob(img);
 
-    navigator.clipboard.write([
-      new ClipboardItem({
-        "image/png": blob,
-      }),
-    ]);
+  //   navigator.clipboard.write([
+  //     new ClipboardItem({
+  //       "image/png": blob,
+  //     }),
+  //   ]);
 
-    root.style.setProperty("--image-max-width", "60dvh");
-    setElementWidths(elementsToAdjustWidth, null);
-  }
+  //   root.style.setProperty("--image-max-width", "60dvh");
+  //   setElementWidths(elementsToAdjustWidth, null);
+  // }
 
-  if (event.metaKey && !event.shiftKey) {
-    setElementWidths(elementsToAdjustWidth, "unset");
-    root.style.setProperty("--image-max-width", "unset");
+  // if (event.metaKey && !event.shiftKey) {
+  //   setElementWidths(elementsToAdjustWidth, "unset");
+  //   root.style.setProperty("--image-max-width", "unset");
 
-    const width = Math.floor(img.naturalWidth * 0.5) + "px";
-    img.style.width = width;
+  //   const width = Math.floor(img.naturalWidth * 0.5) + "px";
+  //   img.style.width = width;
 
-    const blob = await domtoimage.toBlob(img);
+  //   const blob = await domtoimage.toBlob(img);
 
-    navigator.clipboard.write([
-      new ClipboardItem({
-        "image/png": blob,
-      }),
-    ]);
+  //   navigator.clipboard.write([
+  //     new ClipboardItem({
+  //       "image/png": blob,
+  //     }),
+  //   ]);
 
-    img.style.width = null;
-    root.style.setProperty("--image-max-width", "60dvh");
-    setElementWidths(elementsToAdjustWidth, null);
-  } else if (!event.metaKey && event.shiftKey) {
+  //   img.style.width = null;
+  //   root.style.setProperty("--image-max-width", "60dvh");
+  //   setElementWidths(elementsToAdjustWidth, null);
+  // } else if (!event.metaKey && event.shiftKey) {
+  //   img.src = "";
+  //   img.style.display = "none";
+  //   drop.style.border = "var(--border)";
+  //   span.style.display = "block";
+  // }
+
+  if (event.metaKey) {
     img.src = "";
     img.style.display = "none";
     drop.style.border = "var(--border)";
@@ -207,10 +223,221 @@ const clearOrCopyImage = async (event, img, drop, span) => {
   }
 };
 
+// --- Drawing Logic ---
+let drawingMode = false;
+let drawColor = "#ff0000";
+let drawLineWidth = 3;
+
+// Track shift key for drawing mode
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Shift" && !e.repeat && !e.target.matches("textarea, input")) {
+    drawingMode = true;
+    document.body.classList.add("drawing-mode");
+    document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.key === "Shift") {
+    drawingMode = false;
+    document.body.classList.remove("drawing-mode");
+    document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
+  }
+});
+
+// Wire up toolbar drawing controls
+const drawColorInput = document.getElementById("draw-color");
+const drawWidthInput = document.getElementById("draw-width");
+
+drawColorInput.addEventListener("input", (e) => {
+  drawColor = e.target.value;
+  document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
+    b.style.borderColor = b.dataset.color === drawColor ? "#333" : "transparent";
+  });
+});
+
+drawWidthInput.addEventListener("input", (e) => {
+  drawLineWidth = parseInt(e.target.value);
+});
+
+document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    drawColor = btn.dataset.color;
+    drawColorInput.value = drawColor;
+    document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
+      b.style.borderColor = b.dataset.color === drawColor ? "#333" : "transparent";
+    });
+  });
+});
+
+// Each canvas stores its paths as normalized coordinates (0-1 range relative to canvas size)
+// so they can be redrawn at any scale during export.
+const canvasDataMap = new WeakMap(); // canvas element -> { paths: [...] }
+
+// Redraw all stored paths on a canvas at current size
+const redrawCanvas = (canvas, dpr) => {
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const data = canvasDataMap.get(canvas);
+  if (!data) return;
+
+  for (const path of data.paths) {
+    if (path.points.length < 2) continue;
+    ctx.strokeStyle = path.color;
+    ctx.lineWidth = path.lineWidth * dpr;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
+    for (let i = 1; i < path.points.length; i++) {
+      ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+    }
+    ctx.stroke();
+  }
+};
+
+const initDrawingCanvas = (drop) => {
+  const canvas = document.createElement("canvas");
+  canvas.className = "drawing-canvas";
+  drop.appendChild(canvas);
+
+  // Initialize data store
+  canvasDataMap.set(canvas, { paths: [] });
+
+  // Resize canvas to match drop zone
+  const resizeCanvas = () => {
+    const rect = drop.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + "px";
+    canvas.style.height = rect.height + "px";
+    redrawCanvas(canvas, dpr);
+  };
+
+  // Use ResizeObserver to keep canvas sized correctly
+  const observer = new ResizeObserver(resizeCanvas);
+  observer.observe(drop);
+
+  // Drawing state
+  let isDrawing = false;
+  let currentPath = null;
+
+  canvas.addEventListener("mousedown", (e) => {
+    if (!drawingMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    isDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    currentPath = {
+      color: drawColor,
+      lineWidth: drawLineWidth,
+      points: [{ x, y }],
+    };
+  });
+
+  canvas.addEventListener("mousemove", (e) => {
+    if (!isDrawing || !currentPath) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    currentPath.points.push({ x, y });
+
+    // Draw incrementally
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const points = currentPath.points;
+    if (points.length >= 2) {
+      const from = points[points.length - 2];
+      const to = points[points.length - 1];
+      ctx.strokeStyle = currentPath.color;
+      ctx.lineWidth = currentPath.lineWidth * dpr;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(from.x * canvas.width, from.y * canvas.height);
+      ctx.lineTo(to.x * canvas.width, to.y * canvas.height);
+      ctx.stroke();
+    }
+  });
+
+  const endDraw = (e) => {
+    if (!isDrawing) return;
+    isDrawing = false;
+    if (currentPath && currentPath.points.length > 1) {
+      const data = canvasDataMap.get(canvas);
+      if (data) data.paths.push(currentPath);
+    }
+    currentPath = null;
+  };
+
+  canvas.addEventListener("mouseup", endDraw);
+  canvas.addEventListener("mouseleave", endDraw);
+
+  return canvas;
+};
+
+// Redraw all canvases at export scale — called before capture
+const redrawAllCanvasesForExport = (scale) => {
+  const canvases = document.querySelectorAll(".drawing-canvas");
+  canvases.forEach((canvas) => {
+    const drop = canvas.parentElement;
+    const rect = drop.getBoundingClientRect();
+    // Resize canvas to match the current (possibly scaled) drop size
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    canvas.style.width = rect.width + "px";
+    canvas.style.height = rect.height + "px";
+
+    const data = canvasDataMap.get(canvas);
+    if (!data) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (const path of data.paths) {
+      if (path.points.length < 2) continue;
+      ctx.strokeStyle = path.color;
+      // Scale line width proportionally
+      ctx.lineWidth = path.lineWidth * scale;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
+      for (let i = 1; i < path.points.length; i++) {
+        ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+      }
+      ctx.stroke();
+    }
+  });
+};
+
+// Restore canvases to display size after export
+const restoreAllCanvases = () => {
+  const canvases = document.querySelectorAll(".drawing-canvas");
+  canvases.forEach((canvas) => {
+    const drop = canvas.parentElement;
+    const rect = drop.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + "px";
+    canvas.style.height = rect.height + "px";
+    redrawCanvas(canvas, dpr);
+  });
+};
+
 const setupCell = (cell) => {
   const drop = cell.querySelector(".drop");
   const img = cell.querySelector("img");
   const span = cell.querySelector("span");
+
+  // Initialize drawing canvas for this cell
+  initDrawingCanvas(drop);
 
   img.addEventListener(
     "click",
@@ -220,7 +447,10 @@ const setupCell = (cell) => {
   drop.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (e.shiftKey) {
+
+    console.log(`🟣960 🟣 script:462 e`, { e });
+    
+    if (e.metaKey) {
       // Clear the cell content
       img.src = "";
       img.style.display = "none";
@@ -351,12 +581,15 @@ const buildGrid = () => {
   existingCells.forEach((cell) => {
     const img = cell.querySelector("img");
     const textarea = cell.querySelector("textarea");
+    const canvas = cell.querySelector(".drawing-canvas");
+    const drawingPaths = canvas && canvasDataMap.get(canvas) ? canvasDataMap.get(canvas).paths : [];
     existingData.push({
       row: parseInt(cell.dataset.row),
       col: parseInt(cell.dataset.col),
       imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
       imgAlt: img ? img.alt : "",
       text: textarea ? textarea.value : "",
+      drawingPaths: drawingPaths,
     });
   });
 
@@ -387,6 +620,18 @@ const buildGrid = () => {
         if (existing.text) {
           textarea.value = existing.text;
         }
+        // Restore drawing paths
+        if (existing.drawingPaths && existing.drawingPaths.length > 0) {
+          const canvas = cell.querySelector(".drawing-canvas");
+          if (canvas) {
+            const data = canvasDataMap.get(canvas);
+            if (data) {
+              data.paths = existing.drawingPaths;
+              const dpr = window.devicePixelRatio || 1;
+              redrawCanvas(canvas, dpr);
+            }
+          }
+        }
       }
     }
   }
@@ -394,7 +639,7 @@ const buildGrid = () => {
 
 const updateGrid = () => {
   gridCols = parseInt(document.getElementById("grid-cols").value) || 3;
-  gridRows = parseInt(document.getElementById("grid-rows").value) || 2;
+  gridRows = parseInt(document.getElementById("grid-rows").value) || 1;
   buildGrid();
 };
 
@@ -650,7 +895,7 @@ const removeZoom = (item) => {
 };
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Ctrl") {
+  if (e.key === "Control") {
     const hoveredToolbar = bottomToolbarInner.querySelector(".bottom-toolbar-item:hover");
     if (hoveredToolbar) {
       applyZoom(hoveredToolbar);
@@ -659,7 +904,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keyup", (e) => {
-  if (e.key === "Ctrl") {
+  if (e.key === "Control") {
     const zoomed = bottomToolbarInner.querySelector('.bottom-toolbar-item[data-zoomed]');
     removeZoom(zoomed);
   }
@@ -754,7 +999,7 @@ gridEl.addEventListener("mouseout", (e) => {
 
 // Also handle ctrl press/release while hovering a card image
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Ctrl") {
+  if (e.key === "Control") {
     const hovered = document.querySelector(".grid-cell .drop:hover");
     if (hovered) {
       applyCardZoom(hovered);
@@ -763,8 +1008,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keyup", (e) => {
-  console.log(`🟣 todo-nav-script:766 `, { e: e.key });
-  if (e.key === "Ctrl") {
+  if (e.key === "Control") {
     const zoomed = gridEl.querySelector('.drop[data-zoomed]');
     removeCardZoom(zoomed);
   }

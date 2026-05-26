@@ -423,3 +423,31 @@ body {
     border-radius: 12px;
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
+
+/* Drawing overlay */
+.drop {
+    position: relative;
+}
+
+.drawing-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.drawing-canvas.active {
+    pointer-events: auto;
+    cursor: crosshair;
+}
+
+body.drawing-mode {
+    cursor: crosshair;
+}
+
+body.drawing-mode .grid-cell .drop {
+    cursor: crosshair;
+}
