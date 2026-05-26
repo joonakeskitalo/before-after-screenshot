@@ -1571,3 +1571,57 @@ document.addEventListener("keyup", (e) => {
     removeCardZoom(zoomed);
   }
 });
+
+// --- Hotkeys ---
+document.addEventListener("keydown", (e) => {
+  // Skip hotkeys when typing in an input, textarea, or contenteditable
+  const tag = e.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+
+  const gridColsInput = document.getElementById("grid-cols");
+  const gridRowsInput = document.getElementById("grid-rows");
+
+  switch (e.key) {
+    case "b":
+      // Enable pen tool
+      penModeBtn.click();
+      break;
+    case "a":
+      // Enable arrow tool
+      arrowModeBtn.click();
+      break;
+    case "t":
+      // Enable text tool
+      textModeBtn.click();
+      break;
+    case "?":
+      gridRows++;
+      gridRowsInput.value = gridRows;
+      buildGrid();
+      break;
+    case "_":
+      // Shift - remove row
+      if (gridRows > 1) {
+        gridRows--;
+        gridRowsInput.value = gridRows;
+        buildGrid();
+      }
+      break;
+    case "+":
+      // + add column
+      gridCols++;
+      gridColsInput.value = gridCols;
+      buildGrid();
+      e.preventDefault();
+      break;
+    case "-":
+      // - remove column
+      if (gridCols > 1) {
+        gridCols--;
+        gridColsInput.value = gridCols;
+        buildGrid();
+      }
+      e.preventDefault();
+      break;
+  }
+});
