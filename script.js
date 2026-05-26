@@ -249,7 +249,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
-let drawTool = "freehand"; // "freehand", "arrow", or "text"
+let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", or "text"
 let drawFontSize = 13;
 
 const enableDrawingMode = () => {
@@ -269,6 +269,9 @@ const disableDrawingMode = () => {
 // Get tool button references early so event listeners can use them
 const penModeBtn = document.getElementById("pen-mode-btn");
 const arrowModeBtn = document.getElementById("arrow-mode-btn");
+const lineModeBtn = document.getElementById("line-mode-btn");
+const rectModeBtn = document.getElementById("rect-mode-btn");
+const rectstrokeModeBtn = document.getElementById("rectstroke-mode-btn");
 const textModeBtn = document.getElementById("text-mode-btn");
 const drawFontSizeInput = document.getElementById("draw-font-size");
 
@@ -279,6 +282,9 @@ document.addEventListener("keydown", (e) => {
     // Deactivate all tool buttons
     penModeBtn.classList.remove("active");
     arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -291,6 +297,9 @@ document.addEventListener("mousedown", (e) => {
     disableDrawingMode();
     penModeBtn.classList.remove("active");
     arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -327,13 +336,15 @@ document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) =
 penModeBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   if (drawTool === "freehand" && drawingMode) {
-    // Deactivate pen — exit drawing mode
     disableDrawingMode();
     penModeBtn.classList.remove("active");
   } else {
     drawTool = "freehand";
     penModeBtn.classList.add("active");
     arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -345,13 +356,75 @@ penModeBtn.addEventListener("click", (e) => {
 arrowModeBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   if (drawTool === "arrow" && drawingMode) {
-    // Deactivate arrow — exit drawing mode
     disableDrawingMode();
     arrowModeBtn.classList.remove("active");
   } else {
     drawTool = "arrow";
     arrowModeBtn.classList.add("active");
     penModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    enableDrawingMode();
+  }
+});
+
+// Line mode toggle
+lineModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "line" && drawingMode) {
+    disableDrawingMode();
+    lineModeBtn.classList.remove("active");
+  } else {
+    drawTool = "line";
+    lineModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    enableDrawingMode();
+  }
+});
+
+// Solid rectangle mode toggle
+rectModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "rect" && drawingMode) {
+    disableDrawingMode();
+    rectModeBtn.classList.remove("active");
+  } else {
+    drawTool = "rect";
+    rectModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    enableDrawingMode();
+  }
+});
+
+// Bordered rectangle mode toggle
+rectstrokeModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "rectstroke" && drawingMode) {
+    disableDrawingMode();
+    rectstrokeModeBtn.classList.remove("active");
+  } else {
+    drawTool = "rectstroke";
+    rectstrokeModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -363,7 +436,6 @@ arrowModeBtn.addEventListener("click", (e) => {
 textModeBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   if (drawTool === "text" && drawingMode) {
-    // Deactivate text — exit drawing mode
     disableDrawingMode();
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
@@ -373,6 +445,9 @@ textModeBtn.addEventListener("click", (e) => {
     textModeBtn.classList.add("active");
     penModeBtn.classList.remove("active");
     arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "";
     enableDrawingMode();
   }
@@ -485,6 +560,31 @@ const redrawCanvas = (canvas, dpr) => {
       const toY = toCanvasY(path.to.y);
 
       drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dpr);
+    } else if (path.type === "line") {
+      // Draw straight line (no arrowhead)
+      const fromX = toCanvasX(path.from.x);
+      const fromY = toCanvasY(path.from.y);
+      const toX = toCanvasX(path.to.x);
+      const toY = toCanvasY(path.to.y);
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+    } else if (path.type === "rect") {
+      // Draw solid (filled) rectangle
+      const x = toCanvasX(Math.min(path.from.x, path.to.x));
+      const y = toCanvasY(Math.min(path.from.y, path.to.y));
+      const w = toCanvasX(Math.max(path.from.x, path.to.x)) - x;
+      const h = toCanvasY(Math.max(path.from.y, path.to.y)) - y;
+      ctx.fillStyle = path.color;
+      ctx.fillRect(x, y, w, h);
+    } else if (path.type === "rectstroke") {
+      // Draw bordered (stroked) rectangle
+      const x = toCanvasX(Math.min(path.from.x, path.to.x));
+      const y = toCanvasY(Math.min(path.from.y, path.to.y));
+      const w = toCanvasX(Math.max(path.from.x, path.to.x)) - x;
+      const h = toCanvasY(Math.max(path.from.y, path.to.y)) - y;
+      ctx.strokeRect(x, y, w, h);
     } else {
       // Freehand path
       if (path.points.length < 2) continue;
@@ -698,7 +798,7 @@ const initDrawingCanvas = (drop) => {
 
     isDrawing = true;
 
-    if (drawTool === "arrow") {
+    if (drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke") {
       arrowStart = { x, y };
     } else {
       currentPath = {
@@ -753,6 +853,80 @@ const initDrawingCanvas = (drop) => {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       drawArrow(ctx, toCanvasX(arrowStart.x), toCanvasY(arrowStart.y), toCanvasX(x), toCanvasY(y), drawLineWidth * dpr);
+    } else if (drawTool === "line" && arrowStart) {
+      // Preview straight line
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+
+      const ctx = canvas.getContext("2d");
+      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+        const fitRect = getObjectFitRect(img);
+        contentOffsetX = fitRect.x;
+        contentOffsetY = fitRect.y;
+        contentWidth = fitRect.width;
+        contentHeight = fitRect.height;
+      }
+      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+
+      ctx.strokeStyle = drawColor;
+      ctx.lineWidth = drawLineWidth * dpr;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(arrowStart.x), toCanvasY(arrowStart.y));
+      ctx.lineTo(toCanvasX(x), toCanvasY(y));
+      ctx.stroke();
+    } else if (drawTool === "rect" && arrowStart) {
+      // Preview solid rectangle
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+
+      const ctx = canvas.getContext("2d");
+      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+        const fitRect = getObjectFitRect(img);
+        contentOffsetX = fitRect.x;
+        contentOffsetY = fitRect.y;
+        contentWidth = fitRect.width;
+        contentHeight = fitRect.height;
+      }
+      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+
+      const rx = toCanvasX(Math.min(arrowStart.x, x));
+      const ry = toCanvasY(Math.min(arrowStart.y, y));
+      const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
+      const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
+      ctx.fillStyle = drawColor;
+      ctx.fillRect(rx, ry, rw, rh);
+    } else if (drawTool === "rectstroke" && arrowStart) {
+      // Preview bordered rectangle
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+
+      const ctx = canvas.getContext("2d");
+      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+        const fitRect = getObjectFitRect(img);
+        contentOffsetX = fitRect.x;
+        contentOffsetY = fitRect.y;
+        contentWidth = fitRect.width;
+        contentHeight = fitRect.height;
+      }
+      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+
+      const rx = toCanvasX(Math.min(arrowStart.x, x));
+      const ry = toCanvasY(Math.min(arrowStart.y, y));
+      const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
+      const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
+      ctx.strokeStyle = drawColor;
+      ctx.lineWidth = drawLineWidth * dpr;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeRect(rx, ry, rw, rh);
     } else if (currentPath) {
       currentPath.points.push({ x, y });
 
@@ -792,7 +966,7 @@ const initDrawingCanvas = (drop) => {
     if (!isDrawing) return;
     isDrawing = false;
 
-    if (drawTool === "arrow" && arrowStart) {
+    if ((drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke") && arrowStart) {
       // Get final position
       const img = drop.querySelector("img");
       let x, y;
@@ -809,14 +983,14 @@ const initDrawingCanvas = (drop) => {
         y = (e.clientY - rect.top) / rect.height;
       }
 
-      // Only commit if the arrow has some length
+      // Only commit if the shape has some size
       const dx = x - arrowStart.x;
       const dy = y - arrowStart.y;
       if (Math.sqrt(dx * dx + dy * dy) > 0.005) {
         const data = canvasDataMap.get(canvas);
         if (data) {
           data.paths.push({
-            type: "arrow",
+            type: drawTool,
             color: drawColor,
             lineWidth: drawLineWidth,
             from: arrowStart,
@@ -908,6 +1082,28 @@ const redrawAllCanvasesForExport = (scale) => {
           const toX = path.to.x * canvas.width;
           const toY = path.to.y * canvas.height;
           drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dprNoImg);
+        } else if (path.type === "line") {
+          const fromX = path.from.x * canvas.width;
+          const fromY = path.from.y * canvas.height;
+          const toX = path.to.x * canvas.width;
+          const toY = path.to.y * canvas.height;
+          ctx.beginPath();
+          ctx.moveTo(fromX, fromY);
+          ctx.lineTo(toX, toY);
+          ctx.stroke();
+        } else if (path.type === "rect") {
+          const rx = Math.min(path.from.x, path.to.x) * canvas.width;
+          const ry = Math.min(path.from.y, path.to.y) * canvas.height;
+          const rw = Math.abs(path.to.x - path.from.x) * canvas.width;
+          const rh = Math.abs(path.to.y - path.from.y) * canvas.height;
+          ctx.fillStyle = path.color;
+          ctx.fillRect(rx, ry, rw, rh);
+        } else if (path.type === "rectstroke") {
+          const rx = Math.min(path.from.x, path.to.x) * canvas.width;
+          const ry = Math.min(path.from.y, path.to.y) * canvas.height;
+          const rw = Math.abs(path.to.x - path.from.x) * canvas.width;
+          const rh = Math.abs(path.to.y - path.from.y) * canvas.height;
+          ctx.strokeRect(rx, ry, rw, rh);
         } else {
           if (path.points.length < 2) continue;
           ctx.beginPath();
@@ -967,6 +1163,28 @@ const redrawAllCanvasesForExport = (scale) => {
         const toX = path.to.x * imgRect.width * dpr;
         const toY = path.to.y * imgRect.height * dpr;
         drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dpr);
+      } else if (path.type === "line") {
+        const fromX = path.from.x * imgRect.width * dpr;
+        const fromY = path.from.y * imgRect.height * dpr;
+        const toX = path.to.x * imgRect.width * dpr;
+        const toY = path.to.y * imgRect.height * dpr;
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.stroke();
+      } else if (path.type === "rect") {
+        const rx = Math.min(path.from.x, path.to.x) * imgRect.width * dpr;
+        const ry = Math.min(path.from.y, path.to.y) * imgRect.height * dpr;
+        const rw = Math.abs(path.to.x - path.from.x) * imgRect.width * dpr;
+        const rh = Math.abs(path.to.y - path.from.y) * imgRect.height * dpr;
+        ctx.fillStyle = path.color;
+        ctx.fillRect(rx, ry, rw, rh);
+      } else if (path.type === "rectstroke") {
+        const rx = Math.min(path.from.x, path.to.x) * imgRect.width * dpr;
+        const ry = Math.min(path.from.y, path.to.y) * imgRect.height * dpr;
+        const rw = Math.abs(path.to.x - path.from.x) * imgRect.width * dpr;
+        const rh = Math.abs(path.to.y - path.from.y) * imgRect.height * dpr;
+        ctx.strokeRect(rx, ry, rw, rh);
       } else {
         if (path.points.length < 2) continue;
         ctx.beginPath();
@@ -1735,6 +1953,18 @@ document.addEventListener("keydown", (e) => {
     case "a":
       // Enable arrow tool
       arrowModeBtn.click();
+      break;
+    case "l":
+      // Enable line tool
+      lineModeBtn.click();
+      break;
+    case "r":
+      // Enable solid rectangle tool
+      rectModeBtn.click();
+      break;
+    case "e":
+      // Enable bordered rectangle tool
+      rectstrokeModeBtn.click();
       break;
     case "t":
       // Enable text tool
