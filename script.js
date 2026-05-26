@@ -165,9 +165,14 @@ const attachDragTo = (img) => {
     const cell = e.target.closest(".grid-cell");
     const textArea = cell ? cell.querySelector("textarea") : null;
 
+    // Serialize drawing paths from the source cell's canvas
+    const canvas = cell ? cell.querySelector(".drawing-canvas") : null;
+    const drawingData = canvas && canvasDataMap.get(canvas) ? canvasDataMap.get(canvas).paths : [];
+
     e.dataTransfer.setData("text/plain", img.src);
     e.dataTransfer.setData("id", img.id);
     e.dataTransfer.setData("note", textArea ? textArea.value : "");
+    e.dataTransfer.setData("drawings", JSON.stringify(drawingData));
     e.dataTransfer.effectAllowed = "move";
   });
 };
@@ -867,6 +872,44 @@ const setupCell = (cell) => {
           if (srcCell) {
             const srcTextarea = srcCell.querySelector("textarea");
             if (srcTextarea) srcTextarea.value = "";
+          }
+        }
+      }
+
+      // Transfer drawing paths to destination canvas and clear source
+      const drawingsJson = e.dataTransfer.getData("drawings");
+      if (drawingsJson) {
+        try {
+          const paths = JSON.parse(drawingsJson);
+          const destCanvas = cell.querySelector(".drawing-canvas");
+          if (destCanvas && paths.length > 0) {
+            const destData = canvasDataMap.get(destCanvas);
+            if (destData) {
+              destData.paths = paths;
+              const dpr = window.devicePixelRatio || 1;
+              redrawCanvas(destCanvas, dpr);
+            }
+          }
+        } catch (err) {
+          // ignore invalid JSON
+        }
+
+        // Clear drawings from source cell
+        const srcImgForDrawing = draggedId
+          ? document.getElementById(draggedId)
+          : null;
+        if (srcImgForDrawing) {
+          const srcCell = srcImgForDrawing.closest(".grid-cell");
+          if (srcCell) {
+            const srcCanvas = srcCell.querySelector(".drawing-canvas");
+            if (srcCanvas) {
+              const srcData = canvasDataMap.get(srcCanvas);
+              if (srcData) {
+                srcData.paths = [];
+                const dpr = window.devicePixelRatio || 1;
+                redrawCanvas(srcCanvas, dpr);
+              }
+            }
           }
         }
       }
