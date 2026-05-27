@@ -249,7 +249,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
-let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", "eraser", or "text"
+let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", "eraser", "object-eraser", or "text"
 let drawFontSize = 13;
 
 const enableDrawingMode = () => {
@@ -277,6 +277,7 @@ const ovalModeBtn = document.getElementById("oval-mode-btn");
 const ovalfillModeBtn = document.getElementById("ovalfill-mode-btn");
 const dotModeBtn = document.getElementById("dot-mode-btn");
 const eraserModeBtn = document.getElementById("eraser-mode-btn");
+const objectEraserModeBtn = document.getElementById("object-eraser-mode-btn");
 const textModeBtn = document.getElementById("text-mode-btn");
 const drawFontSizeInput = document.getElementById("draw-font-size");
 
@@ -294,6 +295,7 @@ document.addEventListener("keydown", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -351,6 +353,7 @@ penModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -376,6 +379,7 @@ arrowModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -401,6 +405,7 @@ lineModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -426,6 +431,7 @@ rectModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -451,6 +457,7 @@ rectstrokeModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -476,6 +483,7 @@ ovalModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -501,6 +509,7 @@ ovalfillModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -526,6 +535,7 @@ dotModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -539,6 +549,7 @@ eraserModeBtn.addEventListener("click", (e) => {
   if (drawTool === "eraser" && drawingMode) {
     disableDrawingMode();
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     document.body.classList.remove("eraser-tool");
   } else {
     drawTool = "eraser";
@@ -551,6 +562,34 @@ eraserModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    document.body.classList.add("eraser-tool");
+    enableDrawingMode();
+  }
+});
+
+// Object eraser mode toggle — removes whole shapes on click
+objectEraserModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "object-eraser" && drawingMode) {
+    disableDrawingMode();
+    objectEraserModeBtn.classList.remove("active");
+    document.body.classList.remove("eraser-tool");
+  } else {
+    drawTool = "object-eraser";
+    objectEraserModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -579,6 +618,7 @@ textModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "";
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -902,6 +942,83 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
   });
 };
 
+// Hit-test a normalized point (x, y) against a path to determine if the click is "on" it.
+// Returns true if the point is close enough to the path to count as a hit.
+const hitTestPath = (path, x, y, threshold = 0.02) => {
+  if (path.type === "text") {
+    // Approximate text bounding box
+    const fontSize = (path.fontSize || 13) / 500; // rough normalized size
+    const lines = path.text.split("\n");
+    const width = Math.max(0.05, lines.reduce((max, l) => Math.max(max, l.length * fontSize * 0.6), 0));
+    const height = lines.length * fontSize * 1.3;
+    return (
+      x >= path.position.x - threshold &&
+      x <= path.position.x + width + threshold &&
+      y >= path.position.y - threshold &&
+      y <= path.position.y + height + threshold
+    );
+  }
+
+  if (path.type === "dot") {
+    const dx = x - path.position.x;
+    const dy = y - path.position.y;
+    return Math.sqrt(dx * dx + dy * dy) < threshold * 2;
+  }
+
+  if (path.type === "arrow" || path.type === "line") {
+    return distToSegment(x, y, path.from.x, path.from.y, path.to.x, path.to.y) < threshold;
+  }
+
+  if (path.type === "rect" || path.type === "rectstroke" || path.type === "oval" || path.type === "ovalfill") {
+    const minX = Math.min(path.from.x, path.to.x);
+    const maxX = Math.max(path.from.x, path.to.x);
+    const minY = Math.min(path.from.y, path.to.y);
+    const maxY = Math.max(path.from.y, path.to.y);
+
+    if (path.type === "rect" || path.type === "ovalfill") {
+      // Filled shapes — hit if inside
+      return x >= minX - threshold && x <= maxX + threshold && y >= minY - threshold && y <= maxY + threshold;
+    }
+    // Stroked shapes — hit if near the border
+    const inside = x >= minX - threshold && x <= maxX + threshold && y >= minY - threshold && y <= maxY + threshold;
+    const deepInside = x >= minX + threshold && x <= maxX - threshold && y >= minY + threshold && y <= maxY - threshold;
+    return inside && !deepInside;
+  }
+
+  if (path.type === "eraser" || !path.type || path.type === "freehand") {
+    // Freehand or eraser — check distance to any segment
+    if (!path.points || path.points.length < 2) {
+      if (path.points && path.points.length === 1) {
+        const dx = x - path.points[0].x;
+        const dy = y - path.points[0].y;
+        return Math.sqrt(dx * dx + dy * dy) < threshold;
+      }
+      return false;
+    }
+    for (let i = 1; i < path.points.length; i++) {
+      if (distToSegment(x, y, path.points[i - 1].x, path.points[i - 1].y, path.points[i].x, path.points[i].y) < threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  return false;
+};
+
+// Distance from point (px, py) to line segment (x1,y1)-(x2,y2)
+const distToSegment = (px, py, x1, y1, x2, y2) => {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
+};
+
 const initDrawingCanvas = (drop) => {
   const canvas = document.createElement("canvas");
   canvas.className = "drawing-canvas";
@@ -986,6 +1103,23 @@ const initDrawingCanvas = (drop) => {
         });
         const dpr = window.devicePixelRatio || 1;
         redrawCanvas(canvas, dpr);
+      }
+      return;
+    }
+
+    if (drawTool === "object-eraser") {
+      // Remove the topmost path that the click hits
+      const data = canvasDataMap.get(canvas);
+      if (data && data.paths.length > 0) {
+        // Search from top (last) to bottom (first) so we remove the topmost hit
+        for (let i = data.paths.length - 1; i >= 0; i--) {
+          if (hitTestPath(data.paths[i], x, y)) {
+            data.paths.splice(i, 1);
+            const dpr = window.devicePixelRatio || 1;
+            redrawCanvas(canvas, dpr);
+            break;
+          }
+        }
       }
       return;
     }
@@ -2424,6 +2558,10 @@ document.addEventListener("keydown", (e) => {
     case "e":
       // Enable eraser tool
       eraserModeBtn.click();
+      break;
+    case "E":
+      // Enable object eraser tool
+      objectEraserModeBtn.click();
       break;
     case "o":
       // Enable oval tool
