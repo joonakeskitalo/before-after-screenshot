@@ -1881,6 +1881,10 @@ gridZoomInput.addEventListener("input", (e) => {
   applyGridZoom(parseInt(e.target.value));
 });
 
+gridZoomInput.addEventListener("change", () => {
+  gridZoomInput.blur();
+});
+
 const setColors = (e) => {
   const [background, text] = e.value.split(";");
   root.style.setProperty("--background-color", background);
