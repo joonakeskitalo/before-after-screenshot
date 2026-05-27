@@ -1026,15 +1026,26 @@ const redrawCanvas = (canvas, dpr) => {
   let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
   if (drop && img && img.src && img.style.display !== "none" && img.naturalWidth) {
     const fitRect = getObjectFitRect(img);
-    contentOffsetX = fitRect.x;
-    contentOffsetY = fitRect.y;
+    // getObjectFitRect returns offsets relative to the img element's box.
+    // The canvas covers the drop's content area (inside border), so we need
+    // the img element's offset relative to the canvas to correctly position drawings.
+    const canvasRect = canvas.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+    const imgOffsetX = imgRect.left - canvasRect.left;
+    const imgOffsetY = imgRect.top - canvasRect.top;
+    contentOffsetX = imgOffsetX + fitRect.x;
+    contentOffsetY = imgOffsetY + fitRect.y;
     contentWidth = fitRect.width;
     contentHeight = fitRect.height;
   }
 
+  // Scale line widths proportionally to zoom so drawings maintain their
+  // relative size to the image (same proportion as at 100% zoom)
+  const zoomScale = gridZoom / 100;
+
   for (const path of data.paths) {
     ctx.strokeStyle = path.color;
-    ctx.lineWidth = path.lineWidth * dpr;
+    ctx.lineWidth = path.lineWidth * zoomScale * dpr;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
@@ -1043,7 +1054,7 @@ const redrawCanvas = (canvas, dpr) => {
 
     if (path.type === "text") {
       // Draw text annotation (multiline support)
-      const fontSize = (path.fontSize || 13) * dpr;
+      const fontSize = (path.fontSize || 13) * zoomScale * dpr;
       const lineHeight = fontSize * 1.3;
       ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
       ctx.textBaseline = "top";
@@ -1053,7 +1064,7 @@ const redrawCanvas = (canvas, dpr) => {
       // Measure widest line for background
       const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
       const totalHeight = fontSize + (lines.length - 1) * lineHeight;
-      const padding = 4 * dpr;
+      const padding = 4 * zoomScale * dpr;
       // Draw semi-transparent background
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       const radius = fontSize * 0.2;
@@ -1072,7 +1083,7 @@ const redrawCanvas = (canvas, dpr) => {
       const toX = toCanvasX(path.to.x);
       const toY = toCanvasY(path.to.y);
 
-      drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dpr);
+      drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * zoomScale * dpr);
     } else if (path.type === "line") {
       // Draw straight line (no arrowhead)
       const fromX = toCanvasX(path.from.x);
@@ -1121,7 +1132,7 @@ const redrawCanvas = (canvas, dpr) => {
       // Draw a small filled circle at the position with opacity
       const cx = toCanvasX(path.position.x);
       const cy = toCanvasY(path.position.y);
-      const radius = (path.lineWidth + 4) * dpr;
+      const radius = (path.lineWidth + 4) * zoomScale * dpr;
       ctx.globalAlpha = 0.7;
       ctx.fillStyle = path.color;
       ctx.beginPath();
@@ -1134,7 +1145,7 @@ const redrawCanvas = (canvas, dpr) => {
       ctx.save();
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
-      ctx.lineWidth = (path.lineWidth + 10) * dpr;
+      ctx.lineWidth = (path.lineWidth + 10) * zoomScale * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
@@ -1385,12 +1396,15 @@ const initDrawingCanvas = (drop) => {
 
   // Resize canvas to match drop zone
   const resizeCanvas = () => {
-    const rect = drop.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = rect.width + "px";
-    canvas.style.height = rect.height + "px";
+    // Use clientWidth/clientHeight to get the inner size (excluding border)
+    // which matches what position:absolute with top:0;left:0;width:100%;height:100% covers
+    const w = drop.clientWidth;
+    const h = drop.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
     redrawCanvas(canvas, dpr);
   };
 
@@ -1545,19 +1559,22 @@ const initDrawingCanvas = (drop) => {
       let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const fitRect = getObjectFitRect(img);
-        contentOffsetX = fitRect.x;
-        contentOffsetY = fitRect.y;
+        const canvasRect = canvas.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
         contentWidth = fitRect.width;
         contentHeight = fitRect.height;
       }
       const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
       const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
 
+      const zs = gridZoom / 100;
       ctx.strokeStyle = drawColor;
-      ctx.lineWidth = drawLineWidth * dpr;
+      ctx.lineWidth = drawLineWidth * zs * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      drawArrow(ctx, toCanvasX(arrowStart.x), toCanvasY(arrowStart.y), toCanvasX(x), toCanvasY(y), drawLineWidth * dpr);
+      drawArrow(ctx, toCanvasX(arrowStart.x), toCanvasY(arrowStart.y), toCanvasX(x), toCanvasY(y), drawLineWidth * zs * dpr);
     } else if (drawTool === "line" && arrowStart) {
       // Preview straight line
       const dpr = window.devicePixelRatio || 1;
@@ -1567,8 +1584,10 @@ const initDrawingCanvas = (drop) => {
       let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const fitRect = getObjectFitRect(img);
-        contentOffsetX = fitRect.x;
-        contentOffsetY = fitRect.y;
+        const canvasRect = canvas.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
         contentWidth = fitRect.width;
         contentHeight = fitRect.height;
       }
@@ -1576,7 +1595,7 @@ const initDrawingCanvas = (drop) => {
       const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
 
       ctx.strokeStyle = drawColor;
-      ctx.lineWidth = drawLineWidth * dpr;
+      ctx.lineWidth = drawLineWidth * (gridZoom / 100) * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
@@ -1592,8 +1611,10 @@ const initDrawingCanvas = (drop) => {
       let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const fitRect = getObjectFitRect(img);
-        contentOffsetX = fitRect.x;
-        contentOffsetY = fitRect.y;
+        const canvasRect = canvas.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
         contentWidth = fitRect.width;
         contentHeight = fitRect.height;
       }
@@ -1615,8 +1636,10 @@ const initDrawingCanvas = (drop) => {
       let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const fitRect = getObjectFitRect(img);
-        contentOffsetX = fitRect.x;
-        contentOffsetY = fitRect.y;
+        const canvasRect = canvas.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
         contentWidth = fitRect.width;
         contentHeight = fitRect.height;
       }
@@ -1628,7 +1651,7 @@ const initDrawingCanvas = (drop) => {
       const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
       const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
       ctx.strokeStyle = drawColor;
-      ctx.lineWidth = drawLineWidth * dpr;
+      ctx.lineWidth = drawLineWidth * (gridZoom / 100) * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.strokeRect(rx, ry, rw, rh);
@@ -1641,8 +1664,10 @@ const initDrawingCanvas = (drop) => {
       let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const fitRect = getObjectFitRect(img);
-        contentOffsetX = fitRect.x;
-        contentOffsetY = fitRect.y;
+        const canvasRect = canvas.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
         contentWidth = fitRect.width;
         contentHeight = fitRect.height;
       }
@@ -1654,7 +1679,7 @@ const initDrawingCanvas = (drop) => {
       const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
       const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
       ctx.strokeStyle = drawColor;
-      ctx.lineWidth = drawLineWidth * dpr;
+      ctx.lineWidth = drawLineWidth * (gridZoom / 100) * dpr;
       ctx.beginPath();
       ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
       ctx.stroke();
@@ -1667,8 +1692,10 @@ const initDrawingCanvas = (drop) => {
       let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const fitRect = getObjectFitRect(img);
-        contentOffsetX = fitRect.x;
-        contentOffsetY = fitRect.y;
+        const canvasRect = canvas.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
         contentWidth = fitRect.width;
         contentHeight = fitRect.height;
       }
@@ -1698,8 +1725,10 @@ const initDrawingCanvas = (drop) => {
         let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
         if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
           const fitRect = getObjectFitRect(img);
-          contentOffsetX = fitRect.x;
-          contentOffsetY = fitRect.y;
+          const canvasRect = canvas.getBoundingClientRect();
+          const imgRect = img.getBoundingClientRect();
+          contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+          contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
           contentWidth = fitRect.width;
           contentHeight = fitRect.height;
         }
@@ -1710,10 +1739,10 @@ const initDrawingCanvas = (drop) => {
           ctx.save();
           ctx.globalCompositeOperation = "destination-out";
           ctx.strokeStyle = "rgba(0,0,0,1)";
-          ctx.lineWidth = (currentPath.lineWidth + 8) * dpr;
+          ctx.lineWidth = (currentPath.lineWidth + 8) * (gridZoom / 100) * dpr;
         } else {
           ctx.strokeStyle = currentPath.color;
-          ctx.lineWidth = currentPath.lineWidth * dpr;
+          ctx.lineWidth = currentPath.lineWidth * (gridZoom / 100) * dpr;
         }
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -2089,12 +2118,13 @@ const restoreAllCanvases = () => {
     canvas.style.display = "";
 
     // Resize to current display dimensions
-    const rect = drop.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = rect.width + "px";
-    canvas.style.height = rect.height + "px";
+    const w = drop.clientWidth;
+    const h = drop.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
     redrawCanvas(canvas, dpr);
 
     // Reconnect ResizeObserver
