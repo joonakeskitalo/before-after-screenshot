@@ -700,6 +700,13 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     background-color: #f0f0f0;
 }
 
+/* Focused cell highlight for keyboard navigation */
+.grid-cell.keyboard-focused {
+    outline: 2px solid #4f6ef7;
+    outline-offset: -2px;
+    border-radius: 6px;
+}
+
 /* Swap animation */
 .grid-cell.swap-animating {
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);

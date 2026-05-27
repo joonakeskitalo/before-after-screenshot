@@ -15,6 +15,9 @@ const selectedRows = new Set();
 // Track filename visibility
 let showFilenames = false;
 
+// Track keyboard-focused grid cell
+let focusedCellIndex = -1;
+
 const setElementWidths = (arr, size) => {
   const images = cardsEl.querySelectorAll("img");
   const drops = cardsEl.querySelectorAll("div.drop");
@@ -2546,6 +2549,8 @@ const getAdjacentCell = (cell, direction) => {
 
   if (direction === "left" && index > 0) return cells[index - 1];
   if (direction === "right" && index < cells.length - 1) return cells[index + 1];
+  if (direction === "up" && index - gridCols >= 0) return cells[index - gridCols];
+  if (direction === "down" && index + gridCols < cells.length) return cells[index + gridCols];
   return null;
 };
 
@@ -2606,6 +2611,9 @@ const createCell = (row, col) => {
 };
 
 const buildGrid = () => {
+  // Clear keyboard focus
+  focusedCellIndex = -1;
+
   // Save existing cell data
   const existingData = [];
   const existingCells = gridEl.querySelectorAll(".grid-cell");
@@ -3728,11 +3736,81 @@ insertAllBtn.addEventListener("click", (e) => {
   updateStagingInstruction();
 });
 
+// --- Keyboard Navigation for Grid Cells ---
+
+const setFocusedCell = (index) => {
+  const cells = [...gridEl.querySelectorAll(".grid-cell")];
+  // Remove previous focus
+  if (focusedCellIndex >= 0 && focusedCellIndex < cells.length) {
+    cells[focusedCellIndex].classList.remove("keyboard-focused");
+  }
+  focusedCellIndex = index;
+  if (focusedCellIndex >= 0 && focusedCellIndex < cells.length) {
+    cells[focusedCellIndex].classList.add("keyboard-focused");
+    // Scroll into view if needed
+    cells[focusedCellIndex].scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+};
+
+const clearFocusedCell = () => {
+  const cells = [...gridEl.querySelectorAll(".grid-cell")];
+  if (focusedCellIndex >= 0 && focusedCellIndex < cells.length) {
+    cells[focusedCellIndex].classList.remove("keyboard-focused");
+  }
+  focusedCellIndex = -1;
+};
+
+const navigateGrid = (direction) => {
+  const cells = [...gridEl.querySelectorAll(".grid-cell")];
+  if (cells.length === 0) return;
+
+  // If no cell is focused, start at the first cell
+  if (focusedCellIndex < 0) {
+    setFocusedCell(0);
+    return;
+  }
+
+  const current = cells[focusedCellIndex];
+  const target = getAdjacentCell(current, direction);
+  if (target) {
+    const targetIndex = cells.indexOf(target);
+    setFocusedCell(targetIndex);
+  }
+};
+
+const moveGridItem = (direction) => {
+  const cells = [...gridEl.querySelectorAll(".grid-cell")];
+  if (cells.length === 0 || focusedCellIndex < 0) return;
+
+  const current = cells[focusedCellIndex];
+  const target = getAdjacentCell(current, direction);
+  if (target) {
+    swapCells(current, target);
+    // Move focus to the target cell (where our content now lives)
+    const targetIndex = cells.indexOf(target);
+    setFocusedCell(targetIndex);
+  }
+};
+
 // --- Hotkeys ---
 document.addEventListener("keydown", (e) => {
   // Skip hotkeys when typing in an input, textarea, or contenteditable
   const tag = e.target.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+
+  // Arrow key navigation for grid cells (works even in drawing mode)
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+    const direction = e.key.replace("Arrow", "").toLowerCase(); // "up", "down", "left", "right"
+    if (e.shiftKey) {
+      // Shift+Arrow: move/swap the focused cell's content
+      moveGridItem(direction);
+    } else {
+      // Arrow: navigate focus between cells
+      navigateGrid(direction);
+    }
+    e.preventDefault();
+    return;
+  }
 
   // Skip hotkeys when Shift is used as a drawing modifier (e.g. constraining shapes)
   // Allow Shift+1/2/3 (!, ", #) through for thickness hotkeys
@@ -3743,6 +3821,10 @@ document.addEventListener("keydown", (e) => {
   const gridRowsInput = document.getElementById("grid-rows");
 
   switch (e.key) {
+    case "Escape":
+      // Clear grid cell focus
+      clearFocusedCell();
+      break;
     case "b":
       // Enable pen tool
       penModeBtn.click();
