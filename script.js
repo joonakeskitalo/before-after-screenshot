@@ -2167,7 +2167,6 @@ const buildRowControls = () => {
     handle.dataset.row = r;
     handle.title = `Drag to reorder row ${r + 1}`;
     handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="4" cy="3" r="1.2" fill="currentColor"/><circle cx="8" cy="3" r="1.2" fill="currentColor"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="8" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="9" r="1.2" fill="currentColor"/><circle cx="8" cy="9" r="1.2" fill="currentColor"/></svg>`;
-    handle.style.gridRow = `${r * 2 + 2}`;
 
     handle.addEventListener("dragstart", (e) => {
       const row = parseInt(handle.dataset.row);
@@ -2177,6 +2176,25 @@ const buildRowControls = () => {
       handle.classList.add("dragging");
       highlightRow(row, true);
     });
+
+    // Delete row button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-row-btn";
+    deleteBtn.dataset.row = r;
+    deleteBtn.title = `Delete row ${r + 1}`;
+    deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9" y1="3" x2="3" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteRowAt(parseInt(deleteBtn.dataset.row));
+    });
+
+    // Wrapper to stack handle and delete button vertically
+    const rowControlGroup = document.createElement("div");
+    rowControlGroup.className = "row-control-group";
+    rowControlGroup.style.gridRow = `${r * 2 + 2}`;
+    rowControlGroup.appendChild(handle);
+    rowControlGroup.appendChild(deleteBtn);
+    controlsContainer.appendChild(rowControlGroup);
 
     handle.addEventListener("dragend", () => {
       handle.classList.remove("dragging");
@@ -2212,8 +2230,6 @@ const buildRowControls = () => {
       clearRowHighlights();
       clearRowDropTarget();
     });
-
-    controlsContainer.appendChild(handle);
   }
 
   // Final add-row button after the last row
@@ -2278,6 +2294,42 @@ const insertRowAt = (insertIndex) => {
   document.getElementById("grid-rows").value = gridRows;
 
   // Rebuild grid with shifted data
+  gridEl.innerHTML = "";
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(${Math.round(350 * gridZoom / 100)}px, 1fr))`;
+  gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const cell = createCell(r, c);
+      gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const deleteRowAt = (rowIndex) => {
+  if (gridRows <= 1) return; // Don't delete the last row
+
+  const allData = collectGridData();
+
+  // Remove data for the deleted row and shift rows above it down
+  const newData = allData
+    .filter((d) => d.row !== rowIndex)
+    .map((d) => ({
+      ...d,
+      row: d.row > rowIndex ? d.row - 1 : d.row,
+    }));
+
+  gridRows--;
+  document.getElementById("grid-rows").value = gridRows;
+
+  // Rebuild grid
   gridEl.innerHTML = "";
   gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(${Math.round(350 * gridZoom / 100)}px, 1fr))`;
   gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;

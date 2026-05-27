@@ -750,3 +750,49 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     opacity: 1;
     box-shadow: 0 0 6px rgba(79, 110, 247, 0.3);
 }
+
+/* Row control group — stacks drag handle and delete button vertically */
+.row-control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    align-self: center;
+    justify-self: center;
+}
+
+/* Delete row button */
+.delete-row-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    padding: 0;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #bbb;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    box-shadow: none;
+    opacity: 0;
+}
+
+.row-controls:hover .delete-row-btn {
+    opacity: 1;
+}
+
+.delete-row-btn:hover {
+    color: #e53e3e;
+    background-color: rgba(229, 62, 62, 0.1);
+    box-shadow: none;
+    opacity: 1;
+}
+
+.delete-row-btn:active {
+    background-color: rgba(229, 62, 62, 0.2);
+    box-shadow: none;
+}
