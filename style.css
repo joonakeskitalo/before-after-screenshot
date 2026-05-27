@@ -20,7 +20,7 @@ body {
     display: block;
     box-sizing: border-box;
     padding-bottom: 256px;
-    padding-top: 42px;
+    padding-top: 80px;
     height: 100vh;
     overflow: auto;
 
@@ -42,12 +42,32 @@ body {
     background-color: #ffffffdf;
     padding: 6px 12px;
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 6px;
     border-bottom: 1px solid oklch(92.8% 0.006 264.531);
     color: #24292e;
+}
+
+.toolbar-row-1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     overflow-x: auto;
     overflow-y: hidden;
+}
+
+/* Thin scrollbar for toolbar row overflow */
+.toolbar-row-1::-webkit-scrollbar {
+    height: 3px;
+}
+
+.toolbar-row-1::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+}
+
+.toolbar-row-1::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .toolbar-title {
@@ -64,11 +84,35 @@ body {
     flex-shrink: 0;
 }
 
+.toolbar-drawing-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.toolbar-drawing-controls::-webkit-scrollbar {
+    height: 3px;
+}
+
+.toolbar-drawing-controls::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+}
+
+.toolbar-drawing-controls::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
 .toolbar-copy {
     display: flex;
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 .toolbar-label {
@@ -78,20 +122,6 @@ body {
     gap: 3px;
     opacity: 0.8;
     white-space: nowrap;
-}
-
-/* Thin scrollbar for toolbar overflow */
-.toolbar::-webkit-scrollbar {
-    height: 3px;
-}
-
-.toolbar::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 2px;
-}
-
-.toolbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
 }
 
 .toolbar-label input[type="number"] {
