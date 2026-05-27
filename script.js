@@ -582,11 +582,27 @@ let drawLineWidth = 2;
 let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", "eraser", "object-eraser", or "text"
 let drawFontSize = 13;
 
+// Generate a cursor that previews the current line width
+const updateDrawingCursor = () => {
+  if (!drawingMode) return;
+  // Don't override cursor for text or eraser tools
+  if (drawTool === "text" || drawTool === "eraser" || drawTool === "object-eraser") return;
+
+  const size = Math.max(drawLineWidth + 4, 8); // min 8px so it's visible
+  const half = size / 2;
+  const radius = drawLineWidth / 2;
+  const encodedColor = encodeURIComponent(drawColor);
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'><circle cx='${half}' cy='${half}' r='${radius}' fill='${encodedColor}'/><circle cx='${half}' cy='${half}' r='${half - 0.5}' fill='none' stroke='%23666' stroke-width='0.5'/></svg>`;
+  const cursor = `url("data:image/svg+xml,${svg}") ${half} ${half}, crosshair`;
+  document.body.style.setProperty("--drawing-cursor", cursor);
+};
+
 const enableDrawingMode = () => {
   drawingMode = true;
   document.body.classList.add("drawing-mode");
   if (drawTool === "text") document.body.classList.add("text-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
+  updateDrawingCursor();
 };
 
 const disableDrawingMode = () => {
@@ -595,6 +611,7 @@ const disableDrawingMode = () => {
   document.body.classList.remove("text-tool");
   document.body.classList.remove("eraser-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
+  document.body.style.removeProperty("--drawing-cursor");
 };
 
 // Get tool button references early so event listeners can use them
@@ -664,6 +681,7 @@ const updatePresetColorSelection = () => {
 drawColorInput.addEventListener("input", (e) => {
   drawColor = e.target.value;
   updatePresetColorSelection();
+  updateDrawingCursor();
 });
 
 document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => {
@@ -674,6 +692,7 @@ document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => 
       b.classList.remove("active");
     });
     btn.classList.add("active");
+    updateDrawingCursor();
   });
 });
 
@@ -683,6 +702,7 @@ document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn").forEach
     drawColor = btn.dataset.color;
     drawColorInput.value = drawColor;
     updatePresetColorSelection();
+    updateDrawingCursor();
   });
 });
 

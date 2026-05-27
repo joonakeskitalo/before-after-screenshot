@@ -572,14 +572,17 @@ select {
 .drawing-canvas.active {
     pointer-events: auto;
     cursor: crosshair;
+    cursor: var(--drawing-cursor, crosshair);
 }
 
 body.drawing-mode {
     cursor: crosshair;
+    cursor: var(--drawing-cursor, crosshair);
 }
 
 body.drawing-mode .grid-cell .drop {
     cursor: crosshair;
+    cursor: var(--drawing-cursor, crosshair);
 }
 
 /* Text tool cursor */
