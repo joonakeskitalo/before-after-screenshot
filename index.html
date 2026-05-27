@@ -59,14 +59,22 @@
               <div class="toolbar-divider"></div>
 
               <select id="copy-scale">
-                <option value="1">100%</option>
-                <option value="0.8">80%</option>
-                <option value="0.5">50%</option>
-                <option value="0.4" selected>40%</option>
-                <option value="0.3">30%</option>
-                <option value="0.2">20%</option>
-                <option value="0.1">10%</option>
-                <option value="grid">Existing size</option>
+                <optgroup label="Image size">
+                  <option value="1">100%</option>
+                  <option value="0.8">80%</option>
+                  <option value="0.5">50%</option>
+                  <option value="0.4" selected>40%</option>
+                  <option value="0.3">30%</option>
+                  <option value="0.2">20%</option>
+                  <option value="0.1">10%</option>
+                  <option value="grid">Grid size</option>
+                </optgroup>
+                <optgroup label="Output scale">
+                  <option value="output-1">100%</option>
+                  <option value="output-0.75">75%</option>
+                  <option value="output-0.5">50%</option>
+                  <option value="output-0.25">25%</option>
+                </optgroup>
               </select>
               <button onclick="copyWithScale()">Copy</button>
               <button onclick="copySelectedRows()" id="copy-selected-btn" title="Copy only selected rows">Copy Selected</button>

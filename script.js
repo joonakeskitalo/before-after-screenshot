@@ -173,6 +173,9 @@ const copyWithScale = () => {
   const value = select.value;
   if (value === "grid") {
     copyAsGridSize();
+  } else if (value.startsWith("output-")) {
+    const outputScale = parseFloat(value.replace("output-", ""));
+    copyAsImageWithOutputScale(outputScale);
   } else {
     const scale = parseFloat(value);
     if (scale >= 1) {
@@ -181,6 +184,141 @@ const copyWithScale = () => {
       copyAsImage(true, scale);
     }
   }
+};
+
+// Export at full native resolution, then scale the entire output image down
+const copyAsImageWithOutputScale = async (outputScale) => {
+  try {
+    const baseMultiplier = 2; // Render at 2x grid size for higher resolution
+
+    // Capture current rendered sizes before modifying styles
+    const allImages = cardsEl.querySelectorAll("img");
+    const imageSizes = [];
+    allImages.forEach((img) => {
+      if (img.src && img.style.display !== "none") {
+        imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
+      }
+    });
+
+    root.style.setProperty("--border", `unset`);
+    gridEl.style.outline = "none";
+
+    const allCells = gridEl.querySelectorAll(".grid-cell");
+    allCells.forEach((cell) => {
+      cell.style.overflow = "visible";
+    });
+
+    const allDrops = cardsEl.querySelectorAll(".drop");
+    allDrops.forEach((drop) => {
+      drop.style.overflow = "visible";
+    });
+
+    // Lock each image to 2x its current display size for higher resolution capture
+    imageSizes.forEach(({ img, width, height }) => {
+      img.style.width = (width * baseMultiplier) + "px";
+      img.style.height = (height * baseMultiplier) + "px";
+      img.style.objectFit = "contain";
+      img.style.maxHeight = "unset";
+    });
+
+    // Scale gap and font to match the 2x layout
+    const scale = gridZoom / 100;
+    const gap = Math.round(48 * scale * baseMultiplier);
+    root.style.setProperty("--gap", `${gap}px`);
+    const fontSize = Math.round(15 * scale * baseMultiplier);
+    root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+
+    // Collapse empty drops
+    allDrops.forEach((drop) => {
+      const img = drop.querySelector("img");
+      if (!img || !img.src || img.style.display === "none") {
+        drop.style.width = "32px";
+        drop.style.height = "32px";
+      }
+    });
+
+    gridEl.style.gridTemplateRows = "auto";
+    gridEl.style.gridTemplateColumns = `repeat(${gridCols}, auto)`;
+
+    const padding = Math.round(32 * baseMultiplier);
+    cardsEl.style.padding = `8px ${padding}px`;
+    cardsEl.style.width = "fit-content";
+
+    redrawAllCanvasesForExport(baseMultiplier);
+
+    const blob = await domtoimage.toBlob(cardsEl, {
+      filter: (node) => {
+        if (node.tagName === "IMG" && !node.src.startsWith("data:")) return false;
+        if (node.tagName === "SPAN") return false;
+        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
+        if (node.classList && node.classList.contains("drawing-text-input")) return false;
+        if (node.classList && node.classList.contains("row-controls")) return false;
+        if (node.classList && node.classList.contains("row-select-cb")) return false;
+        if (node.classList && node.classList.contains("grid-cell-filename") && !showFilenames) return false;
+        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
+        return true;
+      },
+    });
+
+    // Scale the output blob down using a canvas
+    const scaledBlob = await scaleBlob(blob, outputScale);
+
+    navigator.clipboard.write([
+      new ClipboardItem({
+        "image/png": scaledBlob,
+      }),
+    ]);
+
+    // Restore all styles
+    allCells.forEach((cell) => {
+      cell.style.overflow = null;
+    });
+
+    allImages.forEach((img) => {
+      img.style.objectFit = null;
+      img.style.height = null;
+      img.style.maxHeight = null;
+      img.style.width = null;
+    });
+
+    allDrops.forEach((drop) => {
+      drop.style.overflow = null;
+      drop.style.height = null;
+      drop.style.width = null;
+    });
+
+    cardsEl.style.padding = "16px";
+    cardsEl.style.width = null;
+    gridEl.style.outline = null;
+    gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+    root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
+
+    applyGridZoom(gridZoom);
+    restoreAllCanvases();
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+// Utility: scale an image blob by a factor, returns a new PNG blob
+const scaleBlob = (blob, scale) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((b) => {
+        URL.revokeObjectURL(img.src);
+        resolve(b);
+      }, "image/png");
+    };
+    img.src = URL.createObjectURL(blob);
+  });
 };
 
 const copySelectedRows = () => {
