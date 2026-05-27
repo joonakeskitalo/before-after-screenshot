@@ -9,6 +9,9 @@ const elementsToAdjustWidth = [cardsEl, content];
 let gridCols = 3;
 let gridRows = 1;
 
+// Track selected rows for selective export
+const selectedRows = new Set();
+
 const setElementWidths = (arr, size) => {
   const images = cardsEl.querySelectorAll("img");
   const drops = cardsEl.querySelectorAll("div.drop");
@@ -113,6 +116,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
         if (node.classList && node.classList.contains("drawing-text-input")) return false;
         if (node.classList && node.classList.contains("row-controls")) return false;
+        if (node.classList && node.classList.contains("row-select-cb")) return false;
         if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
       },
@@ -167,6 +171,55 @@ const copyWithScale = () => {
     copyAsImage(false);
   } else {
     copyAsImage(true, scale);
+  }
+};
+
+const copySelectedRows = () => {
+  if (selectedRows.size === 0) {
+    // Nothing selected — fall back to copying all
+    copyWithScale();
+    return;
+  }
+
+  // Hide unselected rows, export, then restore
+  const allCells = gridEl.querySelectorAll(".grid-cell");
+  const hiddenCells = [];
+
+  allCells.forEach((cell) => {
+    const row = parseInt(cell.dataset.row);
+    if (!selectedRows.has(row)) {
+      cell.style.display = "none";
+      hiddenCells.push(cell);
+    }
+  });
+
+  // Temporarily adjust grid rows to only show selected count
+  const originalRows = gridEl.style.gridTemplateRows;
+  gridEl.style.gridTemplateRows = `repeat(${selectedRows.size}, 1fr)`;
+
+  const select = document.getElementById("copy-scale");
+  const scale = parseFloat(select.value);
+
+  const doExport = scale >= 1 ? copyAsImage(false) : copyAsImage(true, scale);
+
+  // copyAsImage is async — wait for it to finish then restore
+  Promise.resolve(doExport).finally(() => {
+    hiddenCells.forEach((cell) => {
+      cell.style.display = "";
+    });
+    gridEl.style.gridTemplateRows = originalRows;
+  });
+};
+
+const updateCopySelectedBtn = () => {
+  const btn = document.getElementById("copy-selected-btn");
+  if (!btn) return;
+  if (selectedRows.size > 0) {
+    btn.textContent = `Copy Selected (${selectedRows.size})`;
+    btn.disabled = false;
+  } else {
+    btn.textContent = "Copy Selected";
+    btn.disabled = false;
   }
 };
 
@@ -2188,10 +2241,28 @@ const buildRowControls = () => {
       deleteRowAt(parseInt(deleteBtn.dataset.row));
     });
 
-    // Wrapper to stack handle and delete button vertically
+    // Row selection checkbox
+    const selectCb = document.createElement("input");
+    selectCb.type = "checkbox";
+    selectCb.className = "row-select-cb";
+    selectCb.dataset.row = r;
+    selectCb.title = `Select row ${r + 1} for export`;
+    selectCb.checked = selectedRows.has(r);
+    selectCb.addEventListener("change", (e) => {
+      const rowIdx = parseInt(selectCb.dataset.row);
+      if (selectCb.checked) {
+        selectedRows.add(rowIdx);
+      } else {
+        selectedRows.delete(rowIdx);
+      }
+      updateCopySelectedBtn();
+    });
+
+    // Wrapper to stack handle, checkbox, and delete button vertically
     const rowControlGroup = document.createElement("div");
     rowControlGroup.className = "row-control-group";
     rowControlGroup.style.gridRow = `${r * 2 + 2}`;
+    rowControlGroup.appendChild(selectCb);
     rowControlGroup.appendChild(handle);
     rowControlGroup.appendChild(deleteBtn);
     controlsContainer.appendChild(rowControlGroup);
@@ -2290,6 +2361,15 @@ const insertRowAt = (insertIndex) => {
     row: d.row >= insertIndex ? d.row + 1 : d.row,
   }));
 
+  // Update selectedRows — shift indices at or after insertIndex
+  const newSelected = new Set();
+  selectedRows.forEach((r) => {
+    newSelected.add(r >= insertIndex ? r + 1 : r);
+  });
+  selectedRows.clear();
+  newSelected.forEach((r) => selectedRows.add(r));
+  updateCopySelectedBtn();
+
   gridRows++;
   document.getElementById("grid-rows").value = gridRows;
 
@@ -2326,6 +2406,17 @@ const deleteRowAt = (rowIndex) => {
       row: d.row > rowIndex ? d.row - 1 : d.row,
     }));
 
+  // Update selectedRows — remove deleted row and shift indices
+  const newSelected = new Set();
+  selectedRows.forEach((r) => {
+    if (r < rowIndex) newSelected.add(r);
+    else if (r > rowIndex) newSelected.add(r - 1);
+    // r === rowIndex is removed
+  });
+  selectedRows.clear();
+  newSelected.forEach((r) => selectedRows.add(r));
+  updateCopySelectedBtn();
+
   gridRows--;
   document.getElementById("grid-rows").value = gridRows;
 
@@ -2355,6 +2446,9 @@ const moveRow = (sourceRow, targetIndex) => {
 
   const allData = collectGridData();
 
+  // Track whether the source row was selected
+  const sourceWasSelected = selectedRows.has(sourceRow);
+
   // Extract source row data
   const sourceData = allData.filter((d) => d.row === sourceRow);
   const otherData = allData.filter((d) => d.row !== sourceRow);
@@ -2382,6 +2476,21 @@ const moveRow = (sourceRow, targetIndex) => {
   }));
 
   const finalData = [...shifted, ...movedData];
+
+  // Update selectedRows to reflect the move
+  const newSelected = new Set();
+  selectedRows.forEach((r) => {
+    if (r === sourceRow) {
+      newSelected.add(effectiveTarget);
+    } else {
+      let adjusted = r;
+      if (r > sourceRow) adjusted--;
+      if (adjusted >= effectiveTarget) adjusted++;
+      newSelected.add(adjusted);
+    }
+  });
+  selectedRows.clear();
+  newSelected.forEach((r) => selectedRows.add(r));
 
   // Rebuild grid
   gridEl.innerHTML = "";
@@ -2414,6 +2523,18 @@ const swapRows = (rowA, rowB) => {
     if (d.row === rowB) return { ...d, row: rowA };
     return d;
   });
+
+  // Update selectedRows to reflect the swap
+  const hadA = selectedRows.has(rowA);
+  const hadB = selectedRows.has(rowB);
+  if (hadA && !hadB) {
+    selectedRows.delete(rowA);
+    selectedRows.add(rowB);
+  } else if (hadB && !hadA) {
+    selectedRows.delete(rowB);
+    selectedRows.add(rowA);
+  }
+  // If both or neither were selected, no change needed
 
   // Rebuild grid
   gridEl.innerHTML = "";
@@ -2525,6 +2646,8 @@ const clearRowDropTarget = () => {
 const updateGrid = () => {
   gridCols = parseInt(document.getElementById("grid-cols").value) || 3;
   gridRows = parseInt(document.getElementById("grid-rows").value) || 1;
+  selectedRows.clear();
+  updateCopySelectedBtn();
   buildGrid();
 };
 

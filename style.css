@@ -796,3 +796,27 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     background-color: rgba(229, 62, 62, 0.2);
     box-shadow: none;
 }
+
+/* Row selection checkbox */
+.row-select-cb {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: #4f6ef7;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.row-controls:hover .row-select-cb {
+    opacity: 1;
+}
+
+.row-select-cb:checked {
+    opacity: 1;
+}
+
+/* Copy Selected button */
+#copy-selected-btn {
+    white-space: nowrap;
+}
