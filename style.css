@@ -14,14 +14,15 @@ body {
     height: 100vh;
     overflow: hidden;
     color: var(--text-color);
+    display: flex;
+    flex-direction: column;
 }
 
 .content-container {
     display: block;
     box-sizing: border-box;
     padding-bottom: 256px;
-    padding-top: 80px;
-    height: 100vh;
+    flex: 1;
     overflow: auto;
 
     &>.content {
@@ -34,16 +35,13 @@ body {
 }
 
 .toolbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
     z-index: 100;
     padding: 0;
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid oklch(92.8% 0.006 264.531);
     color: #24292e;
+    flex-shrink: 0;
 }
 
 .toolbar-row-1 {
@@ -530,10 +528,7 @@ select {
     }
 }
 
-/* Add padding to body so content isn't hidden behind the toolbar */
-body {
-    padding-bottom: 256px;
-}
+/* Add padding to body so content isn't hidden behind the bottom toolbar */
 
 /* Zoom overlay for shift-hover preview */
 .zoom-overlay {
