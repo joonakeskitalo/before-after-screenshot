@@ -1183,16 +1183,37 @@ const initDrawingCanvas = (drop) => {
       y = (e.clientY - rect.top) / rect.height;
     }
 
-    // Shift-constrain: snap to horizontal or vertical axis
+    // Shift-constrain behavior depends on tool:
+    // - Rect/oval tools: force 1:1 aspect ratio (square/circle) in pixel space
+    // - Line/arrow/freehand: snap to horizontal or vertical axis
     if (e.shiftKey) {
-      const origin = arrowStart || (currentPath && currentPath.points[0]);
-      if (origin) {
-        const dx = Math.abs(x - origin.x);
-        const dy = Math.abs(y - origin.y);
-        if (dx >= dy) {
-          y = origin.y; // constrain to horizontal
+      if ((drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval" || drawTool === "ovalfill") && arrowStart) {
+        // Convert normalized deltas to pixel space to get a true square/circle
+        let contentWidth, contentHeight;
+        if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+          const fitRect = getObjectFitRect(img);
+          contentWidth = fitRect.width;
+          contentHeight = fitRect.height;
         } else {
-          x = origin.x; // constrain to vertical
+          const r = canvas.getBoundingClientRect();
+          contentWidth = r.width;
+          contentHeight = r.height;
+        }
+        const dxPx = (x - arrowStart.x) * contentWidth;
+        const dyPx = (y - arrowStart.y) * contentHeight;
+        const maxSidePx = Math.max(Math.abs(dxPx), Math.abs(dyPx));
+        x = arrowStart.x + (maxSidePx * Math.sign(dxPx || 1)) / contentWidth;
+        y = arrowStart.y + (maxSidePx * Math.sign(dyPx || 1)) / contentHeight;
+      } else {
+        const origin = arrowStart || (currentPath && currentPath.points[0]);
+        if (origin) {
+          const dx = Math.abs(x - origin.x);
+          const dy = Math.abs(y - origin.y);
+          if (dx >= dy) {
+            y = origin.y; // constrain to horizontal
+          } else {
+            x = origin.x; // constrain to vertical
+          }
         }
       }
     }
@@ -1411,14 +1432,34 @@ const initDrawingCanvas = (drop) => {
         y = (e.clientY - rect.top) / rect.height;
       }
 
-      // Shift-constrain: snap to horizontal or vertical axis
+      // Shift-constrain on commit
       if (e.shiftKey && arrowStart) {
-        const dx = Math.abs(x - arrowStart.x);
-        const dy = Math.abs(y - arrowStart.y);
-        if (dx >= dy) {
-          y = arrowStart.y;
+        if (drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval" || drawTool === "ovalfill") {
+          // Convert normalized deltas to pixel space to get a true square/circle
+          const img = drop.querySelector("img");
+          let contentWidth, contentHeight;
+          if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+            const fitRect = getObjectFitRect(img);
+            contentWidth = fitRect.width;
+            contentHeight = fitRect.height;
+          } else {
+            const r = canvas.getBoundingClientRect();
+            contentWidth = r.width;
+            contentHeight = r.height;
+          }
+          const dxPx = (x - arrowStart.x) * contentWidth;
+          const dyPx = (y - arrowStart.y) * contentHeight;
+          const maxSidePx = Math.max(Math.abs(dxPx), Math.abs(dyPx));
+          x = arrowStart.x + (maxSidePx * Math.sign(dxPx || 1)) / contentWidth;
+          y = arrowStart.y + (maxSidePx * Math.sign(dyPx || 1)) / contentHeight;
         } else {
-          x = arrowStart.x;
+          const dx = Math.abs(x - arrowStart.x);
+          const dy = Math.abs(y - arrowStart.y);
+          if (dx >= dy) {
+            y = arrowStart.y;
+          } else {
+            x = arrowStart.x;
+          }
         }
       }
 
@@ -2579,6 +2620,9 @@ document.addEventListener("keydown", (e) => {
   // Skip hotkeys when typing in an input, textarea, or contenteditable
   const tag = e.target.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+
+  // Skip hotkeys when Shift is used as a drawing modifier (e.g. constraining shapes)
+  if (e.shiftKey && drawingMode && e.key !== "Escape") return;
 
   const gridColsInput = document.getElementById("grid-cols");
   const gridRowsInput = document.getElementById("grid-rows");
