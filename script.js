@@ -171,9 +171,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 const copyWithScale = () => {
   const select = document.getElementById("copy-scale");
   const value = select.value;
-  if (value === "grid") {
-    copyAsGridSize();
-  } else if (value.startsWith("output-")) {
+  if (value.startsWith("output-")) {
     const outputScale = parseFloat(value.replace("output-", ""));
     copyAsImageWithOutputScale(outputScale);
   } else {
