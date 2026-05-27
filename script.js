@@ -211,19 +211,27 @@ const copyAsImageWithOutputScale = async (outputScale) => {
       drop.style.overflow = "visible";
     });
 
-    // Lock each image to 2x its current display size for higher resolution capture
+    // Determine the max scale factor capped by the smallest image's natural size
+    let cappedMultiplier = baseMultiplier;
     imageSizes.forEach(({ img, width, height }) => {
-      img.style.width = (width * baseMultiplier) + "px";
-      img.style.height = (height * baseMultiplier) + "px";
+      const maxForThis = Math.min(img.naturalWidth / width, img.naturalHeight / height);
+      cappedMultiplier = Math.min(cappedMultiplier, maxForThis);
+    });
+    cappedMultiplier = Math.max(1, cappedMultiplier);
+
+    // Lock each image using the globally capped multiplier
+    imageSizes.forEach(({ img, width, height }) => {
+      img.style.width = Math.round(width * cappedMultiplier) + "px";
+      img.style.height = Math.round(height * cappedMultiplier) + "px";
       img.style.objectFit = "contain";
       img.style.maxHeight = "unset";
     });
 
-    // Scale gap and font to match the 2x layout
+    // Scale gap and font to match the capped layout
     const scale = gridZoom / 100;
-    const gap = Math.round(48 * scale * baseMultiplier);
+    const gap = Math.round(48 * scale * cappedMultiplier);
     root.style.setProperty("--gap", `${gap}px`);
-    const fontSize = Math.round(15 * scale * baseMultiplier);
+    const fontSize = Math.round(15 * scale * cappedMultiplier);
     root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
     // Collapse empty drops
@@ -238,11 +246,11 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     gridEl.style.gridTemplateRows = "auto";
     gridEl.style.gridTemplateColumns = `repeat(${gridCols}, auto)`;
 
-    const padding = Math.round(32 * baseMultiplier);
+    const padding = Math.round(32 * cappedMultiplier);
     cardsEl.style.padding = `8px ${padding}px`;
     cardsEl.style.width = "fit-content";
 
-    redrawAllCanvasesForExport(baseMultiplier);
+    redrawAllCanvasesForExport(cappedMultiplier);
 
     const blob = await domtoimage.toBlob(cardsEl, {
       filter: (node) => {
