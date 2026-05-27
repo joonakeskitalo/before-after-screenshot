@@ -2151,6 +2151,12 @@ buildGrid();
 const bottomToolbar = document.getElementById("bottom-toolbar");
 const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
 const bottomToolbarDrop = document.getElementById("bottom-toolbar-drop");
+const bottomToolbarDropSpan = bottomToolbarDrop.querySelector("span");
+
+const updateStagingInstruction = () => {
+  const hasImages = bottomToolbarInner.querySelector(".bottom-toolbar-item") !== null;
+  bottomToolbarDrop.style.display = hasImages ? "none" : "";
+};
 
 // --- Resize handle for bottom toolbar ---
 const resizeHandle = document.getElementById("bottom-toolbar-resize-handle");
@@ -2232,6 +2238,7 @@ addImageToToolbar = (dataUrl, fileName = "") => {
   removeBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     item.remove();
+    updateStagingInstruction();
   });
 
   item.appendChild(img);
@@ -2269,6 +2276,7 @@ addImageToToolbar = (dataUrl, fileName = "") => {
         if (span) span.style.display = "none";
         // Remove from toolbar
         item.remove();
+        updateStagingInstruction();
         // Scroll the added image into view
         cell.scrollIntoView({ behavior: "smooth", block: "nearest" });
         return;
@@ -2279,11 +2287,13 @@ addImageToToolbar = (dataUrl, fileName = "") => {
   // Append then sort the entire staging area
   bottomToolbarInner.insertBefore(item, bottomToolbarDrop);
   sortStagingArea();
+  updateStagingInstruction();
 };
 
 removeToolbarItemById = (id) => {
   const item = bottomToolbarInner.querySelector(`[data-id="${id}"]`);
   if (item) item.remove();
+  updateStagingInstruction();
 };
 
 // Handle drops onto the toolbar drop zone
@@ -2592,6 +2602,7 @@ insertAllBtn.addEventListener("click", (e) => {
     // Remove from staging
     item.remove();
   });
+  updateStagingInstruction();
 });
 
 // --- Hotkeys ---
