@@ -1122,7 +1122,7 @@ const redrawCanvas = (canvas, dpr) => {
       const cx = toCanvasX(path.position.x);
       const cy = toCanvasY(path.position.y);
       const radius = (path.lineWidth + 4) * dpr;
-      ctx.globalAlpha = 0.8;
+      ctx.globalAlpha = 0.7;
       ctx.fillStyle = path.color;
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
