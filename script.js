@@ -1799,11 +1799,39 @@ const setupCell = (cell) => {
   drop.addEventListener("dragover", (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+
+    // Show row drop target indicator when dragging a row
+    if (rowDragState) {
+      const targetRow = parseInt(cell.dataset.row);
+      if (targetRow !== rowDragState.sourceRow) {
+        setRowDropTarget(targetRow);
+      }
+    }
+  });
+
+  drop.addEventListener("dragleave", (e) => {
+    // Clear row drop target if leaving the cell
+    if (rowDragState && !cell.contains(e.relatedTarget)) {
+      clearRowDropTarget();
+    }
   });
 
   drop.addEventListener("drop", async (e) => {
     e.preventDefault();
     drop.style.border = "unset";
+
+    // Handle row-drag drops onto grid cells
+    if (rowDragState) {
+      const sourceRow = rowDragState.sourceRow;
+      const targetRow = parseInt(cell.dataset.row);
+      if (sourceRow !== targetRow) {
+        swapRows(sourceRow, targetRow);
+      }
+      rowDragState = null;
+      clearRowHighlights();
+      clearRowDropTarget();
+      return;
+    }
 
     const droppedFile = e.dataTransfer.files?.[0];
     if (droppedFile && droppedFile.type.startsWith("image/")) {
@@ -1853,6 +1881,37 @@ const setupCell = (cell) => {
   });
 
   attachDragTo(img);
+
+  // Cell-level row-drag handlers (catches drags over textarea area too)
+  cell.addEventListener("dragover", (e) => {
+    if (!rowDragState) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const targetRow = parseInt(cell.dataset.row);
+    if (targetRow !== rowDragState.sourceRow) {
+      setRowDropTarget(targetRow);
+    }
+  });
+
+  cell.addEventListener("dragleave", (e) => {
+    if (!rowDragState) return;
+    if (!cell.contains(e.relatedTarget)) {
+      clearRowDropTarget();
+    }
+  });
+
+  cell.addEventListener("drop", (e) => {
+    if (!rowDragState) return;
+    e.preventDefault();
+    const sourceRow = rowDragState.sourceRow;
+    const targetRow = parseInt(cell.dataset.row);
+    if (sourceRow !== targetRow) {
+      swapRows(sourceRow, targetRow);
+    }
+    rowDragState = null;
+    clearRowHighlights();
+    clearRowDropTarget();
+  });
 };
 
 // --- Swap Grid Items ---
@@ -2124,12 +2183,21 @@ const buildRowControls = () => {
       rowDragState = null;
       clearRowHighlights();
       clearRowDropIndicators();
+      clearRowDropTarget();
     });
 
     handle.addEventListener("dragover", (e) => {
       if (!rowDragState) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
+      const targetRow = parseInt(handle.dataset.row);
+      if (targetRow !== rowDragState.sourceRow) {
+        setRowDropTarget(targetRow);
+      }
+    });
+
+    handle.addEventListener("dragleave", () => {
+      clearRowDropTarget();
     });
 
     handle.addEventListener("drop", (e) => {
@@ -2142,6 +2210,7 @@ const buildRowControls = () => {
       }
       rowDragState = null;
       clearRowHighlights();
+      clearRowDropTarget();
     });
 
     controlsContainer.appendChild(handle);
@@ -2379,6 +2448,25 @@ const clearRowHighlights = () => {
 const clearRowDropIndicators = () => {
   document.querySelectorAll(".add-row-btn.drop-target").forEach((btn) => {
     btn.classList.remove("drop-target");
+  });
+};
+
+const setRowDropTarget = (row) => {
+  // Clear previous target
+  gridEl.querySelectorAll(".grid-cell.row-drop-target").forEach((cell) => {
+    cell.classList.remove("row-drop-target");
+  });
+  // Highlight all cells in the target row
+  gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+    if (parseInt(cell.dataset.row) === row) {
+      cell.classList.add("row-drop-target");
+    }
+  });
+};
+
+const clearRowDropTarget = () => {
+  gridEl.querySelectorAll(".grid-cell.row-drop-target").forEach((cell) => {
+    cell.classList.remove("row-drop-target");
   });
 };
 

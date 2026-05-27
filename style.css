@@ -647,6 +647,15 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     border-radius: 6px;
 }
 
+/* Row drop target indicator */
+.grid-cell.row-drop-target {
+    outline: 2px solid #4f6ef7;
+    outline-offset: -2px;
+    border-radius: 6px;
+    background-color: rgba(79, 110, 247, 0.06);
+    transition: background-color 0.15s ease, outline-color 0.15s ease;
+}
+
 /* Grid wrapper for row controls */
 .grid-wrapper {
     position: relative;
