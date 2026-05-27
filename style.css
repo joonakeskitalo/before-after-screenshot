@@ -335,12 +335,15 @@ select {
     font-weight: 500;
     appearance: none;
     background-color: #fbfbfb;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
     border: unset;
     box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0,
         rgba(255, 255, 255, 0.25) 0 1px 0 inset;
     box-sizing: border-box;
     color: #24292e;
-    padding: 0 14px;
+    padding: 0 24px 0 14px;
     height: 28px;
     justify-content: center;
     border-radius: 6px;
