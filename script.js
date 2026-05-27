@@ -112,6 +112,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         if (node.tagName === "SPAN") return false;
         if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
         if (node.classList && node.classList.contains("drawing-text-input")) return false;
+        if (node.classList && node.classList.contains("row-controls")) return false;
         if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
       },
@@ -2053,6 +2054,332 @@ const buildGrid = () => {
       }
     }
   }
+
+  // Build row controls (drag handles + add-row buttons)
+  buildRowControls();
+};
+
+// --- Row Reordering & Insertion ---
+
+let rowDragState = null; // { sourceRow, placeholder }
+
+const buildRowControls = () => {
+  // Remove existing row controls
+  const existingControls = document.querySelector(".row-controls");
+  if (existingControls) existingControls.remove();
+
+  const controlsContainer = document.createElement("div");
+  controlsContainer.className = "row-controls";
+
+  // Build a grid with interleaved rows:
+  // [add-btn-row] [handle-row] [add-btn-row] [handle-row] ... [add-btn-row]
+  // The handle rows use 1fr to match the main grid's row sizing.
+  // The add-btn rows are auto-sized (small).
+  // The gap between handle rows must equal var(--gap) minus the space taken by the add-btn row.
+  // Simpler: no gap, use the template to control spacing.
+  const rowTemplate = [];
+  for (let r = 0; r < gridRows; r++) {
+    rowTemplate.push("auto"); // add-btn slot
+    rowTemplate.push("1fr"); // handle slot
+  }
+  rowTemplate.push("auto"); // final add-btn slot
+  controlsContainer.style.gridTemplateRows = rowTemplate.join(" ");
+  controlsContainer.style.gap = "0";
+
+  // We need the handle rows to have the same gap between them as the main grid.
+  // The main grid uses `gap: var(--gap)`. In our layout, between two handle rows
+  // there's an add-btn row. We use row-gap on the handles via margins or we set
+  // the add-btn row height to match the gap.
+  // Actually, the cleanest approach: set the auto rows to have a fixed height
+  // equal to the gap, so the spacing between 1fr rows matches the main grid.
+
+  for (let r = 0; r < gridRows; r++) {
+    // Add-row button before this row
+    const addBtn = createAddRowButton(r);
+    addBtn.style.gridRow = `${r * 2 + 1}`;
+    addBtn.style.height = r === 0 ? "0px" : "var(--gap)";
+    addBtn.style.alignSelf = "center";
+    controlsContainer.appendChild(addBtn);
+
+    // Row drag handle
+    const handle = document.createElement("div");
+    handle.className = "row-drag-handle";
+    handle.draggable = true;
+    handle.dataset.row = r;
+    handle.title = `Drag to reorder row ${r + 1}`;
+    handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="4" cy="3" r="1.2" fill="currentColor"/><circle cx="8" cy="3" r="1.2" fill="currentColor"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="8" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="9" r="1.2" fill="currentColor"/><circle cx="8" cy="9" r="1.2" fill="currentColor"/></svg>`;
+    handle.style.gridRow = `${r * 2 + 2}`;
+
+    handle.addEventListener("dragstart", (e) => {
+      const row = parseInt(handle.dataset.row);
+      rowDragState = { sourceRow: row };
+      e.dataTransfer.setData("row-drag", String(row));
+      e.dataTransfer.effectAllowed = "move";
+      handle.classList.add("dragging");
+      highlightRow(row, true);
+    });
+
+    handle.addEventListener("dragend", () => {
+      handle.classList.remove("dragging");
+      rowDragState = null;
+      clearRowHighlights();
+      clearRowDropIndicators();
+    });
+
+    handle.addEventListener("dragover", (e) => {
+      if (!rowDragState) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    });
+
+    handle.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (!rowDragState) return;
+      const sourceRow = rowDragState.sourceRow;
+      const targetRow = parseInt(handle.dataset.row);
+      if (sourceRow !== targetRow) {
+        swapRows(sourceRow, targetRow);
+      }
+      rowDragState = null;
+      clearRowHighlights();
+    });
+
+    controlsContainer.appendChild(handle);
+  }
+
+  // Final add-row button after the last row
+  const addLastBtn = createAddRowButton(gridRows);
+  addLastBtn.style.gridRow = `${gridRows * 2 + 1}`;
+  addLastBtn.style.height = "0px";
+  addLastBtn.style.alignSelf = "center";
+  controlsContainer.appendChild(addLastBtn);
+
+  // Insert controls container next to the grid
+  gridEl.parentElement.insertBefore(controlsContainer, gridEl);
+};
+
+const createAddRowButton = (insertIndex) => {
+  const btn = document.createElement("button");
+  btn.className = "add-row-btn";
+  btn.dataset.insertIndex = insertIndex;
+  btn.title = `Add row here`;
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    insertRowAt(insertIndex);
+  });
+
+  // Allow dropping rows onto add-row buttons as drop targets
+  btn.addEventListener("dragover", (e) => {
+    if (!rowDragState) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    btn.classList.add("drop-target");
+  });
+
+  btn.addEventListener("dragleave", () => {
+    btn.classList.remove("drop-target");
+  });
+
+  btn.addEventListener("drop", (e) => {
+    e.preventDefault();
+    btn.classList.remove("drop-target");
+    if (!rowDragState) return;
+    const sourceRow = rowDragState.sourceRow;
+    const targetIndex = parseInt(btn.dataset.insertIndex);
+    moveRow(sourceRow, targetIndex);
+    rowDragState = null;
+  });
+
+  return btn;
+};
+
+const insertRowAt = (insertIndex) => {
+  // Collect all existing cell data
+  const allData = collectGridData();
+
+  // Shift rows at and after insertIndex down by 1
+  const newData = allData.map((d) => ({
+    ...d,
+    row: d.row >= insertIndex ? d.row + 1 : d.row,
+  }));
+
+  gridRows++;
+  document.getElementById("grid-rows").value = gridRows;
+
+  // Rebuild grid with shifted data
+  gridEl.innerHTML = "";
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(${Math.round(350 * gridZoom / 100)}px, 1fr))`;
+  gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const cell = createCell(r, c);
+      gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const moveRow = (sourceRow, targetIndex) => {
+  // If dropping in the same position or adjacent (no-op)
+  if (targetIndex === sourceRow || targetIndex === sourceRow + 1) return;
+
+  const allData = collectGridData();
+
+  // Extract source row data
+  const sourceData = allData.filter((d) => d.row === sourceRow);
+  const otherData = allData.filter((d) => d.row !== sourceRow);
+
+  // Calculate new row indices
+  // After removing source row, rows shift up if they were below it
+  const reindexed = otherData.map((d) => ({
+    ...d,
+    row: d.row > sourceRow ? d.row - 1 : d.row,
+  }));
+
+  // Determine the effective insert position after removal
+  const effectiveTarget = targetIndex > sourceRow ? targetIndex - 1 : targetIndex;
+
+  // Shift rows at and after effectiveTarget down to make room
+  const shifted = reindexed.map((d) => ({
+    ...d,
+    row: d.row >= effectiveTarget ? d.row + 1 : d.row,
+  }));
+
+  // Place source row at effectiveTarget
+  const movedData = sourceData.map((d) => ({
+    ...d,
+    row: effectiveTarget,
+  }));
+
+  const finalData = [...shifted, ...movedData];
+
+  // Rebuild grid
+  gridEl.innerHTML = "";
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(${Math.round(350 * gridZoom / 100)}px, 1fr))`;
+  gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const cell = createCell(r, c);
+      gridEl.appendChild(cell);
+
+      const existing = finalData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const swapRows = (rowA, rowB) => {
+  if (rowA === rowB) return;
+
+  const allData = collectGridData();
+
+  // Swap row indices
+  const newData = allData.map((d) => {
+    if (d.row === rowA) return { ...d, row: rowB };
+    if (d.row === rowB) return { ...d, row: rowA };
+    return d;
+  });
+
+  // Rebuild grid
+  gridEl.innerHTML = "";
+  gridEl.style.gridTemplateColumns = `repeat(${gridCols}, minmax(${Math.round(350 * gridZoom / 100)}px, 1fr))`;
+  gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const cell = createCell(r, c);
+      gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const collectGridData = () => {
+  const data = [];
+  gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+    const img = cell.querySelector("img");
+    const textarea = cell.querySelector("textarea");
+    const canvas = cell.querySelector(".drawing-canvas");
+    const drawingPaths = canvas && canvasDataMap.get(canvas) ? canvasDataMap.get(canvas).paths : [];
+    data.push({
+      row: parseInt(cell.dataset.row),
+      col: parseInt(cell.dataset.col),
+      imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
+      imgAlt: img ? img.alt : "",
+      text: textarea ? textarea.value : "",
+      drawingPaths: drawingPaths,
+    });
+  });
+  return data;
+};
+
+const restoreCellData = (cell, data) => {
+  const img = cell.querySelector("img");
+  const drop = cell.querySelector(".drop");
+  const span = cell.querySelector("span");
+  const textarea = cell.querySelector("textarea");
+
+  if (data.imgSrc) {
+    img.src = data.imgSrc;
+    img.alt = data.imgAlt;
+    img.style.display = "flex";
+    drop.style.border = "unset";
+    span.style.display = "none";
+  }
+  if (data.text) {
+    textarea.value = data.text;
+  }
+  if (data.drawingPaths && data.drawingPaths.length > 0) {
+    const canvas = cell.querySelector(".drawing-canvas");
+    if (canvas) {
+      const canvasData = canvasDataMap.get(canvas);
+      if (canvasData) {
+        canvasData.paths = data.drawingPaths;
+        const dpr = window.devicePixelRatio || 1;
+        redrawCanvas(canvas, dpr);
+      }
+    }
+  }
+};
+
+const highlightRow = (row, active) => {
+  gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+    if (parseInt(cell.dataset.row) === row) {
+      cell.classList.toggle("row-dragging", active);
+    }
+  });
+};
+
+const clearRowHighlights = () => {
+  gridEl.querySelectorAll(".grid-cell.row-dragging").forEach((cell) => {
+    cell.classList.remove("row-dragging");
+  });
+};
+
+const clearRowDropIndicators = () => {
+  document.querySelectorAll(".add-row-btn.drop-target").forEach((btn) => {
+    btn.classList.remove("drop-target");
+  });
 };
 
 const updateGrid = () => {

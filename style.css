@@ -638,3 +638,106 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 50;
 }
+
+/* Row being dragged highlight */
+.grid-cell.row-dragging {
+    opacity: 0.5;
+    outline: 2px dashed #4f6ef7;
+    outline-offset: -2px;
+    border-radius: 6px;
+}
+
+/* Grid wrapper for row controls */
+.grid-wrapper {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.grid-wrapper > .grid {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Row controls container — mirrors the grid's row layout */
+.row-controls {
+    display: grid;
+    width: 28px;
+    flex-shrink: 0;
+    user-select: none;
+    align-items: center;
+    padding: 8px 0;
+}
+
+/* Row drag handle */
+.row-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: grab;
+    color: #999;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    justify-self: center;
+    align-self: center;
+}
+
+.row-drag-handle:hover {
+    color: #555;
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.row-drag-handle:active,
+.row-drag-handle.dragging {
+    cursor: grabbing;
+    color: #4f6ef7;
+    background-color: rgba(79, 110, 247, 0.1);
+}
+
+/* Add row button — sits in the gap rows of the controls grid */
+.add-row-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: center;
+    width: 20px;
+    height: auto;
+    min-width: 20px;
+    padding: 0;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #bbb;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    box-shadow: none;
+    opacity: 0;
+    position: static;
+    line-height: normal;
+    font-size: 0;
+}
+
+.row-controls:hover .add-row-btn {
+    opacity: 1;
+}
+
+.add-row-btn:hover {
+    color: #4f6ef7;
+    background-color: rgba(79, 110, 247, 0.08);
+    box-shadow: none;
+    opacity: 1;
+}
+
+.add-row-btn:active {
+    background-color: rgba(79, 110, 247, 0.15);
+    box-shadow: none;
+}
+
+.add-row-btn.drop-target {
+    color: #4f6ef7;
+    background-color: rgba(79, 110, 247, 0.15);
+    opacity: 1;
+    box-shadow: 0 0 6px rgba(79, 110, 247, 0.3);
+}
