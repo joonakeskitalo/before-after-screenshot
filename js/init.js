@@ -8,6 +8,7 @@ import state from './state.js';
 
   const sync = () => {
     container.style.paddingTop = toolbar.offsetHeight + 'px';
+    container.style.scrollPaddingTop = toolbar.offsetHeight + 'px';
   };
 
   sync();

@@ -20,8 +20,8 @@ const setFocusedCell = (index) => {
   state.focusedCellIndex = index;
   if (state.focusedCellIndex >= 0 && state.focusedCellIndex < cells.length) {
     cells[state.focusedCellIndex].classList.add("keyboard-focused");
-    // Scroll into view if needed
-    cells[state.focusedCellIndex].scrollIntoView({ block: "nearest", inline: "nearest" });
+    // Scroll the focused cell fully into view
+    cells[state.focusedCellIndex].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }
 };
 
