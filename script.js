@@ -249,7 +249,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
-let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", or "text"
+let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", "eraser", or "text"
 let drawFontSize = 13;
 
 const enableDrawingMode = () => {
@@ -263,6 +263,7 @@ const disableDrawingMode = () => {
   drawingMode = false;
   document.body.classList.remove("drawing-mode");
   document.body.classList.remove("text-tool");
+  document.body.classList.remove("eraser-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
 };
 
@@ -275,6 +276,7 @@ const rectstrokeModeBtn = document.getElementById("rectstroke-mode-btn");
 const ovalModeBtn = document.getElementById("oval-mode-btn");
 const ovalfillModeBtn = document.getElementById("ovalfill-mode-btn");
 const dotModeBtn = document.getElementById("dot-mode-btn");
+const eraserModeBtn = document.getElementById("eraser-mode-btn");
 const textModeBtn = document.getElementById("text-mode-btn");
 const drawFontSizeInput = document.getElementById("draw-font-size");
 
@@ -291,6 +293,7 @@ document.addEventListener("keydown", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -347,9 +350,11 @@ penModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -370,9 +375,11 @@ arrowModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -393,9 +400,11 @@ lineModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -416,9 +425,11 @@ rectModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -439,9 +450,11 @@ rectstrokeModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -462,9 +475,11 @@ ovalModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -485,9 +500,11 @@ ovalfillModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -508,9 +525,36 @@ dotModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
+    enableDrawingMode();
+  }
+});
+
+// Eraser mode toggle
+eraserModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "eraser" && drawingMode) {
+    disableDrawingMode();
+    eraserModeBtn.classList.remove("active");
+    document.body.classList.remove("eraser-tool");
+  } else {
+    drawTool = "eraser";
+    eraserModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    document.body.classList.add("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -534,7 +578,9 @@ textModeBtn.addEventListener("click", (e) => {
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "";
+    document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
 });
@@ -701,6 +747,22 @@ const redrawCanvas = (canvas, dpr) => {
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1.0;
+    } else if (path.type === "eraser") {
+      // Erase along the path using destination-out compositing
+      if (path.points.length < 2) continue;
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "rgba(0,0,0,1)";
+      ctx.lineWidth = (path.lineWidth + 10) * dpr;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(path.points[0].x), toCanvasY(path.points[0].y));
+      for (let i = 1; i < path.points.length; i++) {
+        ctx.lineTo(toCanvasX(path.points[i].x), toCanvasY(path.points[i].y));
+      }
+      ctx.stroke();
+      ctx.restore();
     } else {
       // Freehand path
       if (path.points.length < 2) continue;
@@ -934,6 +996,7 @@ const initDrawingCanvas = (drop) => {
       arrowStart = { x, y };
     } else {
       currentPath = {
+        type: drawTool === "eraser" ? "eraser" : undefined,
         color: drawColor,
         lineWidth: drawLineWidth,
         points: [{ x, y }],
@@ -1133,14 +1196,24 @@ const initDrawingCanvas = (drop) => {
         const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
         const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
 
-        ctx.strokeStyle = currentPath.color;
-        ctx.lineWidth = currentPath.lineWidth * dpr;
+        if (currentPath.type === "eraser") {
+          ctx.save();
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.strokeStyle = "rgba(0,0,0,1)";
+          ctx.lineWidth = (currentPath.lineWidth + 8) * dpr;
+        } else {
+          ctx.strokeStyle = currentPath.color;
+          ctx.lineWidth = currentPath.lineWidth * dpr;
+        }
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(toCanvasX(from.x), toCanvasY(from.y));
         ctx.lineTo(toCanvasX(to.x), toCanvasY(to.y));
         ctx.stroke();
+        if (currentPath.type === "eraser") {
+          ctx.restore();
+        }
       }
     }
   });
@@ -1304,6 +1377,21 @@ const redrawAllCanvasesForExport = (scale) => {
           ctx.beginPath();
           ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
           ctx.fill();
+        } else if (path.type === "eraser") {
+          if (path.points.length < 2) continue;
+          ctx.save();
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.strokeStyle = "rgba(0,0,0,1)";
+          ctx.lineWidth = (path.lineWidth + 8) * dprNoImg;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
+          for (let i = 1; i < path.points.length; i++) {
+            ctx.lineTo(path.points[i].x * canvas.width, path.points[i].y * canvas.height);
+          }
+          ctx.stroke();
+          ctx.restore();
         } else {
           if (path.points.length < 2) continue;
           ctx.beginPath();
@@ -1402,6 +1490,21 @@ const redrawAllCanvasesForExport = (scale) => {
         ctx.beginPath();
         ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
         ctx.fill();
+      } else if (path.type === "eraser") {
+        if (path.points.length < 2) continue;
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+        ctx.lineWidth = (path.lineWidth + 8) * dpr;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(path.points[0].x * imgRect.width * dpr, path.points[0].y * imgRect.height * dpr);
+        for (let i = 1; i < path.points.length; i++) {
+          ctx.lineTo(path.points[i].x * imgRect.width * dpr, path.points[i].y * imgRect.height * dpr);
+        }
+        ctx.stroke();
+        ctx.restore();
       } else {
         if (path.points.length < 2) continue;
         ctx.beginPath();
@@ -2309,6 +2412,9 @@ document.addEventListener("keydown", (e) => {
     case "r":
       // Enable solid rectangle tool
       rectModeBtn.click();
+      break;
+    case "R":
+      rectstrokeModeBtn.click();
       break;
     case "e":
       // Enable bordered rectangle tool

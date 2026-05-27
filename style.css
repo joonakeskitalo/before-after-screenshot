@@ -519,6 +519,16 @@ body.drawing-mode.text-tool .drawing-canvas.active {
     cursor: text;
 }
 
+/* Eraser tool cursor */
+body.drawing-mode.eraser-tool .grid-cell .drop,
+body.drawing-mode.eraser-tool {
+    cursor: crosshair;
+}
+
+body.drawing-mode.eraser-tool .drawing-canvas.active {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%23666' stroke-width='1.5'/%3E%3Cline x1='6' y1='6' x2='14' y2='14' stroke='%23666' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 10 10, crosshair;
+}
+
 /* Clear drawing button per image */
 .clear-drawing-btn {
     position: absolute;
