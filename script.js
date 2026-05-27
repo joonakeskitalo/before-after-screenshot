@@ -579,14 +579,14 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
-let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", "eraser", "object-eraser", or "text"
+let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", "eraser", "object-eraser", "move", or "text"
 let drawFontSize = 13;
 
 // Generate a cursor that previews the current line width
 const updateDrawingCursor = () => {
   if (!drawingMode) return;
   // Don't override cursor for text or eraser tools
-  if (drawTool === "text" || drawTool === "eraser" || drawTool === "object-eraser") return;
+  if (drawTool === "text" || drawTool === "eraser" || drawTool === "object-eraser" || drawTool === "move") return;
 
   const zoomScale = gridZoom / 100;
   // Match the actual rendered size on screen
@@ -616,6 +616,7 @@ const disableDrawingMode = () => {
   document.body.classList.remove("drawing-mode");
   document.body.classList.remove("text-tool");
   document.body.classList.remove("eraser-tool");
+  document.body.classList.remove("move-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
   document.body.style.removeProperty("--drawing-cursor");
 };
@@ -631,6 +632,7 @@ const ovalfillModeBtn = document.getElementById("ovalfill-mode-btn");
 const dotModeBtn = document.getElementById("dot-mode-btn");
 const eraserModeBtn = document.getElementById("eraser-mode-btn");
 const objectEraserModeBtn = document.getElementById("object-eraser-mode-btn");
+const moveModeBtn = document.getElementById("move-mode-btn");
 const textModeBtn = document.getElementById("text-mode-btn");
 const drawFontSizeInput = document.getElementById("draw-font-size");
 
@@ -649,6 +651,7 @@ document.addEventListener("keydown", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
   }
@@ -733,9 +736,11 @@ penModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -758,9 +763,11 @@ arrowModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -783,9 +790,11 @@ lineModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -808,9 +817,11 @@ rectModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -833,9 +844,11 @@ rectstrokeModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -858,9 +871,11 @@ ovalModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -883,9 +898,11 @@ ovalfillModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -908,8 +925,10 @@ dotModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -934,8 +953,10 @@ eraserModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("move-tool");
     document.body.classList.add("eraser-tool");
     enableDrawingMode();
   }
@@ -960,9 +981,38 @@ objectEraserModeBtn.addEventListener("click", (e) => {
     ovalfillModeBtn.classList.remove("active");
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
     document.body.classList.add("eraser-tool");
+    enableDrawingMode();
+  }
+});
+
+// Move mode toggle
+moveModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "move" && drawingMode) {
+    disableDrawingMode();
+    moveModeBtn.classList.remove("active");
+    document.body.classList.remove("move-tool");
+  } else {
+    drawTool = "move";
+    moveModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
+    eraserModeBtn.classList.remove("active");
+    objectEraserModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
+    document.body.classList.add("move-tool");
     enableDrawingMode();
   }
 });
@@ -987,7 +1037,9 @@ textModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
+    moveModeBtn.classList.remove("active");
     document.body.classList.remove("eraser-tool");
+    document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
 });
@@ -1397,6 +1449,25 @@ const distToSegment = (px, py, x1, y1, x2, y2) => {
   return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
 };
 
+// Offset all coordinates of a path by (dx, dy) in normalized space
+const offsetPath = (path, dx, dy) => {
+  if (path.type === "text" || path.type === "dot") {
+    path.position.x += dx;
+    path.position.y += dy;
+  } else if (path.type === "arrow" || path.type === "line" || path.type === "rect" || path.type === "rectstroke" || path.type === "oval" || path.type === "ovalfill") {
+    path.from.x += dx;
+    path.from.y += dy;
+    path.to.x += dx;
+    path.to.y += dy;
+  } else if (path.points && path.points.length > 0) {
+    // Freehand or eraser
+    for (const pt of path.points) {
+      pt.x += dx;
+      pt.y += dy;
+    }
+  }
+};
+
 const initDrawingCanvas = (drop) => {
   const canvas = document.createElement("canvas");
   canvas.className = "drawing-canvas";
@@ -1443,6 +1514,10 @@ const initDrawingCanvas = (drop) => {
   let isDrawing = false;
   let currentPath = null;
   let arrowStart = null;
+  // Move tool state
+  let movingPath = null;
+  let moveStartX = 0;
+  let moveStartY = 0;
 
   canvas.addEventListener("mousedown", (e) => {
     if (!drawingMode) return;
@@ -1505,6 +1580,23 @@ const initDrawingCanvas = (drop) => {
       return;
     }
 
+    if (drawTool === "move") {
+      // Find the topmost path under the cursor and start moving it
+      const data = canvasDataMap.get(canvas);
+      if (data && data.paths.length > 0) {
+        for (let i = data.paths.length - 1; i >= 0; i--) {
+          if (hitTestPath(data.paths[i], x, y)) {
+            movingPath = data.paths[i];
+            moveStartX = x;
+            moveStartY = y;
+            isDrawing = true;
+            break;
+          }
+        }
+      }
+      return;
+    }
+
     isDrawing = true;
 
     if (drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval" || drawTool === "ovalfill") {
@@ -1543,6 +1635,17 @@ const initDrawingCanvas = (drop) => {
     // Shift-constrain behavior depends on tool:
     // - Rect/oval tools: force 1:1 aspect ratio (square/circle) in pixel space
     // - Line/arrow/freehand: snap to horizontal or vertical axis
+    if (drawTool === "move" && movingPath) {
+      // Move the selected path by the delta
+      const dx = x - moveStartX;
+      const dy = y - moveStartY;
+      offsetPath(movingPath, dx, dy);
+      moveStartX = x;
+      moveStartY = y;
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+      return;
+    }
     if (e.shiftKey) {
       if ((drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval" || drawTool === "ovalfill") && arrowStart) {
         // Convert normalized deltas to pixel space to get a true square/circle
@@ -1786,6 +1889,14 @@ const initDrawingCanvas = (drop) => {
   const endDraw = (e) => {
     if (!isDrawing) return;
     isDrawing = false;
+
+    if (drawTool === "move" && movingPath) {
+      // Move is complete — just reset state
+      movingPath = null;
+      moveStartX = 0;
+      moveStartY = 0;
+      return;
+    }
 
     if ((drawTool === "arrow" || drawTool === "line" || drawTool === "rect" || drawTool === "rectstroke" || drawTool === "oval" || drawTool === "ovalfill") && arrowStart) {
       // Get final position
@@ -3673,6 +3784,10 @@ document.addEventListener("keydown", (e) => {
     case "d":
       // Enable dot tool
       dotModeBtn.click();
+      break;
+    case "m":
+      // Enable move tool
+      moveModeBtn.click();
       break;
     case "?":
       gridRows++;
