@@ -27,22 +27,7 @@
             </label>
             
             <div class="toolbar-divider"></div>
-            
-            <select onchange="setColors(this)">
-              <option selected value="#f0f0f0">Grey</option>
-              <option value="#7f7f7f;white">Grey 50%</option>
-              <option value="#ffffff">White</option>
-              <option value="oklch(26.8% 0.007 34.298);oklch(98.5% 0 0)">Stone</option>
-              <option value="#000000;oklch(98.5% 0 0)">Black</option>
-              <option value="oklch(98% 0.016 73.684)">Orange</option>
-              <option value="oklch(97.7% 0.017 320.058)">Fuchsia</option>
-              <option value="oklch(94.1% 0.03 12.58)">Rose</option>
-              <option value="oklch(95.3% 0.051 180.801)">Teal</option>
-              <option value="oklch(98.6% 0.031 120.757)">Green</option>
-              <option value="oklch(39.3% 0.095 152.535);oklch(98.5% 0 0)">Dark green</option>
-              <option value="oklch(25.8% 0.092 26.042);oklch(98.5% 0 0)">Red</option>
-              <option value="oklch(25.7% 0.09 281.288);oklch(98.5% 0 0)">Indigo</option>
-            </select>
+
 
             <label class="toolbar-label">
               Cols
@@ -62,7 +47,23 @@
             <button class="preset-color-btn" data-color="#00b341" style="width:22px;height:22px;min-width:22px;padding:0;background-color:#00b341;border-radius:50%;border:2px solid transparent" title="Green"></button>
             <button class="preset-color-btn" data-color="#353535" style="width:22px;height:22px;min-width:22px;padding:0;background-color:#353535;border-radius:50%;border:2px solid #333" title="Dark grey"></button>
             <button class="preset-color-btn" data-color="#dfdfdf" style="width:22px;height:22px;min-width:22px;padding:0;background-color:#dfdfdf;border-radius:50%;border:2px solid #333" title="Light grey"></button>
-            <input type="range" id="draw-width" min="1" max="12" value="2" title="Line width" style="width:50px;height:28px" />
+            
+            <div class="toolbar-divider"></div>
+            
+            <div class="thickness-presets">
+              <button class="thickness-btn active" data-width="2" title="Thin">
+                <svg width="16" height="16"><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </button>
+              <button class="thickness-btn" data-width="4" title="Medium">
+                <svg width="16" height="16"><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+              </button>
+              <button class="thickness-btn" data-width="8" title="Thick">
+                <svg width="16" height="16"><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+
+            <div class="toolbar-divider"></div>
+
             <button id="pen-mode-btn" class="tool-mode-btn" title="Pen tool (b)">✎</button>
             <button id="arrow-mode-btn" class="tool-mode-btn" title="Arrow tool (a)">↗</button>
             <button id="line-mode-btn" class="tool-mode-btn" title="Line tool (l)">╱</button>
@@ -80,6 +81,25 @@
           </div>
 
           <div class="toolbar-copy">
+
+            <select onchange="setColors(this)">
+              <option selected value="#f0f0f0">Grey</option>
+              <option value="#7f7f7f;white">Grey 50%</option>
+              <option value="#ffffff">White</option>
+              <option value="oklch(26.8% 0.007 34.298);oklch(98.5% 0 0)">Stone</option>
+              <option value="#000000;oklch(98.5% 0 0)">Black</option>
+              <option value="oklch(98% 0.016 73.684)">Orange</option>
+              <option value="oklch(97.7% 0.017 320.058)">Fuchsia</option>
+              <option value="oklch(94.1% 0.03 12.58)">Rose</option>
+              <option value="oklch(95.3% 0.051 180.801)">Teal</option>
+              <option value="oklch(98.6% 0.031 120.757)">Green</option>
+              <option value="oklch(39.3% 0.095 152.535);oklch(98.5% 0 0)">Dark green</option>
+              <option value="oklch(25.8% 0.092 26.042);oklch(98.5% 0 0)">Red</option>
+              <option value="oklch(25.7% 0.09 281.288);oklch(98.5% 0 0)">Indigo</option>
+            </select>
+            
+            <div class="toolbar-divider"></div>
+
             <select id="copy-scale">
               <option value="1">100%</option>
               <option value="0.8">80%</option>

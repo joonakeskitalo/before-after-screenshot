@@ -301,7 +301,6 @@ document.addEventListener("keydown", (e) => {
 
 // Wire up toolbar drawing controls
 const drawColorInput = document.getElementById("draw-color");
-const drawWidthInput = document.getElementById("draw-width");
 
 drawColorInput.addEventListener("input", (e) => {
   drawColor = e.target.value;
@@ -310,8 +309,15 @@ drawColorInput.addEventListener("input", (e) => {
   });
 });
 
-drawWidthInput.addEventListener("input", (e) => {
-  drawLineWidth = parseInt(e.target.value);
+document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    drawLineWidth = parseInt(btn.dataset.width);
+    document.querySelectorAll(".thickness-presets .thickness-btn").forEach((b) => {
+      b.classList.remove("active");
+    });
+    btn.classList.add("active");
+  });
 });
 
 document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) => {
