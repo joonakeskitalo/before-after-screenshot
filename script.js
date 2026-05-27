@@ -170,11 +170,16 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 
 const copyWithScale = () => {
   const select = document.getElementById("copy-scale");
-  const scale = parseFloat(select.value);
-  if (scale >= 1) {
-    copyAsImage(false);
+  const value = select.value;
+  if (value === "grid") {
+    copyAsGridSize();
   } else {
-    copyAsImage(true, scale);
+    const scale = parseFloat(value);
+    if (scale >= 1) {
+      copyAsImage(false);
+    } else {
+      copyAsImage(true, scale);
+    }
   }
 };
 
@@ -213,6 +218,115 @@ const copySelectedRows = () => {
     });
     gridEl.style.gridTemplateRows = originalRows;
   });
+};
+
+const copyAsGridSize = async () => {
+  try {
+    // Capture the current rendered sizes of images before modifying styles
+    const allImages = cardsEl.querySelectorAll("img");
+    const imageSizes = [];
+    allImages.forEach((img) => {
+      if (img.src && img.style.display !== "none") {
+        imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
+      }
+    });
+
+    root.style.setProperty("--border", `unset`);
+    gridEl.style.outline = "none";
+
+    // Keep the current grid zoom settings — don't reset them
+    // Just remove overflow clipping so the capture is clean
+    const allCells = gridEl.querySelectorAll(".grid-cell");
+    allCells.forEach((cell) => {
+      cell.style.overflow = "visible";
+    });
+
+    const allDrops = cardsEl.querySelectorAll(".drop");
+    allDrops.forEach((drop) => {
+      drop.style.overflow = "visible";
+    });
+
+    // Lock each image to its current display size
+    imageSizes.forEach(({ img, width, height }) => {
+      img.style.width = width + "px";
+      img.style.height = height + "px";
+      img.style.objectFit = "contain";
+      img.style.maxHeight = "unset";
+    });
+
+    // Collapse empty drops
+    allDrops.forEach((drop) => {
+      const img = drop.querySelector("img");
+      if (!img || !img.src || img.style.display === "none") {
+        drop.style.width = "32px";
+        drop.style.height = "32px";
+      }
+    });
+
+    // Use auto columns so the grid fits the locked image sizes
+    gridEl.style.gridTemplateRows = "auto";
+    gridEl.style.gridTemplateColumns = `repeat(${gridCols}, auto)`;
+
+    cardsEl.style.padding = `8px 32px`;
+    cardsEl.style.width = "fit-content";
+
+    // Redraw canvases at 1:1 since we're keeping display size
+    redrawAllCanvasesForExport(1);
+
+    const blob = await domtoimage.toBlob(cardsEl, {
+      filter: (node) => {
+        if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
+          return false;
+        }
+        if (node.tagName === "SPAN") return false;
+        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
+        if (node.classList && node.classList.contains("drawing-text-input")) return false;
+        if (node.classList && node.classList.contains("row-controls")) return false;
+        if (node.classList && node.classList.contains("row-select-cb")) return false;
+        if (node.classList && node.classList.contains("grid-cell-filename") && !showFilenames) return false;
+        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
+        return true;
+      },
+    });
+
+    navigator.clipboard.write([
+      new ClipboardItem({
+        "image/png": blob,
+      }),
+    ]);
+
+    // Restore all styles
+    allCells.forEach((cell) => {
+      cell.style.overflow = null;
+    });
+
+    allImages.forEach((img) => {
+      img.style.objectFit = null;
+      img.style.height = null;
+      img.style.maxHeight = null;
+      img.style.width = null;
+    });
+
+    allDrops.forEach((drop) => {
+      drop.style.overflow = null;
+      drop.style.height = null;
+      drop.style.width = null;
+    });
+
+    cardsEl.style.padding = "16px";
+    cardsEl.style.width = null;
+    gridEl.style.outline = null;
+    gridEl.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+    root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
+
+    // Restore zoom (restores gridTemplateColumns, --image-max-width, --gap, etc.)
+    applyGridZoom(gridZoom);
+
+    // Restore drawing canvases to display size
+    restoreAllCanvases();
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 const updateCopySelectedBtn = () => {
