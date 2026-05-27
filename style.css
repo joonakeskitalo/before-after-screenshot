@@ -20,7 +20,7 @@ body {
     display: block;
     box-sizing: border-box;
     padding-bottom: 256px;
-    padding-top: 36px;
+    padding-top: 42px;
     height: 100vh;
     overflow: auto;
 
@@ -40,36 +40,35 @@ body {
     right: 0;
     z-index: 100;
     background-color: #ffffffdf;
-    padding: 4px 8px;
+    padding: 6px 12px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     border-bottom: 1px solid oklch(92.8% 0.006 264.531);
     color: #24292e;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .toolbar-title {
-    font-size: 10pt;
+    font-size: 11pt;
     font-weight: 600;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .toolbar-controls {
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex: 1;
-    justify-content: center;
-    flex-wrap: wrap;
-    min-width: 0;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .toolbar-copy {
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .toolbar-label {
@@ -79,6 +78,20 @@ body {
     gap: 3px;
     opacity: 0.8;
     white-space: nowrap;
+}
+
+/* Thin scrollbar for toolbar overflow */
+.toolbar::-webkit-scrollbar {
+    height: 3px;
+}
+
+.toolbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+}
+
+.toolbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .toolbar-label input[type="number"] {
@@ -114,9 +127,9 @@ body {
 
 .toolbar-divider {
     width: 1px;
-    height: 18px;
+    height: 20px;
     background-color: oklch(92.8% 0.006 264.531);
-    margin: 0 2px;
+    margin: 0 4px;
 }
 
 textarea {
@@ -212,11 +225,11 @@ button {
     color: #24292e;
     cursor: pointer;
     display: inline-block;
-    font-size: 9pt;
+    font-size: 10pt;
     font-weight: 500;
     line-height: 20px;
     list-style: none;
-    padding: 2px 8px;
+    padding: 4px 10px;
     position: relative;
     transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
     user-select: none;
@@ -225,10 +238,10 @@ button {
     vertical-align: middle;
     white-space: nowrap;
     word-wrap: break-word;
-    height: 24px;
+    height: 28px;
     justify-content: center;
     line-height: 0;
-    border-radius: 5px;
+    border-radius: 6px;
 }
 
 button:hover {
@@ -263,14 +276,14 @@ button:-webkit-details-marker {
 }
 
 input[type="color"] {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     margin: 0;
     appearance: none;
     -webkit-appearance: none;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 2px solid rgb(112, 109, 109);
 }
 
@@ -283,7 +296,7 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 select {
-    font-size: 9pt;
+    font-size: 10pt;
     font-weight: 500;
     appearance: none;
     background-color: #fbfbfb;
@@ -292,10 +305,10 @@ select {
         rgba(255, 255, 255, 0.25) 0 1px 0 inset;
     box-sizing: border-box;
     color: #24292e;
-    padding: 0 12px;
-    height: 24px;
+    padding: 0 14px;
+    height: 28px;
     justify-content: center;
-    border-radius: 5px;
+    border-radius: 6px;
     border: 1px solid oklch(92.8% 0.006 264.531);
 }
 
@@ -590,11 +603,11 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 
 /* Tool mode button (arrow, etc.) */
 .tool-mode-btn {
-    font-size: 11pt;
-    min-width: 24px;
-    height: 24px;
-    padding: 0 4px;
-    border-radius: 5px;
+    font-size: 12pt;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 6px;
     font-weight: 600;
 }
 
@@ -613,14 +626,14 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 }
 
 .thickness-btn {
-    min-width: 22px;
-    width: 22px;
-    height: 22px;
+    min-width: 26px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 5px;
+    border-radius: 6px;
     border: 1px solid oklch(92.8% 0.006 264.531);
     background: #fbfbfb;
     cursor: pointer;
