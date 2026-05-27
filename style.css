@@ -432,7 +432,7 @@ select {
 
 .bottom-toolbar.compact .bottom-toolbar-drop {
     min-width: 40px;
-    height: 32px;
+    height: 64px;
 }
 
 .bottom-toolbar-item {
