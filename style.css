@@ -430,12 +430,9 @@ select {
     }
 }
 
-.bottom-toolbar.compact .bottom-toolbar-drop > span {
-    display: none;
-}
-
 .bottom-toolbar.compact .bottom-toolbar-drop {
     min-width: 40px;
+    height: 32px;
 }
 
 .bottom-toolbar-item {

@@ -3044,10 +3044,23 @@ const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
 const bottomToolbarDrop = document.getElementById("bottom-toolbar-drop");
 const bottomToolbarDropSpan = bottomToolbarDrop.querySelector("span");
 
+// Track whether the user has manually resized the staging area
+let stagingManuallyResized = false;
+
 const updateStagingInstruction = () => {
   const hasImages = bottomToolbarInner.querySelector(".bottom-toolbar-item") !== null;
   bottomToolbarDrop.style.display = hasImages ? "none" : "";
+  // Use smaller variant when no images are staged (unless user manually resized it bigger)
+  if (!hasImages && !stagingManuallyResized) {
+    bottomToolbar.classList.add("compact");
+  } else if (hasImages) {
+    bottomToolbar.classList.remove("compact");
+    stagingManuallyResized = false;
+  }
 };
+
+// Apply compact state on initial load (staging starts empty)
+updateStagingInstruction();
 
 // --- Resize handle for bottom toolbar ---
 const resizeHandle = document.getElementById("bottom-toolbar-resize-handle");
@@ -3071,7 +3084,8 @@ document.addEventListener("mousemove", (e) => {
   bottomToolbar.style.height = newHeight + "px";
   bottomToolbarInner.style.minHeight = (newHeight - 24) + "px";
 
-  // Add compact class when toolbar is narrow
+  // Add compact class when toolbar is narrow or has no images and hasn't been resized up
+  const hasImages = bottomToolbarInner.querySelector(".bottom-toolbar-item") !== null;
   if (newHeight < 100) {
     bottomToolbar.classList.add("compact");
   } else {
@@ -3096,6 +3110,8 @@ document.addEventListener("mouseup", () => {
   isResizing = false;
   document.body.style.cursor = "";
   document.body.style.userSelect = "";
+  // Track if user resized to a non-compact height
+  stagingManuallyResized = !bottomToolbar.classList.contains("compact");
 });
 
 const sortStagingArea = () => {
