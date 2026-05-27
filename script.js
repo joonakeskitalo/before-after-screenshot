@@ -307,11 +307,34 @@ document.addEventListener("keydown", (e) => {
 // Wire up toolbar drawing controls
 const drawColorInput = document.getElementById("draw-color");
 
+// Determine if a hex color is "dark" (luminance < 0.4)
+const isColorDark = (hex) => {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16) / 255;
+  const g = parseInt(c.substring(2, 4), 16) / 255;
+  const b = parseInt(c.substring(4, 6), 16) / 255;
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+  return luminance < 0.4;
+};
+
+const updatePresetColorSelection = () => {
+  document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
+    if (b.dataset.color === drawColor) {
+      if (isColorDark(b.dataset.color)) {
+        b.style.boxShadow = "0 0 0 2px #9d9d9dc3";
+      } else {
+        b.style.boxShadow = "0 0 0 2px #00000069";
+      }
+    } else {
+      b.style.boxShadow = "none";
+      b.style.borderColor = "#3333333a";
+    }
+  });
+};
+
 drawColorInput.addEventListener("input", (e) => {
   drawColor = e.target.value;
-  document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
-    b.style.borderColor = b.dataset.color === drawColor ? "#333" : "transparent";
-  });
+  updatePresetColorSelection();
 });
 
 document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => {
@@ -330,11 +353,12 @@ document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) =
     e.stopPropagation();
     drawColor = btn.dataset.color;
     drawColorInput.value = drawColor;
-    document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
-      b.style.borderColor = b.dataset.color === drawColor ? "#333" : "transparent";
-    });
+    updatePresetColorSelection();
   });
 });
+
+// Apply initial selection state
+updatePresetColorSelection();
 
 // Pen mode toggle
 penModeBtn.addEventListener("click", (e) => {
@@ -2636,9 +2660,7 @@ document.addEventListener("keydown", (e) => {
         const nextIndex = (currentIndex + 1) % presetColors.length;
         drawColor = presetColors[nextIndex];
         drawColorInput.value = drawColor;
-        document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
-          b.style.borderColor = b.dataset.color === drawColor ? "#333" : "transparent";
-        });
+        updatePresetColorSelection();
       }
       break;
     }
