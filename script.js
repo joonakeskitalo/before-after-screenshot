@@ -120,7 +120,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         if (node.classList && node.classList.contains("drawing-text-input")) return false;
         if (node.classList && node.classList.contains("row-controls")) return false;
         if (node.classList && node.classList.contains("row-select-cb")) return false;
-        if (node.classList && node.classList.contains("grid-cell-filename")) return false;
+        if (node.classList && node.classList.contains("grid-cell-filename") && !showFilenames) return false;
         if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
       },
