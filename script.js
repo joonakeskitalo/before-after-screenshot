@@ -13,7 +13,7 @@ let gridRows = 1;
 const selectedRows = new Set();
 
 // Track filename visibility
-let showFilenames = true;
+let showFilenames = false;
 
 const setElementWidths = (arr, size) => {
   const images = cardsEl.querySelectorAll("img");
@@ -3453,7 +3453,7 @@ document.addEventListener("keyup", (e) => {
 
 // --- Toggle Filenames ---
 const filenameToggleBtn = document.getElementById("filename-toggle-btn");
-filenameToggleBtn.classList.add("active"); // starts active (filenames visible)
+// starts inactive (filenames hidden by default)
 
 filenameToggleBtn.addEventListener("click", (e) => {
   e.stopPropagation();
