@@ -297,7 +297,6 @@ document.addEventListener("keydown", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
   }
 });
@@ -379,7 +378,6 @@ penModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -405,7 +403,6 @@ arrowModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -431,7 +428,6 @@ lineModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -457,7 +453,6 @@ rectModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -483,7 +478,6 @@ rectstrokeModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -509,7 +503,6 @@ ovalModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -535,7 +528,6 @@ ovalfillModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
@@ -561,7 +553,6 @@ dotModeBtn.addEventListener("click", (e) => {
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     enableDrawingMode();
   }
@@ -588,7 +579,6 @@ eraserModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.add("eraser-tool");
     enableDrawingMode();
@@ -615,7 +605,6 @@ objectEraserModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
     document.body.classList.add("eraser-tool");
     enableDrawingMode();
@@ -628,7 +617,6 @@ textModeBtn.addEventListener("click", (e) => {
   if (drawTool === "text" && drawingMode) {
     disableDrawingMode();
     textModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
   } else {
     drawTool = "text";
@@ -643,7 +631,6 @@ textModeBtn.addEventListener("click", (e) => {
     dotModeBtn.classList.remove("active");
     eraserModeBtn.classList.remove("active");
     objectEraserModeBtn.classList.remove("active");
-    drawFontSizeInput.style.display = "";
     document.body.classList.remove("eraser-tool");
     enableDrawingMode();
   }
