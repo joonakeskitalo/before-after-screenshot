@@ -588,9 +588,15 @@ const updateDrawingCursor = () => {
   // Don't override cursor for text or eraser tools
   if (drawTool === "text" || drawTool === "eraser" || drawTool === "object-eraser") return;
 
-  const size = Math.max(drawLineWidth + 4, 8); // min 8px so it's visible
+  const zoomScale = gridZoom / 100;
+  // Match the actual rendered size on screen
+  // Dot tool renders at radius = (lineWidth + 4) * zoomScale
+  // Other tools render strokes at lineWidth * zoomScale
+  const radius = drawTool === "dot"
+    ? (drawLineWidth + 4) * zoomScale
+    : (drawLineWidth / 2) * zoomScale;
+  const size = Math.max(Math.ceil(radius * 2 + 2), 8); // +2 for outer ring, min 8px
   const half = size / 2;
-  const radius = drawLineWidth / 2;
   const encodedColor = encodeURIComponent(drawColor);
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'><circle cx='${half}' cy='${half}' r='${radius}' fill='${encodedColor}'/><circle cx='${half}' cy='${half}' r='${half - 0.5}' fill='none' stroke='%23666' stroke-width='0.5'/></svg>`;
   const cursor = `url("data:image/svg+xml,${svg}") ${half} ${half}, crosshair`;
@@ -1967,6 +1973,16 @@ const redrawAllCanvasesForExport = (scale) => {
           ctx.beginPath();
           ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
           ctx.fill();
+        } else if (path.type === "dot") {
+          const cx = path.position.x * canvas.width;
+          const cy = path.position.y * canvas.height;
+          const radius = (path.lineWidth + 4) * dprNoImg;
+          ctx.globalAlpha = 0.7;
+          ctx.fillStyle = path.color;
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
         } else if (path.type === "eraser") {
           if (path.points.length < 2) continue;
           ctx.save();
@@ -1983,7 +1999,7 @@ const redrawAllCanvasesForExport = (scale) => {
           ctx.stroke();
           ctx.restore();
         } else {
-          if (path.points.length < 2) continue;
+          if (!path.points || path.points.length < 2) continue;
           ctx.beginPath();
           ctx.moveTo(path.points[0].x * canvas.width, path.points[0].y * canvas.height);
           for (let i = 1; i < path.points.length; i++) {
@@ -2083,6 +2099,16 @@ const redrawAllCanvasesForExport = (scale) => {
         ctx.beginPath();
         ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
         ctx.fill();
+      } else if (path.type === "dot") {
+        const cx = path.position.x * fitRect.width * dpr;
+        const cy = path.position.y * fitRect.height * dpr;
+        const radius = (path.lineWidth + 4) * dpr;
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = path.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
       } else if (path.type === "eraser") {
         if (path.points.length < 2) continue;
         ctx.save();
@@ -2099,7 +2125,7 @@ const redrawAllCanvasesForExport = (scale) => {
         ctx.stroke();
         ctx.restore();
       } else {
-        if (path.points.length < 2) continue;
+        if (!path.points || path.points.length < 2) continue;
         ctx.beginPath();
         ctx.moveTo(path.points[0].x * fitRect.width * dpr, path.points[0].y * fitRect.height * dpr);
         for (let i = 1; i < path.points.length; i++) {
@@ -3039,6 +3065,9 @@ const applyGridZoom = (zoom) => {
   // Scale font size for cell textareas
   const fontSize = Math.round(15 * scale);
   root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+
+  // Update drawing cursor to reflect new zoom
+  updateDrawingCursor();
 };
 
 gridZoomInput.addEventListener("input", (e) => {
