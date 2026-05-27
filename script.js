@@ -2622,7 +2622,8 @@ document.addEventListener("keydown", (e) => {
   if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
 
   // Skip hotkeys when Shift is used as a drawing modifier (e.g. constraining shapes)
-  if (e.shiftKey && drawingMode && e.key !== "Escape") return;
+  // Allow Shift+1/2/3 (!, ", #) through for thickness hotkeys
+  if (e.shiftKey && drawingMode && e.key !== "Escape" && !["!", "\"", "#"].includes(e.key)) return;
 
   const gridColsInput = document.getElementById("grid-cols");
   const gridRowsInput = document.getElementById("grid-rows");
@@ -2731,6 +2732,24 @@ document.addEventListener("keydown", (e) => {
         drawColorInput.value = drawColor;
         updatePresetColorSelection();
       }
+      break;
+    }
+    case "!": {
+      // Shift+1: Thin line thickness
+      const thicknessBtns = document.querySelectorAll(".thickness-presets .thickness-btn");
+      if (thicknessBtns[0]) thicknessBtns[0].click();
+      break;
+    }
+    case "\"": {
+      // Shift+2: Medium line thickness
+      const thicknessBtns = document.querySelectorAll(".thickness-presets .thickness-btn");
+      if (thicknessBtns[1]) thicknessBtns[1].click();
+      break;
+    }
+    case "#": {
+      // Shift+3: Thick line thickness
+      const thicknessBtns = document.querySelectorAll(".thickness-presets .thickness-btn");
+      if (thicknessBtns[2]) thicknessBtns[2].click();
       break;
     }
     case "1":
