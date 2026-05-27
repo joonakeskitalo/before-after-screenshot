@@ -928,6 +928,7 @@ dotModeBtn.addEventListener("click", (e) => {
     moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("eraser-tool");
     document.body.classList.remove("move-tool");
     enableDrawingMode();
   }
@@ -984,6 +985,7 @@ objectEraserModeBtn.addEventListener("click", (e) => {
     moveModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     document.body.classList.remove("text-tool");
+    document.body.classList.remove("move-tool");
     document.body.classList.add("eraser-tool");
     enableDrawingMode();
   }
