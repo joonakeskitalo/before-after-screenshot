@@ -647,7 +647,7 @@ const isColorDark = (hex) => {
 };
 
 const updatePresetColorSelection = () => {
-  document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((b) => {
+  document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn").forEach((b) => {
     if (b.dataset.color === drawColor) {
       if (isColorDark(b.dataset.color)) {
         b.style.boxShadow = "0 0 0 2px #9d9d9dc3";
@@ -677,7 +677,7 @@ document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => 
   });
 });
 
-document.querySelectorAll(".toolbar-controls .preset-color-btn").forEach((btn) => {
+document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn").forEach((btn) => {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     drawColor = btn.dataset.color;
@@ -3653,7 +3653,7 @@ document.addEventListener("keydown", (e) => {
     case "x": {
       // Cycle through preset colors
       const presetColors = Array.from(
-        document.querySelectorAll(".toolbar-controls .preset-color-btn")
+        document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn")
       ).map((btn) => btn.dataset.color);
       if (presetColors.length > 0) {
         const currentIndex = presetColors.indexOf(drawColor);
@@ -3692,7 +3692,7 @@ document.addEventListener("keydown", (e) => {
     case "8":
     case "9": {
       // Select preset color by number key
-      const presetBtns = document.querySelectorAll(".toolbar-controls .preset-color-btn");
+      const presetBtns = document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn");
       const index = parseInt(e.key) - 1;
       if (index < presetBtns.length) {
         presetBtns[index].click();
