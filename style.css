@@ -20,7 +20,7 @@ body {
     display: block;
     box-sizing: border-box;
     padding-bottom: 256px;
-    padding-top: 44px;
+    padding-top: 36px;
     height: 100vh;
     overflow: auto;
 
@@ -40,16 +40,17 @@ body {
     right: 0;
     z-index: 100;
     background-color: #ffffffdf;
-    padding: 8px 12px;
+    padding: 4px 8px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 6px;
     border-bottom: 1px solid oklch(92.8% 0.006 264.531);
     color: #24292e;
+    flex-wrap: wrap;
 }
 
 .toolbar-title {
-    font-size: 11pt;
+    font-size: 10pt;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -57,23 +58,27 @@ body {
 .toolbar-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex: 1;
     justify-content: center;
+    flex-wrap: wrap;
+    min-width: 0;
 }
 
 .toolbar-copy {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    flex-wrap: wrap;
 }
 
 .toolbar-label {
-    font-size: 10pt;
+    font-size: 9pt;
     display: flex;
     align-items: center;
     gap: 3px;
     opacity: 0.8;
+    white-space: nowrap;
 }
 
 .toolbar-label input[type="number"] {
@@ -109,9 +114,9 @@ body {
 
 .toolbar-divider {
     width: 1px;
-    height: 20px;
+    height: 18px;
     background-color: oklch(92.8% 0.006 264.531);
-    margin: 0 4px;
+    margin: 0 2px;
 }
 
 textarea {
@@ -207,11 +212,11 @@ button {
     color: #24292e;
     cursor: pointer;
     display: inline-block;
-    font-size: 10pt;
+    font-size: 9pt;
     font-weight: 500;
     line-height: 20px;
     list-style: none;
-    padding: 4px 10px;
+    padding: 2px 8px;
     position: relative;
     transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
     user-select: none;
@@ -220,10 +225,10 @@ button {
     vertical-align: middle;
     white-space: nowrap;
     word-wrap: break-word;
-    height: 28px;
+    height: 24px;
     justify-content: center;
     line-height: 0;
-    border-radius: 6px;
+    border-radius: 5px;
 }
 
 button:hover {
@@ -258,14 +263,14 @@ button:-webkit-details-marker {
 }
 
 input[type="color"] {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     margin: 0;
     appearance: none;
     -webkit-appearance: none;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 2px solid rgb(112, 109, 109);
 }
 
@@ -278,7 +283,7 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 select {
-    font-size: 10pt;
+    font-size: 9pt;
     font-weight: 500;
     appearance: none;
     background-color: #fbfbfb;
@@ -287,10 +292,10 @@ select {
         rgba(255, 255, 255, 0.25) 0 1px 0 inset;
     box-sizing: border-box;
     color: #24292e;
-    padding: 0 16px;
-    height: 28px;
+    padding: 0 12px;
+    height: 24px;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 5px;
     border: 1px solid oklch(92.8% 0.006 264.531);
 }
 
@@ -585,11 +590,11 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 
 /* Tool mode button (arrow, etc.) */
 .tool-mode-btn {
-    font-size: 12pt;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 6px;
-    border-radius: 6px;
+    font-size: 11pt;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 4px;
+    border-radius: 5px;
     font-weight: 600;
 }
 
@@ -608,14 +613,14 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 }
 
 .thickness-btn {
-    min-width: 26px;
-    width: 26px;
-    height: 26px;
+    min-width: 22px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 5px;
     border: 1px solid oklch(92.8% 0.006 264.531);
     background: #fbfbfb;
     cursor: pointer;
