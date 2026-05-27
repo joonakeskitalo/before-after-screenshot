@@ -1928,16 +1928,19 @@ const redrawAllCanvasesForExport = (scale) => {
 
     // Bake drawing onto the image: create a temp canvas at the image's rendered size
     // multiplied by dpr so line thickness matches what the user sees on screen.
+    // Use the actual visible content area (accounting for object-fit: contain)
+    // so the baked image isn't stretched.
     const imgRect = img.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
+    const fitRect = getObjectFitRect(img);
 
     const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = imgRect.width * dpr;
-    tempCanvas.height = imgRect.height * dpr;
+    tempCanvas.width = fitRect.width * dpr;
+    tempCanvas.height = fitRect.height * dpr;
     const ctx = tempCanvas.getContext("2d");
 
-    // Draw the original image at full backing-store resolution
-    ctx.drawImage(img, 0, 0, imgRect.width * dpr, imgRect.height * dpr);
+    // Draw the original image at the content area size (not the element size)
+    ctx.drawImage(img, 0, 0, fitRect.width * dpr, fitRect.height * dpr);
 
     // Draw paths on top — coords are already image-relative (0-1)
     for (const path of data.paths) {
@@ -1951,8 +1954,8 @@ const redrawAllCanvasesForExport = (scale) => {
         const lineHeight = fontSize * 1.3;
         ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
         ctx.textBaseline = "top";
-        const x = path.position.x * imgRect.width * dpr;
-        const y = path.position.y * imgRect.height * dpr;
+        const x = path.position.x * fitRect.width * dpr;
+        const y = path.position.y * fitRect.height * dpr;
         const lines = path.text.split("\n");
         const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
         const totalHeight = fontSize + (lines.length - 1) * lineHeight;
@@ -1967,46 +1970,46 @@ const redrawAllCanvasesForExport = (scale) => {
           ctx.fillText(line, x, y + i * lineHeight);
         });
       } else if (path.type === "arrow") {
-        const fromX = path.from.x * imgRect.width * dpr;
-        const fromY = path.from.y * imgRect.height * dpr;
-        const toX = path.to.x * imgRect.width * dpr;
-        const toY = path.to.y * imgRect.height * dpr;
+        const fromX = path.from.x * fitRect.width * dpr;
+        const fromY = path.from.y * fitRect.height * dpr;
+        const toX = path.to.x * fitRect.width * dpr;
+        const toY = path.to.y * fitRect.height * dpr;
         drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dpr);
       } else if (path.type === "line") {
-        const fromX = path.from.x * imgRect.width * dpr;
-        const fromY = path.from.y * imgRect.height * dpr;
-        const toX = path.to.x * imgRect.width * dpr;
-        const toY = path.to.y * imgRect.height * dpr;
+        const fromX = path.from.x * fitRect.width * dpr;
+        const fromY = path.from.y * fitRect.height * dpr;
+        const toX = path.to.x * fitRect.width * dpr;
+        const toY = path.to.y * fitRect.height * dpr;
         ctx.beginPath();
         ctx.moveTo(fromX, fromY);
         ctx.lineTo(toX, toY);
         ctx.stroke();
       } else if (path.type === "rect") {
-        const rx = Math.min(path.from.x, path.to.x) * imgRect.width * dpr;
-        const ry = Math.min(path.from.y, path.to.y) * imgRect.height * dpr;
-        const rw = Math.abs(path.to.x - path.from.x) * imgRect.width * dpr;
-        const rh = Math.abs(path.to.y - path.from.y) * imgRect.height * dpr;
+        const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
+        const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
+        const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
+        const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
         ctx.fillStyle = path.color;
         ctx.fillRect(rx, ry, rw, rh);
       } else if (path.type === "rectstroke") {
-        const rx = Math.min(path.from.x, path.to.x) * imgRect.width * dpr;
-        const ry = Math.min(path.from.y, path.to.y) * imgRect.height * dpr;
-        const rw = Math.abs(path.to.x - path.from.x) * imgRect.width * dpr;
-        const rh = Math.abs(path.to.y - path.from.y) * imgRect.height * dpr;
+        const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
+        const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
+        const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
+        const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
         ctx.strokeRect(rx, ry, rw, rh);
       } else if (path.type === "oval") {
-        const rx = Math.min(path.from.x, path.to.x) * imgRect.width * dpr;
-        const ry = Math.min(path.from.y, path.to.y) * imgRect.height * dpr;
-        const rw = Math.abs(path.to.x - path.from.x) * imgRect.width * dpr;
-        const rh = Math.abs(path.to.y - path.from.y) * imgRect.height * dpr;
+        const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
+        const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
+        const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
+        const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
         ctx.beginPath();
         ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
         ctx.stroke();
       } else if (path.type === "ovalfill") {
-        const rx = Math.min(path.from.x, path.to.x) * imgRect.width * dpr;
-        const ry = Math.min(path.from.y, path.to.y) * imgRect.height * dpr;
-        const rw = Math.abs(path.to.x - path.from.x) * imgRect.width * dpr;
-        const rh = Math.abs(path.to.y - path.from.y) * imgRect.height * dpr;
+        const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
+        const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
+        const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
+        const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
         ctx.fillStyle = path.color;
         ctx.beginPath();
         ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
@@ -2020,18 +2023,18 @@ const redrawAllCanvasesForExport = (scale) => {
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
-        ctx.moveTo(path.points[0].x * imgRect.width * dpr, path.points[0].y * imgRect.height * dpr);
+        ctx.moveTo(path.points[0].x * fitRect.width * dpr, path.points[0].y * fitRect.height * dpr);
         for (let i = 1; i < path.points.length; i++) {
-          ctx.lineTo(path.points[i].x * imgRect.width * dpr, path.points[i].y * imgRect.height * dpr);
+          ctx.lineTo(path.points[i].x * fitRect.width * dpr, path.points[i].y * fitRect.height * dpr);
         }
         ctx.stroke();
         ctx.restore();
       } else {
         if (path.points.length < 2) continue;
         ctx.beginPath();
-        ctx.moveTo(path.points[0].x * imgRect.width * dpr, path.points[0].y * imgRect.height * dpr);
+        ctx.moveTo(path.points[0].x * fitRect.width * dpr, path.points[0].y * fitRect.height * dpr);
         for (let i = 1; i < path.points.length; i++) {
-          ctx.lineTo(path.points[i].x * imgRect.width * dpr, path.points[i].y * imgRect.height * dpr);
+          ctx.lineTo(path.points[i].x * fitRect.width * dpr, path.points[i].y * fitRect.height * dpr);
         }
         ctx.stroke();
       }
@@ -2039,8 +2042,11 @@ const redrawAllCanvasesForExport = (scale) => {
 
     // Store original src for restoration
     canvas.dataset.originalImgSrc = img.src;
-    // Replace image with composited version
+    // Replace image with composited version and size the element to match
     img.src = tempCanvas.toDataURL("image/png");
+    img.style.width = fitRect.width + "px";
+    img.style.height = fitRect.height + "px";
+    img.style.objectFit = "fill";
     // Hide the canvas so dom-to-image doesn't double-render the drawing
     canvas.style.display = "none";
   });
