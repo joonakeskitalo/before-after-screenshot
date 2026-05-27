@@ -1,0 +1,902 @@
+import state from './state.js';
+import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js';
+import { attachDragTo, clearOrCopyImage, updateCopySelectedBtn } from './copy-export.js';
+import { applyGridZoom } from './zoom.js';
+
+const setupCell = (cell) => {
+  const drop = cell.querySelector(".drop");
+  const img = cell.querySelector("img");
+  const span = cell.querySelector("span");
+
+  // Initialize drawing canvas for this cell
+  initDrawingCanvas(drop);
+
+  img.addEventListener(
+    "click",
+    async (e) => await clearOrCopyImage(e, img, drop, span),
+  );
+
+  drop.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    if (e.metaKey) {
+      // Clear the cell content
+      img.src = "";
+      img.style.display = "none";
+      drop.style.border = "var(--border)";
+      span.style.display = "block";
+      const textarea = cell.querySelector("textarea");
+      if (textarea) textarea.value = "";
+      updateFilenameLabel(cell);
+    }
+  });
+
+  drop.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+
+    // Show row drop target indicator when dragging a row
+    if (state.rowDragState) {
+      const targetRow = parseInt(cell.dataset.row);
+      if (targetRow !== state.rowDragState.sourceRow) {
+        setRowDropTarget(targetRow);
+      }
+    }
+  });
+
+  drop.addEventListener("dragleave", (e) => {
+    // Clear row drop target if leaving the cell
+    if (state.rowDragState && !cell.contains(e.relatedTarget)) {
+      clearRowDropTarget();
+    }
+  });
+
+  drop.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    drop.style.border = "unset";
+
+    // Handle row-drag drops onto grid cells
+    if (state.rowDragState) {
+      const sourceRow = state.rowDragState.sourceRow;
+      const targetRow = parseInt(cell.dataset.row);
+      if (sourceRow !== targetRow) {
+        swapRows(sourceRow, targetRow);
+      }
+      state.rowDragState = null;
+      clearRowHighlights();
+      clearRowDropTarget();
+      return;
+    }
+
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile && droppedFile.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = function () {
+        img.style.display = "flex";
+        img.src = this.result;
+        img.alt = droppedFile.name;
+        span.style.display = "none";
+        updateFilenameLabel(cell);
+      };
+      reader.readAsDataURL(droppedFile);
+      return;
+    }
+
+    const src = e.dataTransfer.getData("text/plain");
+    if (src) {
+      // Check if dragged from toolbar — insert from toolbar
+      const source = e.dataTransfer.getData("source");
+      const draggedId = e.dataTransfer.getData("id");
+      if (source === "toolbar" && draggedId) {
+        const draggedFilename = e.dataTransfer.getData("filename") || "";
+        img.style.display = "flex";
+        img.src = src;
+        img.alt = draggedFilename;
+        span.style.display = "none";
+        state.removeToolbarItemById(draggedId);
+        updateFilenameLabel(cell);
+        return;
+      }
+
+      // Dragged from another grid cell — swap the two cells
+      if (draggedId) {
+        const srcImg = document.getElementById(draggedId);
+        if (srcImg && srcImg !== img) {
+          const srcCell = srcImg.closest(".grid-cell");
+          if (srcCell && srcCell !== cell) {
+            swapCells(cell, srcCell);
+            return;
+          }
+        }
+      }
+
+      // Fallback: just set the image (e.g. external drop)
+      img.style.display = "flex";
+      img.src = src;
+      img.alt = "";
+      span.style.display = "none";
+      updateFilenameLabel(cell);
+    }
+  });
+
+  attachDragTo(img);
+
+  // Cell-level row-drag handlers (catches drags over textarea area too)
+  cell.addEventListener("dragover", (e) => {
+    if (!state.rowDragState) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const targetRow = parseInt(cell.dataset.row);
+    if (targetRow !== state.rowDragState.sourceRow) {
+      setRowDropTarget(targetRow);
+    }
+  });
+
+  cell.addEventListener("dragleave", (e) => {
+    if (!state.rowDragState) return;
+    if (!cell.contains(e.relatedTarget)) {
+      clearRowDropTarget();
+    }
+  });
+
+  cell.addEventListener("drop", (e) => {
+    if (!state.rowDragState) return;
+    e.preventDefault();
+    const sourceRow = state.rowDragState.sourceRow;
+    const targetRow = parseInt(cell.dataset.row);
+    if (sourceRow !== targetRow) {
+      swapRows(sourceRow, targetRow);
+    }
+    state.rowDragState = null;
+    clearRowHighlights();
+    clearRowDropTarget();
+  });
+};
+
+// --- Swap Grid Items ---
+const getCellData = (cell) => {
+  const img = cell.querySelector("img");
+  const textarea = cell.querySelector("textarea");
+  const canvas = cell.querySelector(".drawing-canvas");
+  const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? [...state.canvasDataMap.get(canvas).paths] : [];
+  return {
+    imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
+    imgAlt: img ? img.alt : "",
+    text: textarea ? textarea.value : "",
+    drawingPaths,
+  };
+};
+
+const setCellData = (cell, data) => {
+  const img = cell.querySelector("img");
+  const drop = cell.querySelector(".drop");
+  const span = cell.querySelector("span");
+  const textarea = cell.querySelector("textarea");
+  const canvas = cell.querySelector(".drawing-canvas");
+
+  if (data.imgSrc) {
+    img.src = data.imgSrc;
+    img.alt = data.imgAlt;
+    img.style.display = "flex";
+    drop.style.border = "unset";
+    if (span) span.style.display = "none";
+  } else {
+    img.src = "";
+    img.style.display = "none";
+    img.alt = "";
+    drop.style.border = "var(--border)";
+    if (span) span.style.display = "block";
+  }
+
+  if (textarea) textarea.value = data.text || "";
+
+  if (canvas) {
+    const canvasData = state.canvasDataMap.get(canvas);
+    if (canvasData) {
+      canvasData.paths = data.drawingPaths || [];
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
+    }
+  }
+  updateFilenameLabel(cell);
+};
+
+const swapCells = (cellA, cellB) => {
+  if (!cellA || !cellB || cellA === cellB) return;
+
+  // FLIP animation: record initial positions
+  const rectA = cellA.getBoundingClientRect();
+  const rectB = cellB.getBoundingClientRect();
+
+  // Swap data
+  const dataA = getCellData(cellA);
+  const dataB = getCellData(cellB);
+  setCellData(cellA, dataB);
+  setCellData(cellB, dataA);
+
+  // FLIP: content that was in A is now in B, content that was in B is now in A.
+  // To make it look like the content slid over, offset each cell to where its
+  // new content originally was, then animate back to identity.
+  const dx = rectB.left - rectA.left;
+  const dy = rectB.top - rectA.top;
+
+  // cellA now holds what was in B → start it at B's old position relative to A
+  cellA.style.transition = "none";
+  cellB.style.transition = "none";
+  cellA.style.transform = `translate(${dx}px, ${dy}px)`;
+  cellB.style.transform = `translate(${-dx}px, ${-dy}px)`;
+
+  // Force reflow so the browser registers the starting position
+  cellA.offsetHeight;
+
+  // Animate to identity
+  cellA.classList.add("swap-animating");
+  cellB.classList.add("swap-animating");
+  cellA.style.transition = "";
+  cellB.style.transition = "";
+  cellA.style.transform = "";
+  cellB.style.transform = "";
+
+  const cleanup = () => {
+    cellA.classList.remove("swap-animating");
+    cellB.classList.remove("swap-animating");
+    cellA.style.transform = "";
+    cellB.style.transform = "";
+  };
+
+  cellA.addEventListener("transitionend", cleanup, { once: true });
+  // Fallback in case transitionend doesn't fire
+  setTimeout(cleanup, 400);
+};
+
+const getAdjacentCell = (cell, direction) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const index = cells.indexOf(cell);
+  if (index === -1) return null;
+
+  if (direction === "left" && index > 0) return cells[index - 1];
+  if (direction === "right" && index < cells.length - 1) return cells[index + 1];
+  if (direction === "up" && index - state.gridCols >= 0) return cells[index - state.gridCols];
+  if (direction === "down" && index + state.gridCols < cells.length) return cells[index + state.gridCols];
+  return null;
+};
+
+// Update the filename label for a given cell based on its img.alt
+const updateFilenameLabel = (cell) => {
+  const label = cell.querySelector(".grid-cell-filename");
+  if (!label) return;
+  const img = cell.querySelector("img");
+  const name = img && img.alt && img.style.display !== "none" ? img.alt : "";
+  label.textContent = name;
+  label.style.display = name && state.showFilenames ? "" : "none";
+};
+
+// Toggle filename visibility for all cells
+const toggleFilenames = () => {
+  state.showFilenames = !state.showFilenames;
+  const btn = document.getElementById("filename-toggle-btn");
+  if (btn) btn.classList.toggle("active", state.showFilenames);
+  document.querySelectorAll(".grid-cell").forEach(updateFilenameLabel);
+};
+
+const createCell = (row, col) => {
+  const cell = document.createElement("div");
+  cell.className = "grid-cell";
+  cell.dataset.row = row;
+  cell.dataset.col = col;
+
+  const drop = document.createElement("div");
+  drop.className = "drop";
+
+  const span = document.createElement("span");
+  span.innerText = "Drop here";
+  drop.appendChild(span);
+
+  const img = document.createElement("img");
+  img.style.display = "none";
+  drop.appendChild(img);
+
+  const textarea = document.createElement("textarea");
+  textarea.autocomplete = "off";
+  textarea.autocorrect = "off";
+  textarea.spellcheck = false;
+  textarea.autocapitalize = "off";
+  textarea.rows = 2;
+  textarea.textContent = "";
+
+  cell.appendChild(drop);
+
+  const filenameLabel = document.createElement("div");
+  filenameLabel.className = "grid-cell-filename";
+  cell.appendChild(filenameLabel);
+
+  cell.appendChild(textarea);
+
+  setupCell(cell);
+
+  return cell;
+};
+
+const buildGrid = () => {
+  // Clear keyboard focus
+  state.focusedCellIndex = -1;
+
+  // Save existing cell data
+  const existingData = [];
+  const existingCells = state.gridEl.querySelectorAll(".grid-cell");
+  existingCells.forEach((cell) => {
+    const img = cell.querySelector("img");
+    const textarea = cell.querySelector("textarea");
+    const canvas = cell.querySelector(".drawing-canvas");
+    const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? state.canvasDataMap.get(canvas).paths : [];
+    existingData.push({
+      row: parseInt(cell.dataset.row),
+      col: parseInt(cell.dataset.col),
+      imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
+      imgAlt: img ? img.alt : "",
+      text: textarea ? textarea.value : "",
+      drawingPaths: drawingPaths,
+    });
+  });
+
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      // Restore data if it existed at this position
+      const existing = existingData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        const img = cell.querySelector("img");
+        const drop = cell.querySelector(".drop");
+        const span = cell.querySelector("span");
+        const textarea = cell.querySelector("textarea");
+
+        if (existing.imgSrc) {
+          img.src = existing.imgSrc;
+          img.alt = existing.imgAlt;
+          img.style.display = "flex";
+          drop.style.border = "unset";
+          span.style.display = "none";
+        }
+        if (existing.text) {
+          textarea.value = existing.text;
+        }
+        updateFilenameLabel(cell);
+        // Restore drawing paths
+        if (existing.drawingPaths && existing.drawingPaths.length > 0) {
+          const canvas = cell.querySelector(".drawing-canvas");
+          if (canvas) {
+            const data = state.canvasDataMap.get(canvas);
+            if (data) {
+              data.paths = existing.drawingPaths;
+              const dpr = window.devicePixelRatio || 1;
+              redrawCanvas(canvas, dpr);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Build row controls (drag handles + add-row buttons)
+  buildRowControls();
+};
+
+// --- Row Reordering & Insertion ---
+
+state.rowDragState = null; // { sourceRow, placeholder }
+
+const buildRowControls = () => {
+  // Remove existing row controls
+  const existingControls = document.querySelector(".row-controls");
+  if (existingControls) existingControls.remove();
+
+  const controlsContainer = document.createElement("div");
+  controlsContainer.className = "row-controls";
+
+  // Build a grid with interleaved rows:
+  // [add-btn-row] [handle-row] [add-btn-row] [handle-row] ... [add-btn-row]
+  // The handle rows use 1fr to match the main grid's row sizing.
+  // The add-btn rows are auto-sized (small).
+  // The gap between handle rows must equal var(--gap) minus the space taken by the add-btn row.
+  // Simpler: no gap, use the template to control spacing.
+  const rowTemplate = [];
+  for (let r = 0; r < state.gridRows; r++) {
+    rowTemplate.push("auto"); // add-btn slot
+    rowTemplate.push("1fr"); // handle slot
+  }
+  rowTemplate.push("auto"); // final add-btn slot
+  controlsContainer.style.gridTemplateRows = rowTemplate.join(" ");
+  controlsContainer.style.gap = "0";
+
+  // We need the handle rows to have the same gap between them as the main grid.
+  // The main grid uses `gap: var(--gap)`. In our layout, between two handle rows
+  // there's an add-btn row. We use row-gap on the handles via margins or we set
+  // the add-btn row height to match the gap.
+  // Actually, the cleanest approach: set the auto rows to have a fixed height
+  // equal to the gap, so the spacing between 1fr rows matches the main grid.
+
+  for (let r = 0; r < state.gridRows; r++) {
+    // Add-row button before this row
+    const addBtn = createAddRowButton(r);
+    addBtn.style.gridRow = `${r * 2 + 1}`;
+    addBtn.style.height = r === 0 ? "0px" : "var(--gap)";
+    addBtn.style.alignSelf = "center";
+    controlsContainer.appendChild(addBtn);
+
+    // Row drag handle
+    const handle = document.createElement("div");
+    handle.className = "row-drag-handle";
+    handle.draggable = true;
+    handle.dataset.row = r;
+    handle.title = `Drag to reorder row ${r + 1}`;
+    handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="4" cy="3" r="1.2" fill="currentColor"/><circle cx="8" cy="3" r="1.2" fill="currentColor"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="8" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="9" r="1.2" fill="currentColor"/><circle cx="8" cy="9" r="1.2" fill="currentColor"/></svg>`;
+
+    handle.addEventListener("dragstart", (e) => {
+      const row = parseInt(handle.dataset.row);
+      state.rowDragState = { sourceRow: row };
+      e.dataTransfer.setData("row-drag", String(row));
+      e.dataTransfer.effectAllowed = "move";
+      handle.classList.add("dragging");
+      highlightRow(row, true);
+    });
+
+    // Delete row button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-row-btn";
+    deleteBtn.dataset.row = r;
+    deleteBtn.title = `Delete row ${r + 1}`;
+    deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9" y1="3" x2="3" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteRowAt(parseInt(deleteBtn.dataset.row));
+    });
+
+    // Row selection checkbox
+    const selectCb = document.createElement("input");
+    selectCb.type = "checkbox";
+    selectCb.className = "row-select-cb";
+    selectCb.dataset.row = r;
+    selectCb.title = `Select row ${r + 1} for export`;
+    selectCb.checked = state.selectedRows.has(r);
+    selectCb.addEventListener("change", (e) => {
+      const rowIdx = parseInt(selectCb.dataset.row);
+      if (selectCb.checked) {
+        state.selectedRows.add(rowIdx);
+      } else {
+        state.selectedRows.delete(rowIdx);
+      }
+      updateCopySelectedBtn();
+    });
+
+    // Wrapper to stack handle, checkbox, and delete button vertically
+    const rowControlGroup = document.createElement("div");
+    rowControlGroup.className = "row-control-group";
+    rowControlGroup.style.gridRow = `${r * 2 + 2}`;
+    rowControlGroup.appendChild(selectCb);
+    rowControlGroup.appendChild(handle);
+    rowControlGroup.appendChild(deleteBtn);
+    controlsContainer.appendChild(rowControlGroup);
+
+    handle.addEventListener("dragend", () => {
+      handle.classList.remove("dragging");
+      state.rowDragState = null;
+      clearRowHighlights();
+      clearRowDropIndicators();
+      clearRowDropTarget();
+    });
+
+    handle.addEventListener("dragover", (e) => {
+      if (!state.rowDragState) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      const targetRow = parseInt(handle.dataset.row);
+      if (targetRow !== state.rowDragState.sourceRow) {
+        setRowDropTarget(targetRow);
+      }
+    });
+
+    handle.addEventListener("dragleave", () => {
+      clearRowDropTarget();
+    });
+
+    handle.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (!state.rowDragState) return;
+      const sourceRow = state.rowDragState.sourceRow;
+      const targetRow = parseInt(handle.dataset.row);
+      if (sourceRow !== targetRow) {
+        swapRows(sourceRow, targetRow);
+      }
+      state.rowDragState = null;
+      clearRowHighlights();
+      clearRowDropTarget();
+    });
+  }
+
+  // Final add-row button after the last row
+  const addLastBtn = createAddRowButton(state.gridRows);
+  addLastBtn.style.gridRow = `${state.gridRows * 2 + 1}`;
+  addLastBtn.style.height = "0px";
+  addLastBtn.style.alignSelf = "center";
+  controlsContainer.appendChild(addLastBtn);
+
+  // Insert controls container next to the grid
+  state.gridEl.parentElement.insertBefore(controlsContainer, state.gridEl);
+};
+
+const createAddRowButton = (insertIndex) => {
+  const btn = document.createElement("button");
+  btn.className = "add-row-btn";
+  btn.dataset.insertIndex = insertIndex;
+  btn.title = `Add row here`;
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    insertRowAt(insertIndex);
+  });
+
+  // Allow dropping rows onto add-row buttons as drop targets
+  btn.addEventListener("dragover", (e) => {
+    if (!state.rowDragState) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    btn.classList.add("drop-target");
+  });
+
+  btn.addEventListener("dragleave", () => {
+    btn.classList.remove("drop-target");
+  });
+
+  btn.addEventListener("drop", (e) => {
+    e.preventDefault();
+    btn.classList.remove("drop-target");
+    if (!state.rowDragState) return;
+    const sourceRow = state.rowDragState.sourceRow;
+    const targetIndex = parseInt(btn.dataset.insertIndex);
+    moveRow(sourceRow, targetIndex);
+    state.rowDragState = null;
+  });
+
+  return btn;
+};
+
+const insertRowAt = (insertIndex) => {
+  // Collect all existing cell data
+  const allData = collectGridData();
+
+  // Shift rows at and after insertIndex down by 1
+  const newData = allData.map((d) => ({
+    ...d,
+    row: d.row >= insertIndex ? d.row + 1 : d.row,
+  }));
+
+  // Update state.selectedRows — shift indices at or after insertIndex
+  const newSelected = new Set();
+  state.selectedRows.forEach((r) => {
+    newSelected.add(r >= insertIndex ? r + 1 : r);
+  });
+  state.selectedRows.clear();
+  newSelected.forEach((r) => state.selectedRows.add(r));
+  updateCopySelectedBtn();
+
+  state.gridRows++;
+  document.getElementById("grid-rows").value = state.gridRows;
+
+  // Rebuild grid with shifted data
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const deleteRowAt = (rowIndex) => {
+  if (state.gridRows <= 1) return; // Don't delete the last row
+
+  const allData = collectGridData();
+
+  // Remove data for the deleted row and shift rows above it down
+  const newData = allData
+    .filter((d) => d.row !== rowIndex)
+    .map((d) => ({
+      ...d,
+      row: d.row > rowIndex ? d.row - 1 : d.row,
+    }));
+
+  // Update state.selectedRows — remove deleted row and shift indices
+  const newSelected = new Set();
+  state.selectedRows.forEach((r) => {
+    if (r < rowIndex) newSelected.add(r);
+    else if (r > rowIndex) newSelected.add(r - 1);
+    // r === rowIndex is removed
+  });
+  state.selectedRows.clear();
+  newSelected.forEach((r) => state.selectedRows.add(r));
+  updateCopySelectedBtn();
+
+  state.gridRows--;
+  document.getElementById("grid-rows").value = state.gridRows;
+
+  // Rebuild grid
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const moveRow = (sourceRow, targetIndex) => {
+  // If dropping in the same position or adjacent (no-op)
+  if (targetIndex === sourceRow || targetIndex === sourceRow + 1) return;
+
+  const allData = collectGridData();
+
+  // Track whether the source row was selected
+  const sourceWasSelected = state.selectedRows.has(sourceRow);
+
+  // Extract source row data
+  const sourceData = allData.filter((d) => d.row === sourceRow);
+  const otherData = allData.filter((d) => d.row !== sourceRow);
+
+  // Calculate new row indices
+  // After removing source row, rows shift up if they were below it
+  const reindexed = otherData.map((d) => ({
+    ...d,
+    row: d.row > sourceRow ? d.row - 1 : d.row,
+  }));
+
+  // Determine the effective insert position after removal
+  const effectiveTarget = targetIndex > sourceRow ? targetIndex - 1 : targetIndex;
+
+  // Shift rows at and after effectiveTarget down to make room
+  const shifted = reindexed.map((d) => ({
+    ...d,
+    row: d.row >= effectiveTarget ? d.row + 1 : d.row,
+  }));
+
+  // Place source row at effectiveTarget
+  const movedData = sourceData.map((d) => ({
+    ...d,
+    row: effectiveTarget,
+  }));
+
+  const finalData = [...shifted, ...movedData];
+
+  // Update state.selectedRows to reflect the move
+  const newSelected = new Set();
+  state.selectedRows.forEach((r) => {
+    if (r === sourceRow) {
+      newSelected.add(effectiveTarget);
+    } else {
+      let adjusted = r;
+      if (r > sourceRow) adjusted--;
+      if (adjusted >= effectiveTarget) adjusted++;
+      newSelected.add(adjusted);
+    }
+  });
+  state.selectedRows.clear();
+  newSelected.forEach((r) => state.selectedRows.add(r));
+
+  // Rebuild grid
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      const existing = finalData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const swapRows = (rowA, rowB) => {
+  if (rowA === rowB) return;
+
+  const allData = collectGridData();
+
+  // Swap row indices
+  const newData = allData.map((d) => {
+    if (d.row === rowA) return { ...d, row: rowB };
+    if (d.row === rowB) return { ...d, row: rowA };
+    return d;
+  });
+
+  // Update state.selectedRows to reflect the swap
+  const hadA = state.selectedRows.has(rowA);
+  const hadB = state.selectedRows.has(rowB);
+  if (hadA && !hadB) {
+    state.selectedRows.delete(rowA);
+    state.selectedRows.add(rowB);
+  } else if (hadB && !hadA) {
+    state.selectedRows.delete(rowB);
+    state.selectedRows.add(rowA);
+  }
+  // If both or neither were selected, no change needed
+
+  // Rebuild grid
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+const collectGridData = () => {
+  const data = [];
+  state.gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+    const img = cell.querySelector("img");
+    const textarea = cell.querySelector("textarea");
+    const canvas = cell.querySelector(".drawing-canvas");
+    const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? state.canvasDataMap.get(canvas).paths : [];
+    data.push({
+      row: parseInt(cell.dataset.row),
+      col: parseInt(cell.dataset.col),
+      imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
+      imgAlt: img ? img.alt : "",
+      text: textarea ? textarea.value : "",
+      drawingPaths: drawingPaths,
+    });
+  });
+  return data;
+};
+
+const restoreCellData = (cell, data) => {
+  const img = cell.querySelector("img");
+  const drop = cell.querySelector(".drop");
+  const span = cell.querySelector("span");
+  const textarea = cell.querySelector("textarea");
+
+  if (data.imgSrc) {
+    img.src = data.imgSrc;
+    img.alt = data.imgAlt;
+    img.style.display = "flex";
+    drop.style.border = "unset";
+    span.style.display = "none";
+  }
+  if (data.text) {
+    textarea.value = data.text;
+  }
+  if (data.drawingPaths && data.drawingPaths.length > 0) {
+    const canvas = cell.querySelector(".drawing-canvas");
+    if (canvas) {
+      const canvasData = state.canvasDataMap.get(canvas);
+      if (canvasData) {
+        canvasData.paths = data.drawingPaths;
+        const dpr = window.devicePixelRatio || 1;
+        redrawCanvas(canvas, dpr);
+      }
+    }
+  }
+  updateFilenameLabel(cell);
+};
+
+const highlightRow = (row, active) => {
+  state.gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+    if (parseInt(cell.dataset.row) === row) {
+      cell.classList.toggle("row-dragging", active);
+    }
+  });
+};
+
+const clearRowHighlights = () => {
+  state.gridEl.querySelectorAll(".grid-cell.row-dragging").forEach((cell) => {
+    cell.classList.remove("row-dragging");
+  });
+};
+
+const clearRowDropIndicators = () => {
+  document.querySelectorAll(".add-row-btn.drop-target").forEach((btn) => {
+    btn.classList.remove("drop-target");
+  });
+};
+
+const setRowDropTarget = (row) => {
+  // Clear previous target
+  state.gridEl.querySelectorAll(".grid-cell.row-drop-target").forEach((cell) => {
+    cell.classList.remove("row-drop-target");
+  });
+  // Highlight all cells in the target row
+  state.gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+    if (parseInt(cell.dataset.row) === row) {
+      cell.classList.add("row-drop-target");
+    }
+  });
+};
+
+const clearRowDropTarget = () => {
+  state.gridEl.querySelectorAll(".grid-cell.row-drop-target").forEach((cell) => {
+    cell.classList.remove("row-drop-target");
+  });
+};
+
+const updateGrid = () => {
+  state.gridCols = parseInt(document.getElementById("grid-cols").value) || 3;
+  state.gridRows = parseInt(document.getElementById("grid-rows").value) || 1;
+  state.selectedRows.clear();
+  updateCopySelectedBtn();
+  buildGrid();
+};
+
+// Wire up grid size inputs (replacing inline onchange handlers)
+document.getElementById("grid-cols").addEventListener("change", updateGrid);
+document.getElementById("grid-rows").addEventListener("change", updateGrid);
+
+// Register updateFilenameLabel on state so copy-export can use it without circular deps
+state.updateFilenameLabel = updateFilenameLabel;
+
+export {
+  setupCell,
+  getCellData,
+  setCellData,
+  swapCells,
+  getAdjacentCell,
+  updateFilenameLabel,
+  toggleFilenames,
+  createCell,
+  buildGrid,
+  buildRowControls,
+  insertRowAt,
+  deleteRowAt,
+  moveRow,
+  swapRows,
+  collectGridData,
+  restoreCellData,
+  highlightRow,
+  clearRowHighlights,
+  clearRowDropIndicators,
+  setRowDropTarget,
+  clearRowDropTarget,
+  updateGrid,
+};

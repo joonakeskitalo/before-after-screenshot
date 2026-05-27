@@ -28,9 +28,9 @@
               <div class="toolbar-divider"></div>
 
               <div class="grid-size-control">
-                <input type="number" id="grid-cols" value="3" min="1" onchange="updateGrid()" />
+                <input type="number" id="grid-cols" value="3" min="1" />
                 <span class="grid-size-x">×</span>
-                <input type="number" id="grid-rows" value="1" min="1" onchange="updateGrid()" />
+                <input type="number" id="grid-rows" value="1" min="1" />
               </div>
 
               <div class="toolbar-divider"></div>
@@ -40,7 +40,7 @@
             </div>
 
             <div class="toolbar-copy">
-              <select onchange="setColors(this)">
+              <select id="bg-color-select">
                 <option disabled selected value="#f0f0f0">Background color</option>
                 <option value="#f0f0f0">Grey</option>
                 <option value="#7f7f7f;white">Grey 50%</option>
@@ -76,8 +76,8 @@
                   <option value="output-0.25">25%</option>
                 </optgroup>
               </select>
-              <button onclick="copyWithScale()">Copy</button>
-              <button onclick="copySelectedRows()" id="copy-selected-btn" title="Copy only selected rows">Copy Selected</button>
+              <button id="copy-btn">Copy</button>
+              <button id="copy-selected-btn" title="Copy only selected rows">Copy Selected</button>
             </div>
           </div>
 
@@ -154,6 +154,6 @@
     </div>
 
     <script src="dom-to-image.min.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>
