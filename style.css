@@ -870,3 +870,16 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 #copy-selected-btn {
     white-space: nowrap;
 }
+
+/* Filename label under each grid image */
+.grid-cell-filename {
+    font-size: 8pt;
+    color: #666;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    padding: 0 4px;
+    line-height: 1.4;
+}

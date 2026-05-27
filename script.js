@@ -12,6 +12,9 @@ let gridRows = 1;
 // Track selected rows for selective export
 const selectedRows = new Set();
 
+// Track filename visibility
+let showFilenames = true;
+
 const setElementWidths = (arr, size) => {
   const images = cardsEl.querySelectorAll("img");
   const drops = cardsEl.querySelectorAll("div.drop");
@@ -117,6 +120,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         if (node.classList && node.classList.contains("drawing-text-input")) return false;
         if (node.classList && node.classList.contains("row-controls")) return false;
         if (node.classList && node.classList.contains("row-select-cb")) return false;
+        if (node.classList && node.classList.contains("grid-cell-filename")) return false;
         if (node.tagName === "CANVAS" && node.style.display === "none") return false;
         return true;
       },
@@ -296,6 +300,8 @@ const clearOrCopyImage = async (event, img, drop, span) => {
     img.style.display = "none";
     drop.style.border = "var(--border)";
     span.style.display = "block";
+    const cell = drop.closest(".grid-cell");
+    if (cell) updateFilenameLabel(cell);
   }
 };
 
@@ -1846,6 +1852,7 @@ const setupCell = (cell) => {
       span.style.display = "block";
       const textarea = cell.querySelector("textarea");
       if (textarea) textarea.value = "";
+      updateFilenameLabel(cell);
     }
   });
 
@@ -1894,6 +1901,7 @@ const setupCell = (cell) => {
         img.src = this.result;
         img.alt = droppedFile.name;
         span.style.display = "none";
+        updateFilenameLabel(cell);
       };
       reader.readAsDataURL(droppedFile);
       return;
@@ -1905,11 +1913,13 @@ const setupCell = (cell) => {
       const source = e.dataTransfer.getData("source");
       const draggedId = e.dataTransfer.getData("id");
       if (source === "toolbar" && draggedId) {
+        const draggedFilename = e.dataTransfer.getData("filename") || "";
         img.style.display = "flex";
         img.src = src;
-        img.alt = "";
+        img.alt = draggedFilename;
         span.style.display = "none";
         removeToolbarItemById(draggedId);
+        updateFilenameLabel(cell);
         return;
       }
 
@@ -1930,6 +1940,7 @@ const setupCell = (cell) => {
       img.src = src;
       img.alt = "";
       span.style.display = "none";
+      updateFilenameLabel(cell);
     }
   });
 
@@ -2012,6 +2023,7 @@ const setCellData = (cell, data) => {
       redrawCanvas(canvas, dpr);
     }
   }
+  updateFilenameLabel(cell);
 };
 
 const swapCells = (cellA, cellB) => {
@@ -2072,6 +2084,24 @@ const getAdjacentCell = (cell, direction) => {
   return null;
 };
 
+// Update the filename label for a given cell based on its img.alt
+const updateFilenameLabel = (cell) => {
+  const label = cell.querySelector(".grid-cell-filename");
+  if (!label) return;
+  const img = cell.querySelector("img");
+  const name = img && img.alt && img.style.display !== "none" ? img.alt : "";
+  label.textContent = name;
+  label.style.display = name && showFilenames ? "" : "none";
+};
+
+// Toggle filename visibility for all cells
+const toggleFilenames = () => {
+  showFilenames = !showFilenames;
+  const btn = document.getElementById("filename-toggle-btn");
+  if (btn) btn.classList.toggle("active", showFilenames);
+  document.querySelectorAll(".grid-cell").forEach(updateFilenameLabel);
+};
+
 const createCell = (row, col) => {
   const cell = document.createElement("div");
   cell.className = "grid-cell";
@@ -2098,6 +2128,11 @@ const createCell = (row, col) => {
   textarea.textContent = "";
 
   cell.appendChild(drop);
+
+  const filenameLabel = document.createElement("div");
+  filenameLabel.className = "grid-cell-filename";
+  cell.appendChild(filenameLabel);
+
   cell.appendChild(textarea);
 
   setupCell(cell);
@@ -2151,6 +2186,7 @@ const buildGrid = () => {
         if (existing.text) {
           textarea.value = existing.text;
         }
+        updateFilenameLabel(cell);
         // Restore drawing paths
         if (existing.drawingPaths && existing.drawingPaths.length > 0) {
           const canvas = cell.querySelector(".drawing-canvas");
@@ -2602,6 +2638,7 @@ const restoreCellData = (cell, data) => {
       }
     }
   }
+  updateFilenameLabel(cell);
 };
 
 const highlightRow = (row, active) => {
@@ -2843,6 +2880,7 @@ addImageToToolbar = (dataUrl, fileName = "") => {
     e.dataTransfer.setData("text/plain", dataUrl);
     e.dataTransfer.setData("id", id);
     e.dataTransfer.setData("source", "toolbar");
+    e.dataTransfer.setData("filename", fileName || "");
     e.dataTransfer.effectAllowed = "move";
   });
 
@@ -2864,6 +2902,7 @@ addImageToToolbar = (dataUrl, fileName = "") => {
         cellImg.style.display = "flex";
         drop.style.border = "unset";
         if (span) span.style.display = "none";
+        updateFilenameLabel(cell);
         // Remove from toolbar
         item.remove();
         updateStagingInstruction();
@@ -3120,6 +3159,15 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
+// --- Toggle Filenames ---
+const filenameToggleBtn = document.getElementById("filename-toggle-btn");
+filenameToggleBtn.classList.add("active"); // starts active (filenames visible)
+
+filenameToggleBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleFilenames();
+});
+
 // --- Toggle Staging Area ---
 const stagingToggleBtn = document.getElementById("staging-toggle-btn");
 
@@ -3188,6 +3236,7 @@ insertAllBtn.addEventListener("click", (e) => {
     cellImg.style.display = "flex";
     drop.style.border = "unset";
     if (span) span.style.display = "none";
+    updateFilenameLabel(cell);
 
     // Remove from staging
     item.remove();
@@ -3296,6 +3345,10 @@ document.addEventListener("keydown", (e) => {
     case "h":
       // Toggle staging area visibility
       toggleStagingArea();
+      break;
+    case "f":
+      // Toggle filename labels
+      toggleFilenames();
       break;
     case "A":
       // Shift+A: Insert all images from staging area
