@@ -2543,14 +2543,6 @@ stagingToggleBtn.addEventListener("click", (e) => {
   toggleStagingArea();
 });
 
-// --- Sort Staged Images by Name ---
-const sortToolbarBtn = document.getElementById("sort-toolbar-btn");
-
-sortToolbarBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  sortStagingArea();
-});
-
 // --- Insert All Staged Images ---
 const insertAllBtn = document.getElementById("insert-all-btn");
 
