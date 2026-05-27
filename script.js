@@ -2414,11 +2414,12 @@ document.addEventListener("keydown", (e) => {
       rectModeBtn.click();
       break;
     case "R":
+      // Enable bordered rectangle tool
       rectstrokeModeBtn.click();
       break;
     case "e":
-      // Enable bordered rectangle tool
-      rectstrokeModeBtn.click();
+      // Enable eraser tool
+      eraserModeBtn.click();
       break;
     case "o":
       // Enable oval tool
