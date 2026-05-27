@@ -2611,7 +2611,7 @@ document.addEventListener("keydown", (e) => {
   // Skip hotkeys when Shift is used as a drawing modifier (e.g. constraining shapes)
   // Allow Shift+1/2/3 (!, ", #) through for thickness hotkeys
   // Allow Shift+R/E/O through for tool switching hotkeys
-  if (e.shiftKey && drawingMode && e.key !== "Escape" && !["!", "\"", "#", "R", "E", "O"].includes(e.key)) return;
+  if (e.shiftKey && drawingMode && e.key !== "Escape" && !["!", "\"", "#", "R", "E", "O", "A"].includes(e.key)) return;
 
   const gridColsInput = document.getElementById("grid-cols");
   const gridRowsInput = document.getElementById("grid-rows");
@@ -2703,6 +2703,10 @@ document.addEventListener("keydown", (e) => {
     case "h":
       // Toggle staging area visibility
       toggleStagingArea();
+      break;
+    case "A":
+      // Shift+A: Insert all images from staging area
+      insertAllBtn.click();
       break;
     case "z":
       // Toggle zoom between 100% and 200%
