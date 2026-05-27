@@ -1183,6 +1183,20 @@ const initDrawingCanvas = (drop) => {
       y = (e.clientY - rect.top) / rect.height;
     }
 
+    // Shift-constrain: snap to horizontal or vertical axis
+    if (e.shiftKey) {
+      const origin = arrowStart || (currentPath && currentPath.points[0]);
+      if (origin) {
+        const dx = Math.abs(x - origin.x);
+        const dy = Math.abs(y - origin.y);
+        if (dx >= dy) {
+          y = origin.y; // constrain to horizontal
+        } else {
+          x = origin.x; // constrain to vertical
+        }
+      }
+    }
+
     if (drawTool === "arrow" && arrowStart) {
       // Preview the arrow by redrawing existing paths + the in-progress arrow
       const dpr = window.devicePixelRatio || 1;
@@ -1395,6 +1409,17 @@ const initDrawingCanvas = (drop) => {
         const rect = canvas.getBoundingClientRect();
         x = (e.clientX - rect.left) / rect.width;
         y = (e.clientY - rect.top) / rect.height;
+      }
+
+      // Shift-constrain: snap to horizontal or vertical axis
+      if (e.shiftKey && arrowStart) {
+        const dx = Math.abs(x - arrowStart.x);
+        const dy = Math.abs(y - arrowStart.y);
+        if (dx >= dy) {
+          y = arrowStart.y;
+        } else {
+          x = arrowStart.x;
+        }
       }
 
       // Only commit if the shape has some size
