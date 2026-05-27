@@ -2642,5 +2642,22 @@ document.addEventListener("keydown", (e) => {
       }
       break;
     }
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
+    case "6":
+    case "7":
+    case "8":
+    case "9": {
+      // Select preset color by number key
+      const presetBtns = document.querySelectorAll(".toolbar-controls .preset-color-btn");
+      const index = parseInt(e.key) - 1;
+      if (index < presetBtns.length) {
+        presetBtns[index].click();
+      }
+      break;
+    }
   }
 });
