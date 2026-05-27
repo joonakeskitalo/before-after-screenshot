@@ -228,11 +228,19 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     });
 
     // Scale gap and font to match the capped layout
+    // Divide by outputScale so that after the final downscale, text remains crisp
     const scale = gridZoom / 100;
     const gap = Math.round(48 * scale * cappedMultiplier);
     root.style.setProperty("--gap", `${gap}px`);
-    const fontSize = Math.round(15 * scale * cappedMultiplier);
+    const fontSize = Math.round(16 * scale * cappedMultiplier / outputScale);
     root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+
+    // Scale filename labels so they remain legible after output downscale
+    const filenameLabels = cardsEl.querySelectorAll(".grid-cell-filename");
+    const filenameFontSize = Math.round(8 * cappedMultiplier / outputScale);
+    filenameLabels.forEach((label) => {
+      label.style.fontSize = `${filenameFontSize}pt`;
+    });
 
     // Collapse empty drops
     allDrops.forEach((drop) => {
@@ -291,6 +299,10 @@ const copyAsImageWithOutputScale = async (outputScale) => {
       drop.style.overflow = null;
       drop.style.height = null;
       drop.style.width = null;
+    });
+
+    filenameLabels.forEach((label) => {
+      label.style.fontSize = null;
     });
 
     cardsEl.style.padding = "16px";
