@@ -685,14 +685,16 @@ const redrawCanvas = (canvas, dpr) => {
       ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
       ctx.fill();
     } else if (path.type === "dot") {
-      // Draw a small filled circle at the position
+      // Draw a small filled circle at the position with opacity
       const cx = toCanvasX(path.position.x);
       const cy = toCanvasY(path.position.y);
-      const radius = (path.lineWidth + 2) * dpr;
+      const radius = (path.lineWidth + 4) * dpr;
+      ctx.globalAlpha = 0.8;
       ctx.fillStyle = path.color;
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalAlpha = 1.0;
     } else {
       // Freehand path
       if (path.points.length < 2) continue;
