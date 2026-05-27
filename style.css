@@ -39,13 +39,16 @@ body {
     left: 0;
     right: 0;
     z-index: 100;
-    background-color: #ffffffdf;
-    padding: 6px 12px;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
     border-bottom: 1px solid oklch(92.8% 0.006 264.531);
     color: #24292e;
+}
+
+.toolbar-row-1 {
+    background-color: #ffffff;
+    padding: 6px 12px;
 }
 
 .toolbar-row-1 {
@@ -92,6 +95,9 @@ body {
     flex-shrink: 0;
     overflow-x: auto;
     overflow-y: hidden;
+    padding: 6px 12px;
+    border-top: 1px solid oklch(92.8% 0.006 264.531);
+    background-color: #ffffffdf;
 }
 
 .toolbar-drawing-controls::-webkit-scrollbar {
