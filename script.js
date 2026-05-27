@@ -249,7 +249,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
 let drawingMode = false;
 let drawColor = "#ff0000";
 let drawLineWidth = 2;
-let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", or "text"
+let drawTool = "freehand"; // "freehand", "arrow", "line", "rect", "rectstroke", "oval", "ovalfill", "dot", or "text"
 let drawFontSize = 13;
 
 const enableDrawingMode = () => {
@@ -274,6 +274,7 @@ const rectModeBtn = document.getElementById("rect-mode-btn");
 const rectstrokeModeBtn = document.getElementById("rectstroke-mode-btn");
 const ovalModeBtn = document.getElementById("oval-mode-btn");
 const ovalfillModeBtn = document.getElementById("ovalfill-mode-btn");
+const dotModeBtn = document.getElementById("dot-mode-btn");
 const textModeBtn = document.getElementById("text-mode-btn");
 const drawFontSizeInput = document.getElementById("draw-font-size");
 
@@ -289,6 +290,7 @@ document.addEventListener("keydown", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -338,6 +340,7 @@ penModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -360,6 +363,7 @@ arrowModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -382,6 +386,7 @@ lineModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -404,6 +409,7 @@ rectModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -426,6 +432,7 @@ rectstrokeModeBtn.addEventListener("click", (e) => {
     rectModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -448,6 +455,7 @@ ovalModeBtn.addEventListener("click", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -470,6 +478,30 @@ ovalfillModeBtn.addEventListener("click", (e) => {
     rectModeBtn.classList.remove("active");
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
+    textModeBtn.classList.remove("active");
+    drawFontSizeInput.style.display = "none";
+    document.body.classList.remove("text-tool");
+    enableDrawingMode();
+  }
+});
+
+// Dot mode toggle
+dotModeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (drawTool === "dot" && drawingMode) {
+    disableDrawingMode();
+    dotModeBtn.classList.remove("active");
+  } else {
+    drawTool = "dot";
+    dotModeBtn.classList.add("active");
+    penModeBtn.classList.remove("active");
+    arrowModeBtn.classList.remove("active");
+    lineModeBtn.classList.remove("active");
+    rectModeBtn.classList.remove("active");
+    rectstrokeModeBtn.classList.remove("active");
+    ovalModeBtn.classList.remove("active");
+    ovalfillModeBtn.classList.remove("active");
     textModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "none";
     document.body.classList.remove("text-tool");
@@ -495,6 +527,7 @@ textModeBtn.addEventListener("click", (e) => {
     rectstrokeModeBtn.classList.remove("active");
     ovalModeBtn.classList.remove("active");
     ovalfillModeBtn.classList.remove("active");
+    dotModeBtn.classList.remove("active");
     drawFontSizeInput.style.display = "";
     enableDrawingMode();
   }
@@ -650,6 +683,15 @@ const redrawCanvas = (canvas, dpr) => {
       ctx.fillStyle = path.color;
       ctx.beginPath();
       ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (path.type === "dot") {
+      // Draw a small filled circle at the position
+      const cx = toCanvasX(path.position.x);
+      const cy = toCanvasY(path.position.y);
+      const radius = (path.lineWidth + 2) * dpr;
+      ctx.fillStyle = path.color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
     } else {
       // Freehand path
@@ -859,6 +901,22 @@ const initDrawingCanvas = (drop) => {
     if (drawTool === "text") {
       // Show an inline input to type text at the clicked position
       showTextInput(drop, canvas, x, y, e.clientX, e.clientY);
+      return;
+    }
+
+    if (drawTool === "dot") {
+      // Place a small dot immediately at the click position
+      const data = canvasDataMap.get(canvas);
+      if (data) {
+        data.paths.push({
+          type: "dot",
+          color: drawColor,
+          lineWidth: drawLineWidth,
+          position: { x, y },
+        });
+        const dpr = window.devicePixelRatio || 1;
+        redrawCanvas(canvas, dpr);
+      }
       return;
     }
 
@@ -2259,6 +2317,10 @@ document.addEventListener("keydown", (e) => {
     case "t":
       // Enable text tool
       textModeBtn.click();
+      break;
+    case "d":
+      // Enable dot tool
+      dotModeBtn.click();
       break;
     case "?":
       gridRows++;
