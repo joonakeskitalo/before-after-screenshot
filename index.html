@@ -29,14 +29,11 @@
             <div class="toolbar-divider"></div>
 
 
-            <label class="toolbar-label">
-              Cols
-              <input type="number" id="grid-cols" value="3" min="1"  onchange="updateGrid()" />
-            </label>
-            <label class="toolbar-label">
-              Rows
-              <input type="number" id="grid-rows" value="1" min="1"  onchange="updateGrid()" />
-            </label>
+            <div class="grid-size-control">
+              <input type="number" id="grid-cols" value="3" min="1" onchange="updateGrid()" />
+              <span class="grid-size-x">×</span>
+              <input type="number" id="grid-rows" value="1" min="1" onchange="updateGrid()" />
+            </div>
 
 
             <div class="toolbar-divider"></div>
