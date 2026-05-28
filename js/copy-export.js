@@ -1186,6 +1186,61 @@ document.getElementById("copy-btn").addEventListener("click", copySelectedRows);
 document.getElementById("download-btn").addEventListener("click", downloadWithScale);
 document.getElementById("bulk-download-btn").addEventListener("click", bulkDownloadImages);
 
+// Copy the raw image(s) from selected grid cells to clipboard without any scaling/rendering.
+// If multiple images are selected they are placed side-by-side at native resolution.
+const copySelectedRawImages = async () => {
+  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const indices = state.selectedCells.size > 0
+    ? [...state.selectedCells].sort((a, b) => a - b)
+    : state.selectedRows.size > 0
+      ? allCells.reduce((acc, cell, i) => {
+          if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
+          return acc;
+        }, [])
+      : [];
+
+  // Collect visible images from the selected cells
+  const images = [];
+  for (const idx of indices) {
+    const cell = allCells[idx];
+    if (!cell) continue;
+    const img = cell.querySelector("img");
+    if (img && img.src && img.style.display !== "none") {
+      images.push(img);
+    }
+  }
+
+  if (images.length === 0) return;
+
+  if (images.length === 1) {
+    // Single image — fetch the raw blob directly from its src
+    const response = await fetch(images[0].src);
+    const blob = await response.blob();
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    return;
+  }
+
+  // Multiple images — composite side-by-side at native resolution
+  const bitmaps = await Promise.all(images.map((img) => createImageBitmap(img)));
+  const gap = 32;
+  const totalWidth = bitmaps.reduce((sum, bm) => sum + bm.width, 0) + gap * (bitmaps.length - 1);
+  const maxHeight = Math.max(...bitmaps.map((bm) => bm.height));
+
+  const canvas = new OffscreenCanvas(totalWidth, maxHeight);
+  const ctx = canvas.getContext("2d");
+  let x = 0;
+  for (const bm of bitmaps) {
+    // Center vertically
+    const y = Math.round((maxHeight - bm.height) / 2);
+    ctx.drawImage(bm, x, y);
+    x += bm.width + gap;
+    bm.close();
+  }
+
+  const blob = await canvas.convertToBlob({ type: "image/png" });
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+};
+
 export {
   setElementWidths,
   copyAsImage,
@@ -1197,6 +1252,7 @@ export {
   bulkDownloadImages,
   scaleBlob,
   copySelectedRows,
+  copySelectedRawImages,
   copyAsGridSize,
   updateCopySelectedBtn,
   attachDragTo,

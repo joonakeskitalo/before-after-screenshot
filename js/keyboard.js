@@ -8,7 +8,7 @@ import {
   textModeBtn, drawColorInput,
 } from './drawing.js';
 import { toggleStagingArea } from './toolbar.js';
-import { updateCopySelectedBtn, copySelectedRows, copyWithScale } from './copy-export.js';
+import { updateCopySelectedBtn, copySelectedRows, copySelectedRawImages, copyWithScale } from './copy-export.js';
 
 // --- Keyboard Navigation for Grid Cells ---
 
@@ -325,6 +325,15 @@ document.addEventListener("keydown", (e) => {
       copySelectedRows();
     } else {
       copyWithScale();
+    }
+    return;
+  }
+
+  // Cmd+B: copy raw image(s) from selected grid cells to clipboard
+  if (e.key === "b" && e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    if (state.selectedCells.size > 0 || state.selectedRows.size > 0) {
+      copySelectedRawImages();
     }
     return;
   }
