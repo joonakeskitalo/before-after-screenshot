@@ -33,6 +33,12 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const restoreSelection = hideSelectionForExport();
     state.root.style.setProperty("--image-max-width", "unset");
 
+    // Determine the effective column count — if copySelectedRows already set a
+    // reduced column count, preserve it; otherwise use the full grid.
+    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
+    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
+    const effectiveCols = colMatch ? parseInt(colMatch[1]) : state.gridCols;
+
     // Remove overflow and size constraints so nothing gets clipped
     const allCells = state.gridEl.querySelectorAll(".grid-cell");
     allCells.forEach((cell) => {
@@ -96,7 +102,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     // Remove fixed grid row sizing so rows expand to fit content
     state.gridEl.style.gridTemplateRows = "auto";
     // Use auto-sized columns for capture so they don't overlap with fit-content
-    state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, auto)`;
+    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
 
     const initialPadding = useFullSize ? 192 : 64;
     const padding = Math.floor(initialPadding * resolutionScale);
@@ -192,6 +198,12 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     const restoreSelection = hideSelectionForExport();
     const baseMultiplier = 2; // Render at 2x grid size for higher resolution
 
+    // Determine the effective column count — if copySelectedRows already set a
+    // reduced column count, preserve it; otherwise use the full grid.
+    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
+    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
+    const effectiveCols = colMatch ? parseInt(colMatch[1]) : state.gridCols;
+
     // Capture current rendered sizes before modifying styles
     const allImages = state.cardsEl.querySelectorAll("img");
     const imageSizes = [];
@@ -255,7 +267,7 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     });
 
     state.gridEl.style.gridTemplateRows = "auto";
-    state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, auto)`;
+    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
 
     const padding = Math.round(32 * cappedMultiplier);
     state.cardsEl.style.padding = `8px ${padding}px`;
@@ -411,6 +423,13 @@ const copySelectedRows = () => {
 const copyAsGridSize = async () => {
   try {
     const restoreSelection = hideSelectionForExport();
+
+    // Determine the effective column count — if copySelectedRows already set a
+    // reduced column count, preserve it; otherwise use the full grid.
+    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
+    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
+    const effectiveCols = colMatch ? parseInt(colMatch[1]) : state.gridCols;
+
     // Capture the current rendered sizes of images before modifying styles
     const allImages = state.cardsEl.querySelectorAll("img");
     const imageSizes = [];
@@ -454,7 +473,7 @@ const copyAsGridSize = async () => {
 
     // Use auto columns so the grid fits the locked image sizes
     state.gridEl.style.gridTemplateRows = "auto";
-    state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, auto)`;
+    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
 
     state.cardsEl.style.padding = `8px 32px`;
     state.cardsEl.style.width = "fit-content";
