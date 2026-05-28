@@ -68,10 +68,12 @@ const handleCellClick = (e, cell) => {
     // Cmd+click: toggle individual cell in/out of selection
     if (state.selectedCells.has(index)) {
       removeCellFromSelectionByIndex(index);
+      // Clear focus when deselecting
+      setFocusedCellByIndex(-1);
     } else {
       addCellToSelectionByIndex(index);
+      setFocusedCellByIndex(index);
     }
-    setFocusedCellByIndex(index);
   } else {
     // Plain click: select only this cell
     clearCellSelection();
