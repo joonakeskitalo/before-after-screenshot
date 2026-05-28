@@ -760,6 +760,28 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     transition: background-color 0.15s ease, outline-color 0.15s ease;
 }
 
+/* Cell drag-to-move drop target indicator */
+.grid-cell.cell-drop-target {
+    outline: 2px solid #4f6ef7;
+    outline-offset: -2px;
+    border-radius: 6px;
+    background-color: rgba(79, 110, 247, 0.1);
+    transition: background-color 0.15s ease, outline-color 0.15s ease;
+}
+
+/* Cursor during cell drag-to-move */
+body.cell-dragging {
+    cursor: grabbing !important;
+}
+
+body.cell-dragging * {
+    cursor: grabbing !important;
+}
+
+body.cell-dragging .grid-cell.keyboard-selected {
+    opacity: 0.6;
+}
+
 /* Grid wrapper for row controls */
 .grid-wrapper {
     position: relative;

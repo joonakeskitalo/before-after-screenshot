@@ -3,6 +3,213 @@ import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js'
 import { attachDragTo, updateCopySelectedBtn } from './copy-export.js';
 import { applyGridZoom } from './zoom.js';
 
+// --- Mouse drag-to-move for selected cells ---
+
+let cellDragState = null; // { startIndex, startX, startY, active }
+
+const getCellIndexAtPoint = (x, y) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  // Direct hit test
+  for (let i = 0; i < cells.length; i++) {
+    const rect = cells[i].getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      return i;
+    }
+  }
+  // If cursor is within the grid but in a gap, find the nearest cell
+  const gridRect = state.gridEl.getBoundingClientRect();
+  if (x >= gridRect.left && x <= gridRect.right && y >= gridRect.top && y <= gridRect.bottom) {
+    let closestIndex = -1;
+    let closestDist = Infinity;
+    for (let i = 0; i < cells.length; i++) {
+      const rect = cells[i].getBoundingClientRect();
+      const cx = (rect.left + rect.right) / 2;
+      const cy = (rect.top + rect.bottom) / 2;
+      const dist = (x - cx) ** 2 + (y - cy) ** 2;
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIndex = i;
+      }
+    }
+    return closestIndex;
+  }
+  return -1;
+};
+
+const clearCellDropTarget = () => {
+  state.gridEl.querySelectorAll(".grid-cell.cell-drop-target").forEach((cell) => {
+    cell.classList.remove("cell-drop-target");
+  });
+};
+
+const showCellDropTargets = (targetIndices) => {
+  clearCellDropTarget();
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  for (const idx of targetIndices) {
+    if (idx >= 0 && idx < cells.length) {
+      cells[idx].classList.add("cell-drop-target");
+    }
+  }
+};
+
+const computeMoveTargets = (selectedIndices, fromIndex, toIndex) => {
+  if (fromIndex === toIndex) return null;
+
+  const offset = toIndex - fromIndex;
+
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const totalCells = cells.length;
+
+  // Check that ALL selected cells can move with this offset
+  for (const idx of selectedIndices) {
+    const targetIdx = idx + offset;
+    if (targetIdx < 0 || targetIdx >= totalCells) return null;
+  }
+
+  return selectedIndices.map((idx) => idx + offset);
+};
+
+const performCellMove = (selectedIndices, targetIndices) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const offset = targetIndices[0] - selectedIndices[0];
+
+  const selectedSet = new Set(selectedIndices);
+  const targetSet = new Set(targetIndices);
+
+  // Collect data from selected cells and displaced cells
+  const selectedData = selectedIndices.map((idx) => getCellData(cells[idx]));
+  const displacedIndices = targetIndices.filter((idx) => !selectedSet.has(idx));
+  const displacedData = displacedIndices.map((idx) => getCellData(cells[idx]));
+
+  // Cells vacated by the selection that aren't being filled by the selection
+  const vacatedIndices = selectedIndices.filter((idx) => !targetSet.has(idx));
+
+  // Move selected data to target positions
+  if (offset > 0) {
+    for (let i = selectedIndices.length - 1; i >= 0; i--) {
+      setCellData(cells[targetIndices[i]], selectedData[i]);
+    }
+  } else {
+    for (let i = 0; i < selectedIndices.length; i++) {
+      setCellData(cells[targetIndices[i]], selectedData[i]);
+    }
+  }
+
+  // Place displaced data into vacated positions
+  for (let i = 0; i < displacedIndices.length; i++) {
+    setCellData(cells[vacatedIndices[i]], displacedData[i]);
+  }
+
+  // Update selection to new positions
+  clearCellSelection();
+  for (const idx of targetIndices) {
+    addCellToSelectionByIndex(idx);
+  }
+
+  // Move focus
+  const newFocusIndex = state.focusedCellIndex + offset;
+  setFocusedCellByIndex(newFocusIndex);
+};
+
+const handleCellDragStart = (e, cell) => {
+  // Don't interfere with drawing mode
+  if (state.drawingMode) return;
+  // Only left mouse button
+  if (e.button !== 0) return;
+  // Don't interfere with textarea
+  if (e.target.tagName === "TEXTAREA") return;
+  // Don't interfere with modifier keys used for selection
+  if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
+
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const index = cells.indexOf(cell);
+  if (index === -1) return;
+
+  // Only start drag if clicking on an already-selected cell with multiple selections
+  if (!state.selectedCells.has(index) || state.selectedCells.size < 2) return;
+
+  cellDragState = {
+    startIndex: index,
+    startX: e.clientX,
+    startY: e.clientY,
+    active: false,
+  };
+
+  // Prevent default to stop text selection and native HTML5 drag during multi-cell drag
+  e.preventDefault();
+};
+
+// Suppress native HTML5 dragstart on images when a multi-cell drag is pending/active.
+// Without this, the browser's native drag steals mouse events and our mousemove/mouseup never fire.
+document.addEventListener("dragstart", (e) => {
+  if (cellDragState) {
+    e.preventDefault();
+  }
+}, { capture: true });
+
+const handleCellDragMove = (e) => {
+  if (!cellDragState) return;
+
+  const dx = e.clientX - cellDragState.startX;
+  const dy = e.clientY - cellDragState.startY;
+
+  // Require a minimum drag distance to activate
+  if (!cellDragState.active && Math.sqrt(dx * dx + dy * dy) < 8) return;
+
+  if (!cellDragState.active) {
+    cellDragState.active = true;
+    document.body.classList.add("cell-dragging");
+  }
+
+  const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY);
+  if (targetIndex === -1) {
+    clearCellDropTarget();
+    return;
+  }
+
+  const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
+  const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex);
+
+  if (targets) {
+    showCellDropTargets(targets);
+  } else {
+    clearCellDropTarget();
+  }
+};
+
+const handleCellDragEnd = (e) => {
+  if (!cellDragState) return;
+
+  const wasDragActive = cellDragState.active;
+
+  if (cellDragState.active) {
+    const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY);
+    if (targetIndex !== -1 && targetIndex !== cellDragState.startIndex) {
+      const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
+      const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex);
+      if (targets) {
+        performCellMove(selectedIndices, targets);
+      }
+    }
+    clearCellDropTarget();
+    document.body.classList.remove("cell-dragging");
+  }
+
+  cellDragState = null;
+
+  // Suppress the click event that follows mouseup after a drag
+  if (wasDragActive) {
+    const suppressClick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    document.addEventListener("click", suppressClick, { capture: true, once: true });
+  }
+};
+
+document.addEventListener("mousemove", handleCellDragMove);
+document.addEventListener("mouseup", handleCellDragEnd);
+
 // --- Click-based cell selection ---
 
 const setFocusedCellByIndex = (index) => {
@@ -182,6 +389,9 @@ const setupCell = (cell) => {
 
   // Click-based cell selection (plain click = select one, shift+click = multi-select)
   cell.addEventListener("click", (e) => handleCellClick(e, cell));
+
+  // Mouse drag-to-move for multi-selected cells
+  cell.addEventListener("mousedown", (e) => handleCellDragStart(e, cell));
 
   // Cell-level row-drag handlers (catches drags over textarea area too)
   cell.addEventListener("dragover", (e) => {
