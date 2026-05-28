@@ -1,6 +1,6 @@
 import state from './state.js';
 import { applyGridZoom } from './zoom.js';
-import { buildGrid, toggleFilenames, getAdjacentCell, getCellData, setCellData } from './grid.js';
+import { buildGrid, toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt } from './grid.js';
 import {
   updatePresetColorSelection, penModeBtn, arrowModeBtn, lineModeBtn,
   rectModeBtn, rectstrokeModeBtn, ovalModeBtn, ovalfillModeBtn,
@@ -196,7 +196,20 @@ document.addEventListener("keydown", (e) => {
   // Arrow key navigation for grid cells (works even in drawing mode)
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
     const direction = e.key.replace("Arrow", "").toLowerCase(); // "up", "down", "left", "right"
-    if (e.metaKey) {
+    if (e.altKey) {
+      // Alt+Arrow: insert empty row/column relative to focused cell
+      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const focusedCell = state.focusedCellIndex >= 0 ? cells[state.focusedCellIndex] : null;
+      if (direction === "up" || direction === "down") {
+        const row = focusedCell ? parseInt(focusedCell.dataset.row) : 0;
+        const insertIndex = direction === "up" ? row : row + 1;
+        insertRowAt(insertIndex);
+      } else {
+        const col = focusedCell ? parseInt(focusedCell.dataset.col) : 0;
+        const insertIndex = direction === "left" ? col : col + 1;
+        insertColumnAt(insertIndex);
+      }
+    } else if (e.metaKey) {
       // Cmd+Arrow: move/swap the focused cell's content
       moveGridItem(direction);
     } else if (e.shiftKey) {

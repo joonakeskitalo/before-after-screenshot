@@ -676,6 +676,39 @@ const insertRowAt = (insertIndex) => {
   buildRowControls();
 };
 
+const insertColumnAt = (insertIndex) => {
+  // Collect all existing cell data
+  const allData = collectGridData();
+
+  // Shift columns at and after insertIndex right by 1
+  const newData = allData.map((d) => ({
+    ...d,
+    col: d.col >= insertIndex ? d.col + 1 : d.col,
+  }));
+
+  state.gridCols++;
+  document.getElementById("grid-cols").value = state.gridCols;
+
+  // Rebuild grid with shifted data
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
 const deleteRowAt = (rowIndex) => {
   if (state.gridRows <= 1) return; // Don't delete the last row
 
@@ -1004,6 +1037,7 @@ export {
   buildGrid,
   buildRowControls,
   insertRowAt,
+  insertColumnAt,
   deleteRowAt,
   moveRow,
   swapRows,
