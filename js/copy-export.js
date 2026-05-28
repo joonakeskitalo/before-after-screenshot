@@ -110,6 +110,10 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     state.cardsEl.style.padding = `8px ${padding}px`;
     state.cardsEl.style.width = "fit-content";
 
+    // Force the grid width after layout settles so dom-to-image doesn't reflow columns
+    const gridRenderedWidth = state.gridEl.offsetWidth;
+    state.gridEl.style.width = `${gridRenderedWidth}px`;
+
     // Hide drawing controls during export (not needed — controls are in toolbar now)
 
     // Redraw canvases at export scale so drawings match the scaled images
@@ -161,6 +165,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     state.cardsEl.style.padding = "16px";
     state.cardsEl.style.width = null;
     state.gridEl.style.outline = null;
+    state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
     state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
 
@@ -273,6 +278,10 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     state.cardsEl.style.padding = `8px ${padding}px`;
     state.cardsEl.style.width = "fit-content";
 
+    // Force the grid width after layout settles so dom-to-image doesn't reflow columns
+    const gridRenderedWidth = state.gridEl.offsetWidth;
+    state.gridEl.style.width = `${gridRenderedWidth}px`;
+
     redrawAllCanvasesForExport(cappedMultiplier);
 
     const blob = await domtoimage.toBlob(state.cardsEl, {
@@ -323,6 +332,7 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     state.cardsEl.style.padding = "16px";
     state.cardsEl.style.width = null;
     state.gridEl.style.outline = null;
+    state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
     state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
 
@@ -478,6 +488,10 @@ const copyAsGridSize = async () => {
     state.cardsEl.style.padding = `8px 32px`;
     state.cardsEl.style.width = "fit-content";
 
+    // Force the grid width after layout settles so dom-to-image doesn't reflow columns
+    const gridRenderedWidth = state.gridEl.offsetWidth;
+    state.gridEl.style.width = `${gridRenderedWidth}px`;
+
     // Redraw canvases at 1:1 since we're keeping display size
     redrawAllCanvasesForExport(1);
 
@@ -524,6 +538,7 @@ const copyAsGridSize = async () => {
     state.cardsEl.style.padding = "16px";
     state.cardsEl.style.width = null;
     state.gridEl.style.outline = null;
+    state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
     state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
 
