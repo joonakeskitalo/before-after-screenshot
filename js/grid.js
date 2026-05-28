@@ -1,7 +1,74 @@
 import state from './state.js';
 import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js';
-import { attachDragTo, clearOrCopyImage, updateCopySelectedBtn } from './copy-export.js';
+import { attachDragTo, updateCopySelectedBtn } from './copy-export.js';
 import { applyGridZoom } from './zoom.js';
+
+// --- Click-based cell selection ---
+
+const setFocusedCellByIndex = (index) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < cells.length) {
+    cells[state.focusedCellIndex].classList.remove("keyboard-focused");
+  }
+  state.focusedCellIndex = index;
+  if (index >= 0 && index < cells.length) {
+    cells[index].classList.add("keyboard-focused");
+  }
+};
+
+const clearCellSelection = () => {
+  state.gridEl.querySelectorAll(".grid-cell.keyboard-selected").forEach((cell) => {
+    cell.classList.remove("keyboard-selected");
+  });
+  state.selectedCells.clear();
+  updateCopySelectedBtn();
+};
+
+const addCellToSelectionByIndex = (index) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  if (index >= 0 && index < cells.length) {
+    state.selectedCells.add(index);
+    cells[index].classList.add("keyboard-selected");
+    updateCopySelectedBtn();
+  }
+};
+
+const removeCellFromSelectionByIndex = (index) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  if (index >= 0 && index < cells.length) {
+    state.selectedCells.delete(index);
+    cells[index].classList.remove("keyboard-selected");
+    updateCopySelectedBtn();
+  }
+};
+
+const handleCellClick = (e, cell) => {
+  // Don't interfere with drawing mode
+  if (state.drawingMode) return;
+  // Don't interfere with meta+click (clear cell) or ctrl/alt combos
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // Don't interfere with textarea clicks
+  if (e.target.tagName === "TEXTAREA") return;
+
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const index = cells.indexOf(cell);
+  if (index === -1) return;
+
+  if (e.shiftKey) {
+    // Shift+click: toggle cell in/out of selection
+    if (state.selectedCells.has(index)) {
+      removeCellFromSelectionByIndex(index);
+    } else {
+      addCellToSelectionByIndex(index);
+    }
+    setFocusedCellByIndex(index);
+  } else {
+    // Plain click: select only this cell
+    clearCellSelection();
+    addCellToSelectionByIndex(index);
+    setFocusedCellByIndex(index);
+  }
+};
 
 const setupCell = (cell) => {
   const drop = cell.querySelector(".drop");
@@ -11,16 +78,10 @@ const setupCell = (cell) => {
   // Initialize drawing canvas for this cell
   initDrawingCanvas(drop);
 
-  img.addEventListener(
-    "click",
-    async (e) => await clearOrCopyImage(e, img, drop, span),
-  );
-
   drop.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
     if (e.metaKey) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
       // Clear the cell content
       img.src = "";
       img.style.display = "none";
@@ -121,6 +182,9 @@ const setupCell = (cell) => {
   });
 
   attachDragTo(img);
+
+  // Click-based cell selection (plain click = select one, shift+click = multi-select)
+  cell.addEventListener("click", (e) => handleCellClick(e, cell));
 
   // Cell-level row-drag handlers (catches drags over textarea area too)
   cell.addEventListener("dragover", (e) => {
