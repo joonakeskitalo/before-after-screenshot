@@ -189,11 +189,7 @@ const copyWithScale = () => {
     copyAsImageWithOutputScale(outputScale);
   } else {
     const scale = parseFloat(value);
-    if (scale >= 1) {
-      copyAsImage(false);
-    } else {
-      copyAsImage(true, scale);
-    }
+    copyAsImage(true, scale);
   }
 };
 
@@ -420,7 +416,7 @@ const copySelectedRows = () => {
     doExport = copyAsImageWithOutputScale(outputScale);
   } else {
     const scale = parseFloat(value);
-    doExport = scale >= 1 ? copyAsImage(false) : copyAsImage(true, scale);
+    doExport = copyAsImage(true, scale);
   }
 
   Promise.resolve(doExport).finally(() => {
