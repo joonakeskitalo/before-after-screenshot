@@ -16,6 +16,43 @@ const setElementWidths = (arr, size) => {
   });
 };
 
+// Hide entire rows that contain no visible images, returns a restore function
+const hideEmptyRowsForExport = () => {
+  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const rows = state.gridRows;
+  const removedCells = []; // { cell, nextSibling }
+
+  for (let row = 0; row < rows; row++) {
+    const rowCells = allCells.filter((cell) => parseInt(cell.dataset.row) === row);
+    const hasImage = rowCells.some((cell) => {
+      const img = cell.querySelector("img");
+      return img && img.src && img.style.display !== "none";
+    });
+    const hasText = rowCells.some((cell) => {
+      const textarea = cell.querySelector("textarea");
+      return textarea && textarea.value.trim() !== "";
+    });
+    if (!hasImage && !hasText) {
+      rowCells.forEach((cell) => {
+        removedCells.push({ cell, nextSibling: cell.nextSibling });
+        cell.remove();
+      });
+    }
+  }
+
+  return () => {
+    // Re-insert in reverse order to preserve positions
+    for (let i = removedCells.length - 1; i >= 0; i--) {
+      const { cell, nextSibling } = removedCells[i];
+      if (nextSibling) {
+        state.gridEl.insertBefore(cell, nextSibling);
+      } else {
+        state.gridEl.appendChild(cell);
+      }
+    }
+  };
+};
+
 // Strip keyboard selection/focus classes before export and return a restore function
 const hideSelectionForExport = () => {
   const selected = [...state.gridEl.querySelectorAll(".grid-cell.keyboard-selected")];
@@ -31,6 +68,7 @@ const hideSelectionForExport = () => {
 const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   try {
     const restoreSelection = hideSelectionForExport();
+    const restoreEmptyRows = hideEmptyRowsForExport();
     state.root.style.setProperty("--image-max-width", "unset");
 
     // Determine the effective column count — if copySelectedRows already set a
@@ -109,6 +147,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 
     state.cardsEl.style.padding = `8px ${padding}px`;
     state.cardsEl.style.width = "fit-content";
+    state.cardsEl.style.height = "fit-content";
+    state.cardsEl.style.flex = "unset";
 
     // Force the grid width after layout settles so dom-to-image doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
@@ -164,6 +204,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 
     state.cardsEl.style.padding = "16px";
     state.cardsEl.style.width = null;
+    state.cardsEl.style.height = null;
+    state.cardsEl.style.flex = null;
     state.gridEl.style.outline = null;
     state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
@@ -175,6 +217,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     // Restore drawing canvases to display size
     restoreAllCanvases();
 
+    restoreEmptyRows();
     restoreSelection();
   } catch (error) {
     console.error(error);
@@ -197,6 +240,7 @@ const copyWithScale = () => {
 const copyAsImageWithOutputScale = async (outputScale) => {
   try {
     const restoreSelection = hideSelectionForExport();
+    const restoreEmptyRows = hideEmptyRowsForExport();
     const baseMultiplier = 2; // Render at 2x grid size for higher resolution
 
     // Determine the effective column count — if copySelectedRows already set a
@@ -273,6 +317,8 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     const padding = Math.round(32 * cappedMultiplier);
     state.cardsEl.style.padding = `8px ${padding}px`;
     state.cardsEl.style.width = "fit-content";
+    state.cardsEl.style.height = "fit-content";
+    state.cardsEl.style.flex = "unset";
 
     // Force the grid width after layout settles so dom-to-image doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
@@ -327,6 +373,8 @@ const copyAsImageWithOutputScale = async (outputScale) => {
 
     state.cardsEl.style.padding = "16px";
     state.cardsEl.style.width = null;
+    state.cardsEl.style.height = null;
+    state.cardsEl.style.flex = null;
     state.gridEl.style.outline = null;
     state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
@@ -335,6 +383,7 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     applyGridZoom(state.gridZoom);
     restoreAllCanvases();
 
+    restoreEmptyRows();
     restoreSelection();
   } catch (error) {
     console.error(error);
@@ -422,6 +471,7 @@ const copySelectedRows = () => {
 const copyAsGridSize = async () => {
   try {
     const restoreSelection = hideSelectionForExport();
+    const restoreEmptyRows = hideEmptyRowsForExport();
 
     // Determine the effective column count — if copySelectedRows already set a
     // reduced column count, preserve it; otherwise use the full grid.
@@ -476,6 +526,8 @@ const copyAsGridSize = async () => {
 
     state.cardsEl.style.padding = `8px 32px`;
     state.cardsEl.style.width = "fit-content";
+    state.cardsEl.style.height = "fit-content";
+    state.cardsEl.style.flex = "unset";
 
     // Force the grid width after layout settles so dom-to-image doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
@@ -526,6 +578,8 @@ const copyAsGridSize = async () => {
 
     state.cardsEl.style.padding = "16px";
     state.cardsEl.style.width = null;
+    state.cardsEl.style.height = null;
+    state.cardsEl.style.flex = null;
     state.gridEl.style.outline = null;
     state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
@@ -537,6 +591,7 @@ const copyAsGridSize = async () => {
     // Restore drawing canvases to display size
     restoreAllCanvases();
 
+    restoreEmptyRows();
     restoreSelection();
   } catch (error) {
     console.error(error);
