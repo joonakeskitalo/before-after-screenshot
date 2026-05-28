@@ -55,7 +55,17 @@ const handleCellClick = (e, cell) => {
   if (index === -1) return;
 
   if (e.shiftKey) {
-    // Shift+click: toggle cell in/out of selection
+    // Shift+click: select range from last focused cell to this one
+    const anchor = state.focusedCellIndex >= 0 ? state.focusedCellIndex : 0;
+    const from = Math.min(anchor, index);
+    const to = Math.max(anchor, index);
+    clearCellSelection();
+    for (let i = from; i <= to; i++) {
+      addCellToSelectionByIndex(i);
+    }
+    setFocusedCellByIndex(index);
+  } else if (e.metaKey) {
+    // Cmd+click: toggle individual cell in/out of selection
     if (state.selectedCells.has(index)) {
       removeCellFromSelectionByIndex(index);
     } else {
@@ -77,10 +87,6 @@ const setupCell = (cell) => {
 
   // Initialize drawing canvas for this cell
   initDrawingCanvas(drop);
-
-  drop.addEventListener("click", (e) => {
-    // No special click handling on drop — selection is handled at cell level
-  });
 
   drop.addEventListener("dragover", (e) => {
     e.preventDefault();
