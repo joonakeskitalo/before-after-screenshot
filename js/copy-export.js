@@ -16,30 +16,51 @@ const setElementWidths = (arr, size) => {
   });
 };
 
-// Hide entire rows that contain no visible images, returns a restore function
+// Hide entire rows/columns that contain no visible images, returns a restore function
 const hideEmptyRowsForExport = () => {
   const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
   const rows = state.gridRows;
+  const cols = state.gridCols;
   const removedCells = []; // { cell, nextSibling }
 
+  // Determine which rows have visible content
+  const occupiedRows = new Set();
+  const occupiedCols = new Set();
+
   for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cell = allCells.find(
+        (c) => parseInt(c.dataset.row) === row && parseInt(c.dataset.col) === col
+      );
+      if (cell && cellHasVisibleContent(cell)) {
+        occupiedRows.add(row);
+        occupiedCols.add(col);
+      }
+    }
+  }
+
+  // Remove cells in empty rows
+  for (let row = 0; row < rows; row++) {
+    if (occupiedRows.has(row)) continue;
     const rowCells = allCells.filter((cell) => parseInt(cell.dataset.row) === row);
-    // A row is considered empty if no cell in it has visible content
-    const hasVisibleContent = rowCells.some((cell) => {
-      // Cell already hidden by copySelectedRows
-      if (cell.style.display === "none") return false;
-      const img = cell.querySelector("img");
-      const hasImage = img && img.src && img.style.display !== "none";
-      const textarea = cell.querySelector("textarea");
-      const hasText = textarea && textarea.value.trim() !== "";
-      return hasImage || hasText;
+    rowCells.forEach((cell) => {
+      removedCells.push({ cell, nextSibling: cell.nextSibling });
+      cell.remove();
     });
-    if (!hasVisibleContent) {
-      rowCells.forEach((cell) => {
+  }
+
+  // Remove cells in empty columns (only from rows that are still present)
+  for (let col = 0; col < cols; col++) {
+    if (occupiedCols.has(col)) continue;
+    const colCells = allCells.filter(
+      (cell) => parseInt(cell.dataset.col) === col && occupiedRows.has(parseInt(cell.dataset.row))
+    );
+    colCells.forEach((cell) => {
+      if (cell.parentElement) { // still in DOM (not already removed as part of empty row)
         removedCells.push({ cell, nextSibling: cell.nextSibling });
         cell.remove();
-      });
-    }
+      }
+    });
   }
 
   // Also hide the row-controls element so it doesn't force extra height
@@ -50,21 +71,37 @@ const hideEmptyRowsForExport = () => {
     rowControls.style.display = "none";
   }
 
-  return () => {
-    // Restore row controls
-    if (rowControls) {
-      rowControls.style.display = rowControlsDisplay;
-    }
-    // Re-insert removed cells in reverse order to preserve positions
-    for (let i = removedCells.length - 1; i >= 0; i--) {
-      const { cell, nextSibling } = removedCells[i];
-      if (nextSibling) {
-        state.gridEl.insertBefore(cell, nextSibling);
-      } else {
-        state.gridEl.appendChild(cell);
+  // Return the effective column count for the grid template
+  const effectiveColCount = occupiedCols.size || 1;
+
+  return {
+    restore: () => {
+      // Restore row controls
+      if (rowControls) {
+        rowControls.style.display = rowControlsDisplay;
       }
-    }
+      // Re-insert removed cells in reverse order to preserve positions
+      for (let i = removedCells.length - 1; i >= 0; i--) {
+        const { cell, nextSibling } = removedCells[i];
+        if (nextSibling && nextSibling.parentElement) {
+          state.gridEl.insertBefore(cell, nextSibling);
+        } else {
+          state.gridEl.appendChild(cell);
+        }
+      }
+    },
+    effectiveCols: effectiveColCount,
   };
+};
+
+const cellHasVisibleContent = (cell) => {
+  // Cell already hidden by copySelectedRows
+  if (cell.style.display === "none") return false;
+  const img = cell.querySelector("img");
+  const hasImage = img && img.src && img.style.display !== "none";
+  const textarea = cell.querySelector("textarea");
+  const hasText = textarea && textarea.value.trim() !== "";
+  return hasImage || hasText;
 };
 
 // Strip keyboard selection/focus classes before export and return a restore function
@@ -82,14 +119,14 @@ const hideSelectionForExport = () => {
 const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   try {
     const restoreSelection = hideSelectionForExport();
-    const restoreEmptyRows = hideEmptyRowsForExport();
+    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
     state.root.style.setProperty("--image-max-width", "unset");
 
     // Determine the effective column count — if copySelectedRows already set a
-    // reduced column count, preserve it; otherwise use the full grid.
+    // reduced column count, preserve it; otherwise use the content-based count.
     const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
     const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? parseInt(colMatch[1]) : state.gridCols;
+    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
 
     // Remove overflow and size constraints so nothing gets clipped
     const allCells = state.gridEl.querySelectorAll(".grid-cell");
@@ -263,14 +300,14 @@ const copyWithScale = () => {
 const copyAsImageWithOutputScale = async (outputScale) => {
   try {
     const restoreSelection = hideSelectionForExport();
-    const restoreEmptyRows = hideEmptyRowsForExport();
+    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
     const baseMultiplier = 2; // Render at 2x grid size for higher resolution
 
     // Determine the effective column count — if copySelectedRows already set a
-    // reduced column count, preserve it; otherwise use the full grid.
+    // reduced column count, preserve it; otherwise use the content-based count.
     const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
     const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? parseInt(colMatch[1]) : state.gridCols;
+    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
 
     // Capture current rendered sizes before modifying styles
     const allImages = state.cardsEl.querySelectorAll("img");
@@ -526,13 +563,13 @@ const copySelectedRows = () => {
 const copyAsGridSize = async () => {
   try {
     const restoreSelection = hideSelectionForExport();
-    const restoreEmptyRows = hideEmptyRowsForExport();
+    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
 
     // Determine the effective column count — if copySelectedRows already set a
-    // reduced column count, preserve it; otherwise use the full grid.
+    // reduced column count, preserve it; otherwise use the content-based count.
     const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
     const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? parseInt(colMatch[1]) : state.gridCols;
+    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
 
     // Capture the current rendered sizes of images before modifying styles
     const allImages = state.cardsEl.querySelectorAll("img");
