@@ -9,6 +9,7 @@ const state = {
   gridCols: 3,
   gridRows: 1,
   selectedRows: new Set(),
+  selectedCells: new Set(),
   showFilenames: false,
   focusedCellIndex: -1,
 

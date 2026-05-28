@@ -1,6 +1,6 @@
 import state from './state.js';
 import { applyGridZoom } from './zoom.js';
-import { buildGrid, toggleFilenames, getAdjacentCell, swapCells } from './grid.js';
+import { buildGrid, toggleFilenames, getAdjacentCell, getCellData, setCellData } from './grid.js';
 import {
   updatePresetColorSelection, penModeBtn, arrowModeBtn, lineModeBtn,
   rectModeBtn, rectstrokeModeBtn, ovalModeBtn, ovalfillModeBtn,
@@ -33,6 +33,62 @@ const clearFocusedCell = () => {
   state.focusedCellIndex = -1;
 };
 
+// --- Multi-selection ---
+
+const clearSelection = () => {
+  state.gridEl.querySelectorAll(".grid-cell.keyboard-selected").forEach((cell) => {
+    cell.classList.remove("keyboard-selected");
+  });
+  state.selectedCells.clear();
+};
+
+const addCellToSelection = (index) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  if (index >= 0 && index < cells.length) {
+    state.selectedCells.add(index);
+    cells[index].classList.add("keyboard-selected");
+  }
+};
+
+const removeCellFromSelection = (index) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  if (index >= 0 && index < cells.length) {
+    state.selectedCells.delete(index);
+    cells[index].classList.remove("keyboard-selected");
+  }
+};
+
+const extendSelection = (direction) => {
+  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  if (cells.length === 0) return;
+
+  // If no cell is focused yet, start at the first cell
+  if (state.focusedCellIndex < 0) {
+    setFocusedCell(0);
+    addCellToSelection(0);
+    return;
+  }
+
+  // If selection is empty, add the currently focused cell first
+  if (state.selectedCells.size === 0) {
+    addCellToSelection(state.focusedCellIndex);
+  }
+
+  const current = cells[state.focusedCellIndex];
+  const target = getAdjacentCell(current, direction);
+  if (target) {
+    const targetIndex = cells.indexOf(target);
+    // Toggle: if already selected, deselect the current cell (shrink selection)
+    // Otherwise, select the target cell (grow selection)
+    if (state.selectedCells.has(targetIndex)) {
+      removeCellFromSelection(state.focusedCellIndex);
+    } else {
+      addCellToSelection(targetIndex);
+    }
+    setFocusedCell(targetIndex);
+  }
+};
+
 const navigateGrid = (direction) => {
   const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
   if (cells.length === 0) return;
@@ -55,20 +111,76 @@ const moveGridItem = (direction) => {
   const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
   if (cells.length === 0 || state.focusedCellIndex < 0) return;
 
-  const current = cells[state.focusedCellIndex];
-  const target = getAdjacentCell(current, direction);
-  if (target) {
-    swapCells(current, target);
-    // Move focus to the target cell (where our content now lives)
-    const targetIndex = cells.indexOf(target);
-    setFocusedCell(targetIndex);
-    // scrollIntoView in setFocusedCell may misfire during the FLIP animation
-    // (the cell has a transform applied). Re-scroll once the animation settles.
-    setTimeout(() => {
-      const cell = state.gridEl.querySelectorAll(".grid-cell")[targetIndex];
-      if (cell) cell.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-    }, 250);
+  // Determine which cells to move: selection if active, otherwise just the focused cell
+  const selectedIndices = state.selectedCells.size > 0
+    ? [...state.selectedCells].sort((a, b) => a - b)
+    : [state.focusedCellIndex];
+
+  // Calculate the offset for each direction
+  let offset = 0;
+  if (direction === "left") offset = -1;
+  else if (direction === "right") offset = 1;
+  else if (direction === "up") offset = -state.gridCols;
+  else if (direction === "down") offset = state.gridCols;
+
+  // Check that ALL selected cells can move in this direction
+  for (const idx of selectedIndices) {
+    const targetIdx = idx + offset;
+    // Out of bounds
+    if (targetIdx < 0 || targetIdx >= cells.length) return;
+    // Left/right: prevent wrapping across rows
+    if (direction === "left" && idx % state.gridCols === 0) return;
+    if (direction === "right" && idx % state.gridCols === state.gridCols - 1) return;
   }
+
+  // Compute target indices
+  const targetIndices = selectedIndices.map((idx) => idx + offset);
+
+  // Check that targets don't overlap with non-selected cells that are also targets
+  // (i.e. all targets are either part of the selection or free to swap into)
+  const selectedSet = new Set(selectedIndices);
+  const targetSet = new Set(targetIndices);
+
+  // Collect data from selected cells and from target cells that aren't in the selection
+  const selectedData = selectedIndices.map((idx) => getCellData(cells[idx]));
+  const displacedIndices = targetIndices.filter((idx) => !selectedSet.has(idx));
+  const displacedData = displacedIndices.map((idx) => getCellData(cells[idx]));
+
+  // The cells vacated by the selection that aren't being filled by the selection
+  const vacatedIndices = selectedIndices.filter((idx) => !targetSet.has(idx));
+
+  // Move selected data to target positions
+  // Process in correct order to avoid overwriting: if moving forward, process back-to-front
+  if (offset > 0) {
+    for (let i = selectedIndices.length - 1; i >= 0; i--) {
+      setCellData(cells[targetIndices[i]], selectedData[i]);
+    }
+  } else {
+    for (let i = 0; i < selectedIndices.length; i++) {
+      setCellData(cells[targetIndices[i]], selectedData[i]);
+    }
+  }
+
+  // Place displaced data into vacated positions
+  for (let i = 0; i < displacedIndices.length; i++) {
+    setCellData(cells[vacatedIndices[i]], displacedData[i]);
+  }
+
+  // Update selection to new positions
+  clearSelection();
+  for (const idx of targetIndices) {
+    addCellToSelection(idx);
+  }
+
+  // Move focus
+  const newFocusIndex = state.focusedCellIndex + offset;
+  setFocusedCell(newFocusIndex);
+
+  // Re-scroll after animation settles
+  setTimeout(() => {
+    const cell = state.gridEl.querySelectorAll(".grid-cell")[newFocusIndex];
+    if (cell) cell.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, 250);
 };
 
 // --- Hotkeys ---
@@ -80,11 +192,15 @@ document.addEventListener("keydown", (e) => {
   // Arrow key navigation for grid cells (works even in drawing mode)
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
     const direction = e.key.replace("Arrow", "").toLowerCase(); // "up", "down", "left", "right"
-    if (e.shiftKey) {
-      // Shift+Arrow: move/swap the focused cell's content
+    if (e.metaKey) {
+      // Cmd+Arrow: move/swap the focused cell's content
       moveGridItem(direction);
+    } else if (e.shiftKey) {
+      // Shift+Arrow: extend multi-selection
+      extendSelection(direction);
     } else {
-      // Arrow: navigate focus between cells
+      // Arrow: navigate focus between cells (clears selection)
+      clearSelection();
       navigateGrid(direction);
     }
     e.preventDefault();
@@ -115,7 +231,8 @@ document.addEventListener("keydown", (e) => {
 
   switch (e.key) {
     case "Escape":
-      // Clear grid cell focus
+      // Clear grid cell focus and selection
+      clearSelection();
       clearFocusedCell();
       break;
     case "b":

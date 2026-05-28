@@ -703,8 +703,16 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 /* Focused cell highlight for keyboard navigation */
 .grid-cell.keyboard-focused {
     outline: 2px solid #4f6ef7;
+    outline-offset: 4px;
+    border-radius: 6px;
+}
+
+/* Multi-selected cell highlight */
+.grid-cell.keyboard-selected {
+    outline: 2px solid #4f6ef7;
     outline-offset: -2px;
     border-radius: 6px;
+    background: rgba(79, 110, 247, 0.08);
 }
 
 /* Swap animation */
