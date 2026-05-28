@@ -944,6 +944,11 @@ const relayoutGrid = () => {
     col: i % state.gridCols,
   }));
 
+  // Remove empty trailing rows by calculating the actual rows needed
+  const neededRows = Math.max(1, Math.ceil(filledCells.length / state.gridCols));
+  state.gridRows = neededRows;
+  document.getElementById("grid-rows").value = state.gridRows;
+
   // Clear selections since positions changed
   state.selectedRows.clear();
   updateCopySelectedBtn();
