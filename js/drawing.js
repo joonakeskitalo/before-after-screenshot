@@ -758,6 +758,7 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
   input.addEventListener("input", resizeInput);
 
   const commitText = () => {
+    if (!input.parentNode) return;
     const text = input.value.trim();
     if (text) {
       const data = state.canvasDataMap.get(canvas);
@@ -783,8 +784,10 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
       commitText();
     } else if (e.key === "Escape") {
       e.preventDefault();
-      input.remove();
-      measurer.remove();
+      if (input.parentNode) {
+        input.remove();
+        measurer.remove();
+      }
     }
     e.stopPropagation();
   });
