@@ -700,17 +700,14 @@ const copyAsGridSize = async () => {
 };
 
 const updateCopySelectedBtn = () => {
-  const btn = document.getElementById("copy-selected-btn");
+  const btn = document.getElementById("copy-btn");
   if (!btn) return;
   if (state.selectedRows.size > 0) {
-    btn.textContent = `Copy Selected (${state.selectedRows.size} rows)`;
-    btn.disabled = false;
+    btn.textContent = `Copy (${state.selectedRows.size} rows)`;
   } else if (state.selectedCells.size > 0) {
-    btn.textContent = `Copy Selected (${state.selectedCells.size} cells)`;
-    btn.disabled = false;
+    btn.textContent = `Copy (${state.selectedCells.size} cells)`;
   } else {
-    btn.textContent = "Copy Selected";
-    btn.disabled = false;
+    btn.textContent = "Copy";
   }
 };
 
@@ -1224,9 +1221,8 @@ const bulkDownloadImages = () => {
 };
 
 // Wire up copy buttons (replacing inline onclick handlers)
-document.getElementById("copy-btn").addEventListener("click", copyWithScale);
+document.getElementById("copy-btn").addEventListener("click", copySelectedRows);
 document.getElementById("download-btn").addEventListener("click", downloadWithScale);
-document.getElementById("copy-selected-btn").addEventListener("click", copySelectedRows);
 document.getElementById("bulk-download-btn").addEventListener("click", bulkDownloadImages);
 
 export {
