@@ -792,15 +792,452 @@ const clearOrCopyImage = async (event, img, drop, span) => {
   }
 };
 
+// --- Download helpers ---
+
+const generateFilename = () => {
+  const now = new Date();
+  const ts = now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0") +
+    "_" +
+    String(now.getHours()).padStart(2, "0") +
+    String(now.getMinutes()).padStart(2, "0") +
+    String(now.getSeconds()).padStart(2, "0");
+  return `scr_${ts}.png`;
+};
+
+const triggerDownload = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// Download the composed grid image (same logic as copy, but saves to file)
+const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
+  try {
+    const restoreSelection = hideSelectionForExport();
+    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
+    state.root.style.setProperty("--image-max-width", "unset");
+
+    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
+    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
+    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
+
+    const allCells = state.gridEl.querySelectorAll(".grid-cell");
+    allCells.forEach((cell) => {
+      cell.style.overflow = "visible";
+      cell.style.minHeight = "0";
+    });
+
+    const allImages = state.cardsEl.querySelectorAll("img");
+    allImages.forEach((img) => {
+      if (img.src && img.style.display !== "none") {
+        img.style.objectFit = "contain";
+        img.style.height = "auto";
+        img.style.maxHeight = "unset";
+      }
+    });
+
+    const allDrops = state.cardsEl.querySelectorAll(".drop");
+    allDrops.forEach((drop) => {
+      drop.style.overflow = "visible";
+      drop.style.height = "auto";
+    });
+
+    state.root.style.setProperty("--border", `unset`);
+    state.gridEl.style.outline = "none";
+
+    const prevZoom = state.gridZoom;
+    state.root.style.setProperty("--image-max-width", "unset");
+    state.root.style.setProperty("--gap", `96px`);
+    state.root.style.setProperty("--text-fontsize", `15pt`);
+    state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
+
+    if (useFullSize) {
+      const baseFontSize = 15;
+      const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * 3));
+      state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+
+      const gap = 192 * resolutionScale;
+      state.root.style.setProperty("--gap", `${gap}px`);
+
+      allDrops.forEach((drop) => {
+        const img = drop.querySelector("img");
+        if (!img || !img.src || img.style.display === "none") {
+          drop.style.width = "32px";
+          drop.style.height = "32px";
+        }
+      });
+
+      allImages.forEach((img) => {
+        if (img.src && img.style.display !== "none") {
+          img.style.width =
+            Math.floor(img.naturalWidth * resolutionScale) + "px";
+          img.style.height = "auto";
+        }
+      });
+    }
+
+    state.gridEl.style.gridTemplateRows = "auto";
+    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
+
+    const initialPadding = useFullSize ? 192 : 64;
+    const padding = Math.floor(initialPadding * resolutionScale);
+
+    state.cardsEl.style.padding = `8px ${padding}px`;
+    state.cardsEl.style.width = "fit-content";
+    state.cardsEl.style.height = "auto";
+    state.cardsEl.style.flex = "none";
+    state.cardsEl.style.minHeight = "0";
+
+    const gridRenderedWidth = state.gridEl.offsetWidth;
+    state.gridEl.style.width = `${gridRenderedWidth}px`;
+
+    const captureHeight = state.cardsEl.offsetHeight;
+
+    const exportScale = useFullSize ? resolutionScale : 1;
+    redrawAllCanvasesForExport(exportScale);
+
+    let blob = await domtoimage.toBlob(state.cardsEl, {
+      height: captureHeight,
+      filter: (node) => {
+        if (node.tagName === "IMG" && !node.src.startsWith("data:")) return false;
+        if (node.tagName === "SPAN") return false;
+        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
+        if (node.classList && node.classList.contains("drawing-text-input")) return false;
+        if (node.classList && node.classList.contains("row-controls")) return false;
+        if (node.classList && node.classList.contains("row-select-cb")) return false;
+        if (node.classList && node.classList.contains("grid-cell-filename") && !state.showFilenames) return false;
+        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
+        return true;
+      },
+    });
+
+    blob = await cropBlobToHeight(blob, captureHeight);
+
+    triggerDownload(blob, generateFilename());
+
+    // Restore all styles
+    allCells.forEach((cell) => {
+      cell.style.overflow = null;
+      cell.style.minHeight = null;
+    });
+
+    allImages.forEach((img) => {
+      img.style.objectFit = null;
+      img.style.height = null;
+      img.style.maxHeight = null;
+      img.style.width = null;
+    });
+
+    allDrops.forEach((drop) => {
+      drop.style.overflow = null;
+      drop.style.height = null;
+      drop.style.width = null;
+    });
+
+    state.cardsEl.style.padding = "16px";
+    state.cardsEl.style.width = null;
+    state.cardsEl.style.height = null;
+    state.cardsEl.style.flex = null;
+    state.cardsEl.style.minHeight = null;
+    state.gridEl.style.outline = null;
+    state.gridEl.style.width = null;
+    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+    state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
+
+    applyGridZoom(prevZoom);
+    restoreAllCanvases();
+
+    restoreEmptyRows();
+    restoreSelection();
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const downloadWithScale = () => {
+  const select = document.getElementById("copy-scale");
+  const value = select.value;
+
+  // Apply the same selection rules as copySelectedRows
+  const allCells = state.gridEl.querySelectorAll(".grid-cell");
+  const hiddenCells = [];
+
+  if (state.selectedRows.size > 0 || state.selectedCells.size > 0) {
+    const selectedColCount = state.gridCols;
+
+    if (state.selectedRows.size > 0) {
+      allCells.forEach((cell) => {
+        const row = parseInt(cell.dataset.row);
+        if (!state.selectedRows.has(row)) {
+          cell.style.display = "none";
+          hiddenCells.push(cell);
+        }
+      });
+    } else {
+      const cellsArray = [...allCells];
+      cellsArray.forEach((cell, index) => {
+        if (!state.selectedCells.has(index)) {
+          cell.style.display = "none";
+          hiddenCells.push(cell);
+        }
+      });
+    }
+
+    state.gridEl.style.gridTemplateColumns = `repeat(${selectedColCount}, auto)`;
+    state.gridEl.style.gridTemplateRows = "auto";
+  }
+
+  let doExport;
+  if (value.startsWith("output-")) {
+    const outputScale = parseFloat(value.replace("output-", ""));
+    doExport = downloadAsImageWithOutputScale(outputScale);
+  } else {
+    const scale = parseFloat(value);
+    doExport = downloadAsImage(true, scale);
+  }
+
+  Promise.resolve(doExport).finally(() => {
+    hiddenCells.forEach((cell) => {
+      cell.style.display = "";
+    });
+  });
+};
+
+const downloadAsImageWithOutputScale = async (outputScale) => {
+  try {
+    const restoreSelection = hideSelectionForExport();
+    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
+    const baseMultiplier = 2;
+
+    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
+    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
+    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
+
+    const allImages = state.cardsEl.querySelectorAll("img");
+    const imageSizes = [];
+    allImages.forEach((img) => {
+      if (img.src && img.style.display !== "none") {
+        imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
+      }
+    });
+
+    state.root.style.setProperty("--border", `unset`);
+    state.gridEl.style.outline = "none";
+
+    const allCells = state.gridEl.querySelectorAll(".grid-cell");
+    allCells.forEach((cell) => {
+      cell.style.overflow = "visible";
+    });
+
+    const allDrops = state.cardsEl.querySelectorAll(".drop");
+    allDrops.forEach((drop) => {
+      drop.style.overflow = "visible";
+    });
+
+    let cappedMultiplier = baseMultiplier;
+    imageSizes.forEach(({ img, width, height }) => {
+      const maxForThis = Math.min(img.naturalWidth / width, img.naturalHeight / height);
+      cappedMultiplier = Math.min(cappedMultiplier, maxForThis);
+    });
+    cappedMultiplier = Math.max(1, cappedMultiplier);
+
+    imageSizes.forEach(({ img, width, height }) => {
+      img.style.width = Math.round(width * cappedMultiplier) + "px";
+      img.style.height = Math.round(height * cappedMultiplier) + "px";
+      img.style.objectFit = "contain";
+      img.style.maxHeight = "unset";
+    });
+
+    const scale = state.gridZoom / 100;
+    const gap = Math.round(48 * scale * cappedMultiplier);
+    state.root.style.setProperty("--gap", `${gap}px`);
+    const fontSize = Math.round(16 * scale * cappedMultiplier / outputScale);
+    state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+
+    const filenameLabels = state.cardsEl.querySelectorAll(".grid-cell-filename");
+    const filenameFontSize = Math.round(8 * cappedMultiplier / outputScale);
+    filenameLabels.forEach((label) => {
+      label.style.fontSize = `${filenameFontSize}pt`;
+    });
+
+    allDrops.forEach((drop) => {
+      const img = drop.querySelector("img");
+      if (!img || !img.src || img.style.display === "none") {
+        drop.style.width = "32px";
+        drop.style.height = "32px";
+      }
+    });
+
+    state.gridEl.style.gridTemplateRows = "auto";
+    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
+
+    const padding = Math.round(32 * cappedMultiplier);
+    state.cardsEl.style.padding = `8px ${padding}px`;
+    state.cardsEl.style.width = "fit-content";
+    state.cardsEl.style.height = "auto";
+    state.cardsEl.style.flex = "none";
+    state.cardsEl.style.minHeight = "0";
+
+    const gridRenderedWidth = state.gridEl.offsetWidth;
+    state.gridEl.style.width = `${gridRenderedWidth}px`;
+
+    const captureHeight = state.cardsEl.offsetHeight;
+
+    redrawAllCanvasesForExport(cappedMultiplier);
+
+    let blob = await domtoimage.toBlob(state.cardsEl, {
+      height: captureHeight,
+      filter: (node) => {
+        if (node.tagName === "IMG" && !node.src.startsWith("data:")) return false;
+        if (node.tagName === "SPAN") return false;
+        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
+        if (node.classList && node.classList.contains("drawing-text-input")) return false;
+        if (node.classList && node.classList.contains("row-controls")) return false;
+        if (node.classList && node.classList.contains("row-select-cb")) return false;
+        if (node.classList && node.classList.contains("grid-cell-filename") && !state.showFilenames) return false;
+        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
+        return true;
+      },
+    });
+
+    blob = await cropBlobToHeight(blob, captureHeight);
+    const scaledBlob = await scaleBlob(blob, outputScale);
+
+    triggerDownload(scaledBlob, generateFilename());
+
+    // Restore all styles
+    allCells.forEach((cell) => {
+      cell.style.overflow = null;
+    });
+
+    allImages.forEach((img) => {
+      img.style.objectFit = null;
+      img.style.height = null;
+      img.style.maxHeight = null;
+      img.style.width = null;
+    });
+
+    allDrops.forEach((drop) => {
+      drop.style.overflow = null;
+      drop.style.height = null;
+      drop.style.width = null;
+    });
+
+    filenameLabels.forEach((label) => {
+      label.style.fontSize = null;
+    });
+
+    state.cardsEl.style.padding = "16px";
+    state.cardsEl.style.width = null;
+    state.cardsEl.style.height = null;
+    state.cardsEl.style.flex = null;
+    state.cardsEl.style.minHeight = null;
+    state.gridEl.style.outline = null;
+    state.gridEl.style.width = null;
+    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+    state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
+
+    applyGridZoom(state.gridZoom);
+    restoreAllCanvases();
+
+    restoreEmptyRows();
+    restoreSelection();
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+// Bulk download all images from the staging area and grid cells
+const bulkDownloadImages = () => {
+  const images = [];
+
+  // Collect from staging area (bottom toolbar)
+  const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
+  if (bottomToolbarInner) {
+    bottomToolbarInner.querySelectorAll(".bottom-toolbar-item img").forEach((img) => {
+      if (img.src && img.src.startsWith("data:")) {
+        images.push({ src: img.src, name: img.alt || "" });
+      }
+    });
+  }
+
+  // Collect from grid cells, respecting selection
+  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+
+  if (state.selectedRows.size > 0) {
+    // Only include images from selected rows
+    allCells.forEach((cell) => {
+      const row = parseInt(cell.dataset.row);
+      if (!state.selectedRows.has(row)) return;
+      const img = cell.querySelector("img");
+      if (img && img.src && img.src.startsWith("data:") && img.style.display !== "none") {
+        images.push({ src: img.src, name: img.alt || "" });
+      }
+    });
+  } else if (state.selectedCells.size > 0) {
+    // Only include images from selected cells
+    allCells.forEach((cell, index) => {
+      if (!state.selectedCells.has(index)) return;
+      const img = cell.querySelector("img");
+      if (img && img.src && img.src.startsWith("data:") && img.style.display !== "none") {
+        images.push({ src: img.src, name: img.alt || "" });
+      }
+    });
+  } else {
+    // No selection — include all grid images
+    allCells.forEach((cell) => {
+      const img = cell.querySelector("img");
+      if (img && img.src && img.src.startsWith("data:") && img.style.display !== "none") {
+        images.push({ src: img.src, name: img.alt || "" });
+      }
+    });
+  }
+
+  if (images.length === 0) return;
+
+  // Download each image with a small delay to avoid browser blocking
+  images.forEach((image, index) => {
+    const ext = image.src.startsWith("data:image/png") ? ".png" :
+                image.src.startsWith("data:image/jpeg") ? ".jpg" :
+                image.src.startsWith("data:image/webp") ? ".webp" : ".png";
+
+    let filename = image.name || `image-${index + 1}`;
+    // Strip existing extension if present, then add the correct one
+    filename = filename.replace(/\.[^.]+$/, "") + ext;
+
+    setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = image.src;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, index * 100);
+  });
+};
+
 // Wire up copy buttons (replacing inline onclick handlers)
 document.getElementById("copy-btn").addEventListener("click", copyWithScale);
+document.getElementById("download-btn").addEventListener("click", downloadWithScale);
 document.getElementById("copy-selected-btn").addEventListener("click", copySelectedRows);
+document.getElementById("bulk-download-btn").addEventListener("click", bulkDownloadImages);
 
 export {
   setElementWidths,
   copyAsImage,
   copyWithScale,
   copyAsImageWithOutputScale,
+  downloadAsImage,
+  downloadWithScale,
+  downloadAsImageWithOutputScale,
+  bulkDownloadImages,
   scaleBlob,
   copySelectedRows,
   copyAsGridSize,
