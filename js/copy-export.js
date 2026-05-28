@@ -2,6 +2,27 @@ import state from './state.js';
 import { redrawAllCanvasesForExport, restoreAllCanvases } from './drawing.js';
 import { applyGridZoom } from './zoom.js';
 
+// Hide the cards container during export to prevent the UI from flashing
+// while styles are temporarily modified for capture. We place a fixed overlay
+// over the content area with the current background color so the user sees
+// a static screen instead of the layout thrashing.
+const hideForExport = () => {
+  const rect = state.cardsEl.getBoundingClientRect();
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed;
+    top: ${rect.top}px;
+    left: ${rect.left}px;
+    width: ${rect.width}px;
+    height: ${rect.height}px;
+    z-index: 9999;
+    pointer-events: none;
+  `;
+  overlay.style.background = getComputedStyle(state.cardsEl).backgroundColor;
+  document.body.appendChild(overlay);
+  return () => overlay.remove();
+};
+
 // Shared filter function for dom-to-image — avoids creating a new closure per export call.
 // Checks are ordered by frequency: text nodes (no nodeType check needed since dom-to-image
 // only passes Element nodes), then tagName checks (cheapest), then classList checks.
@@ -136,6 +157,7 @@ const hideSelectionForExport = () => {
 };
 
 const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
+  const showAfterExport = hideForExport();
   try {
     const restoreSelection = hideSelectionForExport();
     const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
@@ -288,6 +310,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     restoreSelection();
   } catch (error) {
     console.error(error);
+  } finally {
+    showAfterExport();
   }
 };
 
@@ -305,6 +329,7 @@ const copyWithScale = () => {
 
 // Export at full native resolution, then scale the entire output image down
 const copyAsImageWithOutputScale = async (outputScale) => {
+  const showAfterExport = hideForExport();
   try {
     const restoreSelection = hideSelectionForExport();
     const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
@@ -450,6 +475,8 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     restoreSelection();
   } catch (error) {
     console.error(error);
+  } finally {
+    showAfterExport();
   }
 };
 
@@ -555,6 +582,7 @@ const copySelectedRows = () => {
 };
 
 const copyAsGridSize = async () => {
+  const showAfterExport = hideForExport();
   try {
     const restoreSelection = hideSelectionForExport();
     const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
@@ -678,6 +706,8 @@ const copyAsGridSize = async () => {
     restoreSelection();
   } catch (error) {
     console.error(error);
+  } finally {
+    showAfterExport();
   }
 };
 
@@ -798,6 +828,7 @@ const triggerDownload = (blob, filename) => {
 
 // Download the composed grid image (same logic as copy, but saves to file)
 const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
+  const showAfterExport = hideForExport();
   try {
     const restoreSelection = hideSelectionForExport();
     const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
@@ -927,6 +958,8 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
     restoreSelection();
   } catch (error) {
     console.error(error);
+  } finally {
+    showAfterExport();
   }
 };
 
@@ -980,6 +1013,7 @@ const downloadWithScale = () => {
 };
 
 const downloadAsImageWithOutputScale = async (outputScale) => {
+  const showAfterExport = hideForExport();
   try {
     const restoreSelection = hideSelectionForExport();
     const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
@@ -1109,6 +1143,8 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
     restoreSelection();
   } catch (error) {
     console.error(error);
+  } finally {
+    showAfterExport();
   }
 };
 
