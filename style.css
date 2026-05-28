@@ -707,6 +707,15 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     border-radius: 6px;
 }
 
+.grid-cell.keyboard-focused.keyboard-selected {
+    outline: none;
+}
+
+.grid-cell.keyboard-focused.keyboard-selected::after {
+    border-width: 4px;
+    box-shadow: 0 0 0 2px rgba(79, 110, 247, 0.25);
+}
+
 /* Multi-selected cell highlight */
 .grid-cell.keyboard-selected {
     position: relative;
@@ -722,6 +731,10 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
     border-radius: 6px;
     pointer-events: none;
     z-index: 10;
+}
+
+.grid-cell.keyboard-selected > .drop {
+    border-color: transparent;
 }
 
 /* Swap animation */
