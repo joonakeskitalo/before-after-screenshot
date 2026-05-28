@@ -8,6 +8,7 @@ import {
   textModeBtn, drawColorInput,
 } from './drawing.js';
 import { toggleStagingArea } from './toolbar.js';
+import { updateCopySelectedBtn } from './copy-export.js';
 
 // --- Keyboard Navigation for Grid Cells ---
 
@@ -40,6 +41,7 @@ const clearSelection = () => {
     cell.classList.remove("keyboard-selected");
   });
   state.selectedCells.clear();
+  updateCopySelectedBtn();
 };
 
 const addCellToSelection = (index) => {
@@ -47,6 +49,7 @@ const addCellToSelection = (index) => {
   if (index >= 0 && index < cells.length) {
     state.selectedCells.add(index);
     cells[index].classList.add("keyboard-selected");
+    updateCopySelectedBtn();
   }
 };
 
@@ -55,6 +58,7 @@ const removeCellFromSelection = (index) => {
   if (index >= 0 && index < cells.length) {
     state.selectedCells.delete(index);
     cells[index].classList.remove("keyboard-selected");
+    updateCopySelectedBtn();
   }
 };
 

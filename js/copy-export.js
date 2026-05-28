@@ -16,8 +16,21 @@ const setElementWidths = (arr, size) => {
   });
 };
 
+// Strip keyboard selection/focus classes before export and return a restore function
+const hideSelectionForExport = () => {
+  const selected = [...state.gridEl.querySelectorAll(".grid-cell.keyboard-selected")];
+  const focused = [...state.gridEl.querySelectorAll(".grid-cell.keyboard-focused")];
+  selected.forEach((cell) => cell.classList.remove("keyboard-selected"));
+  focused.forEach((cell) => cell.classList.remove("keyboard-focused"));
+  return () => {
+    selected.forEach((cell) => cell.classList.add("keyboard-selected"));
+    focused.forEach((cell) => cell.classList.add("keyboard-focused"));
+  };
+};
+
 const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   try {
+    const restoreSelection = hideSelectionForExport();
     state.root.style.setProperty("--image-max-width", "unset");
 
     // Remove overflow and size constraints so nothing gets clipped
@@ -150,6 +163,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 
     // Restore drawing canvases to display size
     restoreAllCanvases();
+
+    restoreSelection();
   } catch (error) {
     console.error(error);
   }
@@ -174,6 +189,7 @@ const copyWithScale = () => {
 // Export at full native resolution, then scale the entire output image down
 const copyAsImageWithOutputScale = async (outputScale) => {
   try {
+    const restoreSelection = hideSelectionForExport();
     const baseMultiplier = 2; // Render at 2x grid size for higher resolution
 
     // Capture current rendered sizes before modifying styles
@@ -300,6 +316,8 @@ const copyAsImageWithOutputScale = async (outputScale) => {
 
     applyGridZoom(state.gridZoom);
     restoreAllCanvases();
+
+    restoreSelection();
   } catch (error) {
     console.error(error);
   }
@@ -327,44 +345,72 @@ const scaleBlob = (blob, scale) => {
 };
 
 const copySelectedRows = () => {
-  if (state.selectedRows.size === 0) {
+  if (state.selectedRows.size === 0 && state.selectedCells.size === 0) {
     // Nothing selected — fall back to copying all
     copyWithScale();
     return;
   }
 
-  // Hide unselected rows, export, then restore
   const allCells = state.gridEl.querySelectorAll(".grid-cell");
   const hiddenCells = [];
 
-  allCells.forEach((cell) => {
-    const row = parseInt(cell.dataset.row);
-    if (!state.selectedRows.has(row)) {
-      cell.style.display = "none";
-      hiddenCells.push(cell);
-    }
-  });
+  // Determine which rows and columns are involved in the selection
+  let selectedColCount;
 
-  // Temporarily adjust grid rows to only show selected count
-  const originalRows = state.gridEl.style.gridTemplateRows;
-  state.gridEl.style.gridTemplateRows = `repeat(${state.selectedRows.size}, 1fr)`;
+  if (state.selectedRows.size > 0) {
+    selectedColCount = state.gridCols;
+
+    allCells.forEach((cell) => {
+      const row = parseInt(cell.dataset.row);
+      if (!state.selectedRows.has(row)) {
+        cell.style.display = "none";
+        hiddenCells.push(cell);
+      }
+    });
+  } else {
+    const selectedColSet = new Set();
+    state.selectedCells.forEach((idx) => {
+      selectedColSet.add(idx % state.gridCols);
+    });
+    selectedColCount = selectedColSet.size;
+
+    const cellsArray = [...allCells];
+    cellsArray.forEach((cell, index) => {
+      if (!state.selectedCells.has(index)) {
+        cell.style.display = "none";
+        hiddenCells.push(cell);
+      }
+    });
+  }
+
+  // Set the grid template to match only the visible cells before export.
+  // copyAsImage will override this during capture and then restore using
+  // the real state.gridCols/state.gridRows, so the layout recovers correctly.
+  state.gridEl.style.gridTemplateColumns = `repeat(${selectedColCount}, auto)`;
+  state.gridEl.style.gridTemplateRows = "auto";
 
   const select = document.getElementById("copy-scale");
-  const scale = parseFloat(select.value);
+  const value = select.value;
 
-  const doExport = scale >= 1 ? copyAsImage(false) : copyAsImage(true, scale);
+  let doExport;
+  if (value.startsWith("output-")) {
+    const outputScale = parseFloat(value.replace("output-", ""));
+    doExport = copyAsImageWithOutputScale(outputScale);
+  } else {
+    const scale = parseFloat(value);
+    doExport = scale >= 1 ? copyAsImage(false) : copyAsImage(true, scale);
+  }
 
-  // copyAsImage is async — wait for it to finish then restore
   Promise.resolve(doExport).finally(() => {
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
     });
-    state.gridEl.style.gridTemplateRows = originalRows;
   });
 };
 
 const copyAsGridSize = async () => {
   try {
+    const restoreSelection = hideSelectionForExport();
     // Capture the current rendered sizes of images before modifying styles
     const allImages = state.cardsEl.querySelectorAll("img");
     const imageSizes = [];
@@ -467,6 +513,8 @@ const copyAsGridSize = async () => {
 
     // Restore drawing canvases to display size
     restoreAllCanvases();
+
+    restoreSelection();
   } catch (error) {
     console.error(error);
   }
@@ -476,7 +524,10 @@ const updateCopySelectedBtn = () => {
   const btn = document.getElementById("copy-selected-btn");
   if (!btn) return;
   if (state.selectedRows.size > 0) {
-    btn.textContent = `Copy Selected (${state.selectedRows.size})`;
+    btn.textContent = `Copy Selected (${state.selectedRows.size} rows)`;
+    btn.disabled = false;
+  } else if (state.selectedCells.size > 0) {
+    btn.textContent = `Copy Selected (${state.selectedCells.size} cells)`;
     btn.disabled = false;
   } else {
     btn.textContent = "Copy Selected";

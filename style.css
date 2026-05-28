@@ -709,10 +709,19 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 
 /* Multi-selected cell highlight */
 .grid-cell.keyboard-selected {
-    outline: 2px solid #4f6ef7;
-    outline-offset: -2px;
-    border-radius: 6px;
+    position: relative;
     background: rgba(79, 110, 247, 0.08);
+    border-radius: 6px;
+}
+
+.grid-cell.keyboard-selected::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 2px solid #4f6ef7;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 10;
 }
 
 /* Swap animation */
