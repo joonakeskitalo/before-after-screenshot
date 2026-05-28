@@ -147,6 +147,118 @@ document.addEventListener("dragstart", (e) => {
   }
 }, { capture: true });
 
+// Detect which edge the cursor is beyond relative to the grid, for auto-expansion
+const getEdgeExpansionDirection = (clientX, clientY) => {
+  const gridRect = state.gridEl.getBoundingClientRect();
+  const threshold = 40; // px beyond edge to trigger expansion
+
+  if (clientX > gridRect.right + threshold) return "right";
+  if (clientX < gridRect.left - threshold) return "left";
+  if (clientY > gridRect.bottom + threshold) return "down";
+  if (clientY < gridRect.top - threshold) return "up";
+  return null;
+};
+
+// Throttle edge expansion to avoid rapid repeated expansions
+let lastEdgeExpansionTime = 0;
+const EDGE_EXPANSION_COOLDOWN = 400; // ms
+
+const expandGridForDrag = (direction) => {
+  const now = Date.now();
+  if (now - lastEdgeExpansionTime < EDGE_EXPANSION_COOLDOWN) return false;
+  lastEdgeExpansionTime = now;
+
+  const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
+
+  if (direction === "right") {
+    // Only expand if any selected cell is in the last column
+    const atRightEdge = selectedIndices.some((idx) => idx % state.gridCols === state.gridCols - 1);
+    if (!atRightEdge) return false;
+    const oldCols = state.gridCols;
+    insertColumnAt(state.gridCols);
+    // After appending a column, indices shift because grid is row-major with more cols
+    const newIndices = selectedIndices.map((idx) => {
+      const row = Math.floor(idx / oldCols);
+      const col = idx % oldCols;
+      return row * state.gridCols + col;
+    });
+    const newStartIndex = (() => {
+      const row = Math.floor(cellDragState.startIndex / oldCols);
+      const col = cellDragState.startIndex % oldCols;
+      return row * state.gridCols + col;
+    })();
+    clearCellSelection();
+    for (const idx of newIndices) {
+      addCellToSelectionByIndex(idx);
+    }
+    cellDragState.startIndex = newStartIndex;
+    if (state.focusedCellIndex >= 0) {
+      const row = Math.floor(state.focusedCellIndex / oldCols);
+      const col = state.focusedCellIndex % oldCols;
+      setFocusedCellByIndex(row * state.gridCols + col);
+    }
+    return true;
+  } else if (direction === "left") {
+    const atLeftEdge = selectedIndices.some((idx) => idx % state.gridCols === 0);
+    if (!atLeftEdge) return false;
+    insertColumnAt(0);
+    // After inserting column at 0, indices shift: each cell moves right by 1 per row
+    const oldCols = state.gridCols - 1;
+    const newIndices = selectedIndices.map((idx) => {
+      const row = Math.floor(idx / oldCols);
+      const col = idx % oldCols;
+      return row * state.gridCols + (col + 1);
+    });
+    const newStartIndex = (() => {
+      const row = Math.floor(cellDragState.startIndex / oldCols);
+      const col = cellDragState.startIndex % oldCols;
+      return row * state.gridCols + (col + 1);
+    })();
+    // Update selection
+    clearCellSelection();
+    for (const idx of newIndices) {
+      addCellToSelectionByIndex(idx);
+    }
+    cellDragState.startIndex = newStartIndex;
+    if (state.focusedCellIndex >= 0) {
+      const row = Math.floor(state.focusedCellIndex / oldCols);
+      const col = state.focusedCellIndex % oldCols;
+      setFocusedCellByIndex(row * state.gridCols + (col + 1));
+    }
+    return true;
+  } else if (direction === "down") {
+    // Only expand if any selected cell is in the last row
+    const totalCells = state.gridCols * state.gridRows;
+    const atBottomEdge = selectedIndices.some((idx) => idx >= totalCells - state.gridCols);
+    if (!atBottomEdge) return false;
+    insertRowAt(state.gridRows);
+    // Indices don't change when appending at the bottom, but grid was rebuilt
+    // so we need to re-apply selection CSS classes
+    clearCellSelection();
+    for (const idx of selectedIndices) {
+      addCellToSelectionByIndex(idx);
+    }
+    return true;
+  } else if (direction === "up") {
+    const atTopEdge = selectedIndices.some((idx) => idx < state.gridCols);
+    if (!atTopEdge) return false;
+    insertRowAt(0);
+    // After inserting row at 0, all indices shift down by gridCols
+    const newIndices = selectedIndices.map((idx) => idx + state.gridCols);
+    const newStartIndex = cellDragState.startIndex + state.gridCols;
+    clearCellSelection();
+    for (const idx of newIndices) {
+      addCellToSelectionByIndex(idx);
+    }
+    cellDragState.startIndex = newStartIndex;
+    if (state.focusedCellIndex >= 0) {
+      setFocusedCellByIndex(state.focusedCellIndex + state.gridCols);
+    }
+    return true;
+  }
+  return false;
+};
+
 const handleCellDragMove = (e) => {
   if (!cellDragState) return;
 
@@ -159,6 +271,12 @@ const handleCellDragMove = (e) => {
   if (!cellDragState.active) {
     cellDragState.active = true;
     document.body.classList.add("cell-dragging");
+  }
+
+  // Check if cursor is beyond grid edges — auto-expand
+  const edgeDir = getEdgeExpansionDirection(e.clientX, e.clientY);
+  if (edgeDir) {
+    expandGridForDrag(edgeDir);
   }
 
   const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY);

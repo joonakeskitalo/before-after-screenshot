@@ -127,12 +127,106 @@ const moveGridItem = (direction) => {
   else if (direction === "up") offset = -state.gridCols;
   else if (direction === "down") offset = state.gridCols;
 
-  // Check that ALL selected cells can move in this direction
+  // Check if any selected cell is at the edge and needs grid expansion
+  let needsExpand = false;
   for (const idx of selectedIndices) {
     const targetIdx = idx + offset;
-    // Out of bounds
+    if (direction === "right" && idx % state.gridCols === state.gridCols - 1) {
+      needsExpand = true;
+      break;
+    }
+    if (direction === "left" && idx % state.gridCols === 0) {
+      needsExpand = true;
+      break;
+    }
+    if (direction === "down" && targetIdx >= cells.length) {
+      needsExpand = true;
+      break;
+    }
+    if (direction === "up" && targetIdx < 0) {
+      needsExpand = true;
+      break;
+    }
+  }
+
+  if (needsExpand) {
+    // Expand the grid in the appropriate direction, then rebuild and re-run the move
+    if (direction === "right") {
+      const oldCols = state.gridCols;
+      insertColumnAt(state.gridCols);
+      // After appending a column, indices shift because grid is row-major with more cols
+      const shiftedIndices = selectedIndices.map((idx) => {
+        const row = Math.floor(idx / oldCols);
+        const col = idx % oldCols;
+        return row * state.gridCols + col;
+      });
+      const newFocusRow = Math.floor(state.focusedCellIndex / oldCols);
+      const newFocusCol = state.focusedCellIndex % oldCols;
+      const newFocusIndex = newFocusRow * state.gridCols + newFocusCol;
+
+      clearSelection();
+      for (const idx of shiftedIndices) {
+        addCellToSelection(idx);
+      }
+      setFocusedCell(newFocusIndex);
+      moveGridItem(direction);
+      return;
+    } else if (direction === "left") {
+      const oldCols = state.gridCols;
+      insertColumnAt(0);
+      // After inserting a column at 0, all indices shift right by 1 per row.
+      // state.gridCols is now oldCols + 1
+      const shiftedIndices = selectedIndices.map((idx) => {
+        const row = Math.floor(idx / oldCols);
+        const col = idx % oldCols;
+        return row * state.gridCols + (col + 1);
+      });
+      const newFocusRow = Math.floor(state.focusedCellIndex / oldCols);
+      const newFocusCol = state.focusedCellIndex % oldCols;
+      const newFocusIndex = newFocusRow * state.gridCols + (newFocusCol + 1);
+
+      // Update selection and focus to shifted positions
+      clearSelection();
+      for (const idx of shiftedIndices) {
+        addCellToSelection(idx);
+      }
+      setFocusedCell(newFocusIndex);
+      // Now the cells are at the correct positions; re-run the move
+      moveGridItem(direction);
+      return;
+    } else if (direction === "down") {
+      insertRowAt(state.gridRows);
+      // Indices don't change when appending rows at the bottom
+      clearSelection();
+      for (const idx of selectedIndices) {
+        addCellToSelection(idx);
+      }
+      setFocusedCell(state.focusedCellIndex);
+      moveGridItem(direction);
+      return;
+    } else if (direction === "up") {
+      insertRowAt(0);
+      // After inserting a row at 0, all indices shift down by gridCols.
+      const shiftedIndices = selectedIndices.map((idx) => idx + state.gridCols);
+      const newFocusIndex = state.focusedCellIndex + state.gridCols;
+
+      // Update selection and focus to shifted positions
+      clearSelection();
+      for (const idx of shiftedIndices) {
+        addCellToSelection(idx);
+      }
+      setFocusedCell(newFocusIndex);
+      // Now the cells are at the correct positions; re-run the move
+      moveGridItem(direction);
+      return;
+    }
+  }
+
+  // Normal move (no expansion needed)
+  // Check bounds (shouldn't fail after expansion, but safety check)
+  for (const idx of selectedIndices) {
+    const targetIdx = idx + offset;
     if (targetIdx < 0 || targetIdx >= cells.length) return;
-    // Left/right: prevent wrapping across rows
     if (direction === "left" && idx % state.gridCols === 0) return;
     if (direction === "right" && idx % state.gridCols === state.gridCols - 1) return;
   }
