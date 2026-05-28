@@ -1,6 +1,25 @@
 import state from './state.js';
-import { getObjectFitRect, redrawAllCanvasesForExport, restoreAllCanvases } from './drawing.js';
+import { redrawAllCanvasesForExport, restoreAllCanvases } from './drawing.js';
 import { applyGridZoom } from './zoom.js';
+
+// Shared filter function for dom-to-image — avoids creating a new closure per export call.
+// Checks are ordered by frequency: text nodes (no nodeType check needed since dom-to-image
+// only passes Element nodes), then tagName checks (cheapest), then classList checks.
+const exportNodeFilter = (node) => {
+  const tag = node.tagName;
+  if (tag === "SPAN") return false;
+  if (tag === "IMG") return node.src.startsWith("data:");
+  if (tag === "CANVAS") return node.style.display !== "none";
+  const cl = node.classList;
+  if (cl) {
+    if (cl.contains("clear-drawing-btn") ||
+        cl.contains("drawing-text-input") ||
+        cl.contains("row-controls") ||
+        cl.contains("row-select-cb")) return false;
+    if (cl.contains("grid-cell-filename") && !state.showFilenames) return false;
+  }
+  return true;
+};
 
 const setElementWidths = (arr, size) => {
   const images = state.cardsEl.querySelectorAll("img");
@@ -213,23 +232,11 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 
     // Redraw canvases at export scale so drawings match the scaled images
     const exportScale = useFullSize ? resolutionScale : 1;
-    redrawAllCanvasesForExport(exportScale);
+    await redrawAllCanvasesForExport(exportScale);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
-      filter: (node) => {
-        if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
-          return false;
-        }
-        if (node.tagName === "SPAN") return false;
-        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
-        if (node.classList && node.classList.contains("drawing-text-input")) return false;
-        if (node.classList && node.classList.contains("row-controls")) return false;
-        if (node.classList && node.classList.contains("row-select-cb")) return false;
-        if (node.classList && node.classList.contains("grid-cell-filename") && !state.showFilenames) return false;
-        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
-        return true;
-      },
+      filter: exportNodeFilter,
     });
 
     // Crop the blob to the actual content height if dom-to-image produced a taller image
@@ -388,26 +395,15 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     // Measure actual content height for cropping after capture
     const captureHeight = state.cardsEl.offsetHeight;
 
-    redrawAllCanvasesForExport(cappedMultiplier);
+    await redrawAllCanvasesForExport(cappedMultiplier);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
-      filter: (node) => {
-        if (node.tagName === "IMG" && !node.src.startsWith("data:")) return false;
-        if (node.tagName === "SPAN") return false;
-        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
-        if (node.classList && node.classList.contains("drawing-text-input")) return false;
-        if (node.classList && node.classList.contains("row-controls")) return false;
-        if (node.classList && node.classList.contains("row-select-cb")) return false;
-        if (node.classList && node.classList.contains("grid-cell-filename") && !state.showFilenames) return false;
-        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
-        return true;
-      },
+      filter: exportNodeFilter,
     });
 
     // Crop to actual content height, then scale the output
-    blob = await cropBlobToHeight(blob, captureHeight);
-    const scaledBlob = await scaleBlob(blob, outputScale);
+    const scaledBlob = await cropAndScaleBlob(blob, captureHeight, outputScale);
 
     navigator.clipboard.write([
       new ClipboardItem({
@@ -458,49 +454,47 @@ const copyAsImageWithOutputScale = async (outputScale) => {
 };
 
 // Utility: scale an image blob by a factor, returns a new PNG blob
-const scaleBlob = (blob, scale) => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext("2d");
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((b) => {
-        URL.revokeObjectURL(img.src);
-        resolve(b);
-      }, "image/png");
-    };
-    img.src = URL.createObjectURL(blob);
-  });
+const scaleBlob = async (blob, scale) => {
+  const bitmap = await createImageBitmap(blob);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  return canvas.convertToBlob({ type: "image/png" });
 };
 
 // Utility: crop a blob to a maximum height (removes excess vertical space)
-const cropBlobToHeight = (blob, maxHeight) => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      // If the image is already at or below the target height, return as-is
-      if (img.height <= maxHeight) {
-        URL.revokeObjectURL(img.src);
-        resolve(blob);
-        return;
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = maxHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
-      canvas.toBlob((b) => {
-        URL.revokeObjectURL(img.src);
-        resolve(b);
-      }, "image/png");
-    };
-    img.src = URL.createObjectURL(blob);
-  });
+const cropBlobToHeight = async (blob, maxHeight) => {
+  const bitmap = await createImageBitmap(blob);
+  if (bitmap.height <= maxHeight) {
+    bitmap.close();
+    return blob;
+  }
+  const canvas = new OffscreenCanvas(bitmap.width, maxHeight);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, bitmap.width, maxHeight, 0, 0, bitmap.width, maxHeight);
+  bitmap.close();
+  return canvas.convertToBlob({ type: "image/png" });
+};
+
+// Utility: crop and scale in a single pass to avoid double decode/encode
+const cropAndScaleBlob = async (blob, maxHeight, scale) => {
+  const bitmap = await createImageBitmap(blob);
+  const srcW = bitmap.width;
+  const srcH = Math.min(bitmap.height, maxHeight);
+  const dstW = Math.round(srcW * scale);
+  const dstH = Math.round(srcH * scale);
+  const canvas = new OffscreenCanvas(dstW, dstH);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, srcW, srcH, 0, 0, dstW, dstH);
+  bitmap.close();
+  return canvas.convertToBlob({ type: "image/png" });
 };
 
 const copySelectedRows = () => {
@@ -630,23 +624,11 @@ const copyAsGridSize = async () => {
     const captureHeight = state.cardsEl.offsetHeight;
 
     // Redraw canvases at 1:1 since we're keeping display size
-    redrawAllCanvasesForExport(1);
+    await redrawAllCanvasesForExport(1);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
-      filter: (node) => {
-        if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
-          return false;
-        }
-        if (node.tagName === "SPAN") return false;
-        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
-        if (node.classList && node.classList.contains("drawing-text-input")) return false;
-        if (node.classList && node.classList.contains("row-controls")) return false;
-        if (node.classList && node.classList.contains("row-select-cb")) return false;
-        if (node.classList && node.classList.contains("grid-cell-filename") && !state.showFilenames) return false;
-        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
-        return true;
-      },
+      filter: exportNodeFilter,
     });
 
     // Crop to actual content height
@@ -898,21 +880,11 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const captureHeight = state.cardsEl.offsetHeight;
 
     const exportScale = useFullSize ? resolutionScale : 1;
-    redrawAllCanvasesForExport(exportScale);
+    await redrawAllCanvasesForExport(exportScale);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
-      filter: (node) => {
-        if (node.tagName === "IMG" && !node.src.startsWith("data:")) return false;
-        if (node.tagName === "SPAN") return false;
-        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
-        if (node.classList && node.classList.contains("drawing-text-input")) return false;
-        if (node.classList && node.classList.contains("row-controls")) return false;
-        if (node.classList && node.classList.contains("row-select-cb")) return false;
-        if (node.classList && node.classList.contains("grid-cell-filename") && !state.showFilenames) return false;
-        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
-        return true;
-      },
+      filter: exportNodeFilter,
     });
 
     blob = await cropBlobToHeight(blob, captureHeight);
@@ -1087,25 +1059,14 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
 
     const captureHeight = state.cardsEl.offsetHeight;
 
-    redrawAllCanvasesForExport(cappedMultiplier);
+    await redrawAllCanvasesForExport(cappedMultiplier);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
-      filter: (node) => {
-        if (node.tagName === "IMG" && !node.src.startsWith("data:")) return false;
-        if (node.tagName === "SPAN") return false;
-        if (node.classList && node.classList.contains("clear-drawing-btn")) return false;
-        if (node.classList && node.classList.contains("drawing-text-input")) return false;
-        if (node.classList && node.classList.contains("row-controls")) return false;
-        if (node.classList && node.classList.contains("row-select-cb")) return false;
-        if (node.classList && node.classList.contains("grid-cell-filename") && !state.showFilenames) return false;
-        if (node.tagName === "CANVAS" && node.style.display === "none") return false;
-        return true;
-      },
+      filter: exportNodeFilter,
     });
 
-    blob = await cropBlobToHeight(blob, captureHeight);
-    const scaledBlob = await scaleBlob(blob, outputScale);
+    const scaledBlob = await cropAndScaleBlob(blob, captureHeight, outputScale);
 
     triggerDownload(scaledBlob, generateFilename());
 

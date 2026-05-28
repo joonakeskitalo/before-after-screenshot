@@ -1410,7 +1410,7 @@ const initDrawingCanvas = (drop) => {
 // Redraw all canvases at export scale — called before capture.
 // Since drawing coords are stored relative to the image (0-1), we bake them
 // directly onto the image for a pixel-perfect export.
-const redrawAllCanvasesForExport = (scale) => {
+const redrawAllCanvasesForExport = async (scale) => {
   // Disconnect all ResizeObservers so they don't interfere during export
   document.querySelectorAll(".drawing-canvas").forEach((canvas) => {
     const obs = state.canvasObservers.get(canvas);
@@ -1418,7 +1418,7 @@ const redrawAllCanvasesForExport = (scale) => {
   });
 
   const canvases = document.querySelectorAll(".drawing-canvas");
-  canvases.forEach((canvas) => {
+  for (const canvas of canvases) {
     const drop = canvas.parentElement;
     const img = drop.querySelector("img");
 
@@ -1426,7 +1426,7 @@ const redrawAllCanvasesForExport = (scale) => {
     if (!data || data.paths.length === 0) {
       // No drawings — just hide the canvas for export
       canvas.style.display = "none";
-      return;
+      continue;
     }
 
     if (!img || !img.src || img.style.display === "none") {
@@ -1546,7 +1546,7 @@ const redrawAllCanvasesForExport = (scale) => {
           ctx.stroke();
         }
       }
-      return;
+      continue;
     }
 
     // Bake drawing onto the image: create a temp canvas at the image's rendered size
@@ -1676,13 +1676,22 @@ const redrawAllCanvasesForExport = (scale) => {
     // Store original src for restoration
     canvas.dataset.originalImgSrc = img.src;
     // Replace image with composited version and size the element to match
-    img.src = tempCanvas.toDataURL("image/png");
+    // Use toBlob + object URL instead of synchronous toDataURL for better performance
+    const blobUrl = await new Promise((resolve) => {
+      tempCanvas.toBlob((b) => resolve(URL.createObjectURL(b)), "image/png");
+    });
+    canvas.dataset.blobUrl = blobUrl;
     img.style.width = fitRect.width + "px";
     img.style.height = fitRect.height + "px";
     img.style.objectFit = "fill";
+    // Wait for the image to load the new blob URL before dom-to-image captures it
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.src = blobUrl;
+    });
     // Hide the canvas so dom-to-image doesn't double-render the drawing
     canvas.style.display = "none";
-  });
+  }
 };
 
 // Restore canvases to display size after export
@@ -1696,6 +1705,11 @@ const restoreAllCanvases = () => {
     if (canvas.dataset.originalImgSrc) {
       if (img) img.src = canvas.dataset.originalImgSrc;
       delete canvas.dataset.originalImgSrc;
+      // Revoke the blob URL we created during export
+      if (canvas.dataset.blobUrl) {
+        URL.revokeObjectURL(canvas.dataset.blobUrl);
+        delete canvas.dataset.blobUrl;
+      }
     }
 
     // Show canvas again
