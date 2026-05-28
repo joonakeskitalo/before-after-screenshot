@@ -225,6 +225,29 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
+  // Backspace: clear content of selected cells
+  if (e.key === "Backspace" && state.selectedCells.size > 0) {
+    e.preventDefault();
+    const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+    state.selectedCells.forEach((index) => {
+      const cell = cells[index];
+      if (!cell) return;
+      const img = cell.querySelector("img");
+      const drop = cell.querySelector(".drop");
+      const span = cell.querySelector("span");
+      const textarea = cell.querySelector("textarea");
+      if (img) {
+        img.src = "";
+        img.style.display = "none";
+      }
+      if (drop) drop.style.border = "var(--border)";
+      if (span) span.style.display = "block";
+      if (textarea) textarea.value = "";
+      if (state.updateFilenameLabel) state.updateFilenameLabel(cell);
+    });
+    return;
+  }
+
   // Skip hotkeys when Shift is used as a drawing modifier (e.g. constraining shapes)
   // Allow Shift+1/2/3 (!, ", #) through for thickness hotkeys
   // Allow Shift+R/E/O through for tool switching hotkeys

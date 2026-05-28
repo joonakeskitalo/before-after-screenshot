@@ -45,8 +45,8 @@ const removeCellFromSelectionByIndex = (index) => {
 const handleCellClick = (e, cell) => {
   // Don't interfere with drawing mode
   if (state.drawingMode) return;
-  // Don't interfere with meta+click (clear cell) or ctrl/alt combos
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // Don't interfere with ctrl/alt combos
+  if (e.ctrlKey || e.altKey) return;
   // Don't interfere with textarea clicks
   if (e.target.tagName === "TEXTAREA") return;
 
@@ -79,18 +79,7 @@ const setupCell = (cell) => {
   initDrawingCanvas(drop);
 
   drop.addEventListener("click", (e) => {
-    if (e.metaKey) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      // Clear the cell content
-      img.src = "";
-      img.style.display = "none";
-      drop.style.border = "var(--border)";
-      span.style.display = "block";
-      const textarea = cell.querySelector("textarea");
-      if (textarea) textarea.value = "";
-      updateFilenameLabel(cell);
-    }
+    // No special click handling on drop — selection is handled at cell level
   });
 
   drop.addEventListener("dragover", (e) => {
