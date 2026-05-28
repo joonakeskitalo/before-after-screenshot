@@ -1,6 +1,6 @@
 import state from './state.js';
 import { applyGridZoom } from './zoom.js';
-import { buildGrid, toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt } from './grid.js';
+import { buildGrid, toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt } from './grid.js';
 import {
   updatePresetColorSelection, penModeBtn, arrowModeBtn, lineModeBtn,
   rectModeBtn, rectstrokeModeBtn, ovalModeBtn, ovalfillModeBtn,
@@ -251,6 +251,32 @@ document.addEventListener("keydown", (e) => {
 
   // Backspace: clear content of selected cells
   if (e.key === "Backspace" && state.selectedCells.size > 0) {
+    // Shift+Backspace: delete the row of the focused cell
+    if (e.shiftKey && state.focusedCellIndex >= 0) {
+      e.preventDefault();
+      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const focusedCell = cells[state.focusedCellIndex];
+      if (focusedCell) {
+        const row = parseInt(focusedCell.dataset.row);
+        clearSelection();
+        clearFocusedCell();
+        deleteRowAt(row);
+      }
+      return;
+    }
+    // Alt+Backspace: delete the column of the focused cell
+    if (e.altKey && state.focusedCellIndex >= 0) {
+      e.preventDefault();
+      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const focusedCell = cells[state.focusedCellIndex];
+      if (focusedCell) {
+        const col = parseInt(focusedCell.dataset.col);
+        clearSelection();
+        clearFocusedCell();
+        deleteColumnAt(col);
+      }
+      return;
+    }
     e.preventDefault();
     const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
     state.selectedCells.forEach((index) => {
@@ -270,6 +296,32 @@ document.addEventListener("keydown", (e) => {
       if (state.updateFilenameLabel) state.updateFilenameLabel(cell);
     });
     return;
+  }
+
+  // Shift+Backspace / Alt+Backspace without selection but with focused cell
+  if (e.key === "Backspace" && state.focusedCellIndex >= 0) {
+    if (e.shiftKey) {
+      e.preventDefault();
+      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const focusedCell = cells[state.focusedCellIndex];
+      if (focusedCell) {
+        const row = parseInt(focusedCell.dataset.row);
+        clearFocusedCell();
+        deleteRowAt(row);
+      }
+      return;
+    }
+    if (e.altKey) {
+      e.preventDefault();
+      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const focusedCell = cells[state.focusedCellIndex];
+      if (focusedCell) {
+        const col = parseInt(focusedCell.dataset.col);
+        clearFocusedCell();
+        deleteColumnAt(col);
+      }
+      return;
+    }
   }
 
   // Skip hotkeys when Shift is used as a drawing modifier (e.g. constraining shapes)

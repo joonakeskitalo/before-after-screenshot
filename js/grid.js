@@ -1025,6 +1025,42 @@ document.getElementById("grid-rows").addEventListener("change", updateGrid);
 // Register updateFilenameLabel on state so copy-export can use it without circular deps
 state.updateFilenameLabel = updateFilenameLabel;
 
+const deleteColumnAt = (colIndex) => {
+  if (state.gridCols <= 1) return; // Don't delete the last column
+
+  const allData = collectGridData();
+
+  // Remove data for the deleted column and shift columns after it left
+  const newData = allData
+    .filter((d) => d.col !== colIndex)
+    .map((d) => ({
+      ...d,
+      col: d.col > colIndex ? d.col - 1 : d.col,
+    }));
+
+  state.gridCols--;
+  document.getElementById("grid-cols").value = state.gridCols;
+
+  // Rebuild grid
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      const existing = newData.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
 export {
   setupCell,
   getCellData,
@@ -1039,6 +1075,7 @@ export {
   insertRowAt,
   insertColumnAt,
   deleteRowAt,
+  deleteColumnAt,
   moveRow,
   swapRows,
   collectGridData,
