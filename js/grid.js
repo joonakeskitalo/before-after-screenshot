@@ -247,7 +247,7 @@ const swapCells = (cellA, cellB) => {
 
   cellA.addEventListener("transitionend", cleanup, { once: true });
   // Fallback in case transitionend doesn't fire
-  setTimeout(cleanup, 400);
+  setTimeout(cleanup, 250);
 };
 
 const getAdjacentCell = (cell, direction) => {

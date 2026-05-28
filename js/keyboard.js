@@ -62,6 +62,12 @@ const moveGridItem = (direction) => {
     // Move focus to the target cell (where our content now lives)
     const targetIndex = cells.indexOf(target);
     setFocusedCell(targetIndex);
+    // scrollIntoView in setFocusedCell may misfire during the FLIP animation
+    // (the cell has a transform applied). Re-scroll once the animation settles.
+    setTimeout(() => {
+      const cell = state.gridEl.querySelectorAll(".grid-cell")[targetIndex];
+      if (cell) cell.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }, 250);
   }
 };
 
@@ -82,6 +88,20 @@ document.addEventListener("keydown", (e) => {
       navigateGrid(direction);
     }
     e.preventDefault();
+    return;
+  }
+
+  // Enter: focus the label (textarea) of the currently focused cell
+  if (e.key === "Enter" && state.focusedCellIndex >= 0) {
+    const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+    const cell = cells[state.focusedCellIndex];
+    if (cell) {
+      const textarea = cell.querySelector("textarea");
+      if (textarea) {
+        textarea.focus();
+        e.preventDefault();
+      }
+    }
     return;
   }
 
