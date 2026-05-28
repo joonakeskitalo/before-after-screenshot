@@ -372,12 +372,11 @@ const copySelectedRows = () => {
   const allCells = state.gridEl.querySelectorAll(".grid-cell");
   const hiddenCells = [];
 
-  // Determine which rows and columns are involved in the selection
-  let selectedColCount;
+  // Determine which rows and columns are involved in the selection.
+  // Always use the current grid column count as the max for the output layout.
+  const selectedColCount = state.gridCols;
 
   if (state.selectedRows.size > 0) {
-    selectedColCount = state.gridCols;
-
     allCells.forEach((cell) => {
       const row = parseInt(cell.dataset.row);
       if (!state.selectedRows.has(row)) {
@@ -386,12 +385,6 @@ const copySelectedRows = () => {
       }
     });
   } else {
-    const selectedColSet = new Set();
-    state.selectedCells.forEach((idx) => {
-      selectedColSet.add(idx % state.gridCols);
-    });
-    selectedColCount = selectedColSet.size;
-
     const cellsArray = [...allCells];
     cellsArray.forEach((cell, index) => {
       if (!state.selectedCells.has(index)) {
