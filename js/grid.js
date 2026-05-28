@@ -363,6 +363,11 @@ const createCell = (row, col) => {
   textarea.autocapitalize = "off";
   textarea.rows = 2;
   textarea.textContent = "";
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      textarea.blur();
+    }
+  });
 
   cell.appendChild(drop);
 
