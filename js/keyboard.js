@@ -8,7 +8,7 @@ import {
   textModeBtn, drawColorInput,
 } from './drawing.js';
 import { toggleStagingArea } from './toolbar.js';
-import { updateCopySelectedBtn } from './copy-export.js';
+import { updateCopySelectedBtn, copySelectedRows, copyWithScale } from './copy-export.js';
 
 // --- Keyboard Navigation for Grid Cells ---
 
@@ -208,6 +208,17 @@ document.addEventListener("keydown", (e) => {
       navigateGrid(direction);
     }
     e.preventDefault();
+    return;
+  }
+
+  // Cmd+C: copy selected cells/rows, or copy entire grid if nothing selected
+  if (e.key === "c" && e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    if (state.selectedCells.size > 0 || state.selectedRows.size > 0) {
+      copySelectedRows();
+    } else {
+      copyWithScale();
+    }
     return;
   }
 
