@@ -8,7 +8,7 @@ import { applyGridZoom } from './zoom.js';
 const exportNodeFilter = (node) => {
   const tag = node.tagName;
   if (tag === "SPAN") return false;
-  if (tag === "IMG") return node.src.startsWith("data:");
+  if (tag === "IMG") return node.src.startsWith("data:") || node.src.startsWith("blob:");
   if (tag === "CANVAS") return node.style.display !== "none";
   const cl = node.classList;
   if (cl) {
