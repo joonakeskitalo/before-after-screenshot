@@ -24,15 +24,17 @@ const hideEmptyRowsForExport = () => {
 
   for (let row = 0; row < rows; row++) {
     const rowCells = allCells.filter((cell) => parseInt(cell.dataset.row) === row);
-    const hasImage = rowCells.some((cell) => {
+    // A row is considered empty if no cell in it has visible content
+    const hasVisibleContent = rowCells.some((cell) => {
+      // Cell already hidden by copySelectedRows
+      if (cell.style.display === "none") return false;
       const img = cell.querySelector("img");
-      return img && img.src && img.style.display !== "none";
-    });
-    const hasText = rowCells.some((cell) => {
+      const hasImage = img && img.src && img.style.display !== "none";
       const textarea = cell.querySelector("textarea");
-      return textarea && textarea.value.trim() !== "";
+      const hasText = textarea && textarea.value.trim() !== "";
+      return hasImage || hasText;
     });
-    if (!hasImage && !hasText) {
+    if (!hasVisibleContent) {
       rowCells.forEach((cell) => {
         removedCells.push({ cell, nextSibling: cell.nextSibling });
         cell.remove();
@@ -40,8 +42,20 @@ const hideEmptyRowsForExport = () => {
     }
   }
 
+  // Also hide the row-controls element so it doesn't force extra height
+  // on the grid-wrapper (it's already filtered from dom-to-image output)
+  const rowControls = state.gridEl.parentElement.querySelector(".row-controls");
+  const rowControlsDisplay = rowControls ? rowControls.style.display : null;
+  if (rowControls) {
+    rowControls.style.display = "none";
+  }
+
   return () => {
-    // Re-insert in reverse order to preserve positions
+    // Restore row controls
+    if (rowControls) {
+      rowControls.style.display = rowControlsDisplay;
+    }
+    // Re-insert removed cells in reverse order to preserve positions
     for (let i = removedCells.length - 1; i >= 0; i--) {
       const { cell, nextSibling } = removedCells[i];
       if (nextSibling) {
@@ -81,7 +95,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const allCells = state.gridEl.querySelectorAll(".grid-cell");
     allCells.forEach((cell) => {
       cell.style.overflow = "visible";
-      cell.style.minHeight = "unset";
+      cell.style.minHeight = "0";
     });
 
     // Let images size naturally for the capture
@@ -109,7 +123,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     state.root.style.setProperty("--image-max-width", "unset");
     state.root.style.setProperty("--gap", `96px`);
     state.root.style.setProperty("--text-fontsize", `15pt`);
-    state.root.style.setProperty("--grid-zoom-cell-height", `300px`);
+    state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
 
     if (useFullSize) {
       const baseFontSize = 15;
@@ -147,12 +161,16 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 
     state.cardsEl.style.padding = `8px ${padding}px`;
     state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "fit-content";
-    state.cardsEl.style.flex = "unset";
+    state.cardsEl.style.height = "auto";
+    state.cardsEl.style.flex = "none";
+    state.cardsEl.style.minHeight = "0";
 
     // Force the grid width after layout settles so dom-to-image doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
     state.gridEl.style.width = `${gridRenderedWidth}px`;
+
+    // Measure actual content height for cropping after capture
+    const captureHeight = state.cardsEl.offsetHeight;
 
     // Hide drawing controls during export (not needed — controls are in toolbar now)
 
@@ -160,7 +178,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const exportScale = useFullSize ? resolutionScale : 1;
     redrawAllCanvasesForExport(exportScale);
 
-    const blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domtoimage.toBlob(state.cardsEl, {
+      height: captureHeight,
       filter: (node) => {
         if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
           return false;
@@ -175,6 +194,9 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
         return true;
       },
     });
+
+    // Crop the blob to the actual content height if dom-to-image produced a taller image
+    blob = await cropBlobToHeight(blob, captureHeight);
 
     navigator.clipboard.write([
       new ClipboardItem({
@@ -206,6 +228,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     state.cardsEl.style.width = null;
     state.cardsEl.style.height = null;
     state.cardsEl.style.flex = null;
+    state.cardsEl.style.minHeight = null;
     state.gridEl.style.outline = null;
     state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
@@ -317,16 +340,21 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     const padding = Math.round(32 * cappedMultiplier);
     state.cardsEl.style.padding = `8px ${padding}px`;
     state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "fit-content";
-    state.cardsEl.style.flex = "unset";
+    state.cardsEl.style.height = "auto";
+    state.cardsEl.style.flex = "none";
+    state.cardsEl.style.minHeight = "0";
 
     // Force the grid width after layout settles so dom-to-image doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
     state.gridEl.style.width = `${gridRenderedWidth}px`;
 
+    // Measure actual content height for cropping after capture
+    const captureHeight = state.cardsEl.offsetHeight;
+
     redrawAllCanvasesForExport(cappedMultiplier);
 
-    const blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domtoimage.toBlob(state.cardsEl, {
+      height: captureHeight,
       filter: (node) => {
         if (node.tagName === "IMG" && !node.src.startsWith("data:")) return false;
         if (node.tagName === "SPAN") return false;
@@ -340,7 +368,8 @@ const copyAsImageWithOutputScale = async (outputScale) => {
       },
     });
 
-    // Scale the output blob down using a canvas
+    // Crop to actual content height, then scale the output
+    blob = await cropBlobToHeight(blob, captureHeight);
     const scaledBlob = await scaleBlob(blob, outputScale);
 
     navigator.clipboard.write([
@@ -375,6 +404,7 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     state.cardsEl.style.width = null;
     state.cardsEl.style.height = null;
     state.cardsEl.style.flex = null;
+    state.cardsEl.style.minHeight = null;
     state.gridEl.style.outline = null;
     state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
@@ -402,6 +432,31 @@ const scaleBlob = (blob, scale) => {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((b) => {
+        URL.revokeObjectURL(img.src);
+        resolve(b);
+      }, "image/png");
+    };
+    img.src = URL.createObjectURL(blob);
+  });
+};
+
+// Utility: crop a blob to a maximum height (removes excess vertical space)
+const cropBlobToHeight = (blob, maxHeight) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      // If the image is already at or below the target height, return as-is
+      if (img.height <= maxHeight) {
+        URL.revokeObjectURL(img.src);
+        resolve(blob);
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = maxHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
       canvas.toBlob((b) => {
         URL.revokeObjectURL(img.src);
         resolve(b);
@@ -526,17 +581,22 @@ const copyAsGridSize = async () => {
 
     state.cardsEl.style.padding = `8px 32px`;
     state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "fit-content";
-    state.cardsEl.style.flex = "unset";
+    state.cardsEl.style.height = "auto";
+    state.cardsEl.style.flex = "none";
+    state.cardsEl.style.minHeight = "0";
 
     // Force the grid width after layout settles so dom-to-image doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
     state.gridEl.style.width = `${gridRenderedWidth}px`;
 
+    // Measure actual content height for cropping after capture
+    const captureHeight = state.cardsEl.offsetHeight;
+
     // Redraw canvases at 1:1 since we're keeping display size
     redrawAllCanvasesForExport(1);
 
-    const blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domtoimage.toBlob(state.cardsEl, {
+      height: captureHeight,
       filter: (node) => {
         if (node.tagName === "IMG" && !node.src.startsWith("data:")) {
           return false;
@@ -551,6 +611,9 @@ const copyAsGridSize = async () => {
         return true;
       },
     });
+
+    // Crop to actual content height
+    blob = await cropBlobToHeight(blob, captureHeight);
 
     navigator.clipboard.write([
       new ClipboardItem({
@@ -580,6 +643,7 @@ const copyAsGridSize = async () => {
     state.cardsEl.style.width = null;
     state.cardsEl.style.height = null;
     state.cardsEl.style.flex = null;
+    state.cardsEl.style.minHeight = null;
     state.gridEl.style.outline = null;
     state.gridEl.style.width = null;
     state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
