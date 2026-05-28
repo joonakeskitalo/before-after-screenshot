@@ -757,8 +757,10 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
 
   input.addEventListener("input", resizeInput);
 
+  let committed = false;
   const commitText = () => {
-    if (!input.parentNode) return;
+    if (committed || !input.parentNode) return;
+    committed = true;
     const text = input.value.trim();
     if (text) {
       const data = state.canvasDataMap.get(canvas);
