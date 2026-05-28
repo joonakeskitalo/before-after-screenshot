@@ -927,6 +927,51 @@ const clearRowDropTarget = () => {
   });
 };
 
+const relayoutGrid = () => {
+  // Collect all cells that have content (image, text, or drawings)
+  const allData = collectGridData();
+  const filledCells = allData.filter(
+    (d) => d.imgSrc || d.text || (d.drawingPaths && d.drawingPaths.length > 0)
+  );
+
+  // Nothing to relayout
+  if (filledCells.length === 0) return;
+
+  // Reassign positions sequentially in row-major order
+  const reindexed = filledCells.map((d, i) => ({
+    ...d,
+    row: Math.floor(i / state.gridCols),
+    col: i % state.gridCols,
+  }));
+
+  // Clear selections since positions changed
+  state.selectedRows.clear();
+  updateCopySelectedBtn();
+  state.focusedCellIndex = -1;
+
+  // Rebuild grid with compacted data
+  state.gridEl.innerHTML = "";
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  for (let r = 0; r < state.gridRows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+
+      const existing = reindexed.find((d) => d.row === r && d.col === c);
+      if (existing) {
+        restoreCellData(cell, existing);
+      }
+    }
+  }
+
+  buildRowControls();
+};
+
+// Wire up relayout button
+document.getElementById("relayout-btn").addEventListener("click", relayoutGrid);
+
 const updateGrid = () => {
   state.gridCols = parseInt(document.getElementById("grid-cols").value) || 3;
   state.gridRows = parseInt(document.getElementById("grid-rows").value) || 1;
@@ -959,6 +1004,7 @@ export {
   swapRows,
   collectGridData,
   restoreCellData,
+  relayoutGrid,
   highlightRow,
   clearRowHighlights,
   clearRowDropIndicators,
