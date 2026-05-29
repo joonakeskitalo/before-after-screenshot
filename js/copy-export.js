@@ -36,7 +36,10 @@ const hideForExport = () => {
   `;
   overlay.style.background = getComputedStyle(state.cardsEl).backgroundColor;
   document.body.appendChild(overlay);
-  return () => overlay.remove();
+
+  return () => {
+    overlay.remove();
+  };
 };
 
 // Shared filter function for dom-to-image — avoids creating a new closure per export call.

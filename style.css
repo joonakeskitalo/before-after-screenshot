@@ -959,3 +959,24 @@ body.cell-dragging .grid-cell.keyboard-selected {
     padding: 0 4px;
     line-height: 1.4;
 }
+
+/* Color vision filters for accessibility checking */
+.color-filter-grayscale .grid-cell img {
+    filter: grayscale(100%);
+}
+
+.color-filter-protanopia .grid-cell img {
+    filter: url(#protanopia-filter);
+}
+
+.color-filter-deuteranopia .grid-cell img {
+    filter: url(#deuteranopia-filter);
+}
+
+.color-filter-tritanopia .grid-cell img {
+    filter: url(#tritanopia-filter);
+}
+
+.color-filter-achromatopsia .grid-cell img {
+    filter: url(#achromatopsia-filter);
+}

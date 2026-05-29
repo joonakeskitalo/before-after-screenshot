@@ -7,5 +7,6 @@ import './copy-export.js';
 import './grid.js';
 import './drop-handler.js';
 import './toolbar.js';
+import './color-filter.js';
 import './keyboard.js';
 import './init.js';

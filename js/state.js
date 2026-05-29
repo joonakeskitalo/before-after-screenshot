@@ -23,6 +23,9 @@ const state = {
   // Zoom
   gridZoom: 100,
 
+  // Color filter for accessibility checking
+  colorFilter: "none",
+
   // Canvas data stores
   canvasDataMap: new WeakMap(),
   canvasObservers: new WeakMap(),
