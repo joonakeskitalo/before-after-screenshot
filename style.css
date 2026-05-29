@@ -980,3 +980,11 @@ body.cell-dragging .grid-cell.keyboard-selected {
 .color-filter-achromatopsia .grid-cell img {
     filter: url(#achromatopsia-filter);
 }
+
+.color-filter-low-contrast .grid-cell img {
+    filter: contrast(0.75);
+}
+
+.color-filter-high-contrast .grid-cell img {
+    filter: contrast(1.5);
+}

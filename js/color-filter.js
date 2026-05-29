@@ -5,7 +5,7 @@ import state from './state.js';
 const colorFilterSelect = document.getElementById("color-filter-select");
 const grid = state.gridEl;
 
-const FILTER_OPTIONS = ["none", "grayscale", "protanopia", "deuteranopia", "tritanopia", "achromatopsia"];
+const FILTER_OPTIONS = ["none", "grayscale", "protanopia", "deuteranopia", "tritanopia", "achromatopsia", "low-contrast", "high-contrast"];
 
 const applyColorFilter = (filter) => {
   // Remove all filter classes
