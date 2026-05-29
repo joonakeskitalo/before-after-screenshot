@@ -22,7 +22,8 @@ const waitForImagesDecode = async (container) => {
 // over the content area with the current background color so the user sees
 // a static screen instead of the layout thrashing.
 const hideForExport = () => {
-  const rect = state.cardsEl.getBoundingClientRect();
+  const container = document.querySelector(".content-container");
+  const rect = container.getBoundingClientRect();
   const overlay = document.createElement("div");
   overlay.style.cssText = `
     position: fixed;
@@ -30,7 +31,7 @@ const hideForExport = () => {
     left: ${rect.left}px;
     width: ${rect.width}px;
     height: ${rect.height}px;
-    z-index: 9999;
+    z-index: 1;
     pointer-events: none;
   `;
   overlay.style.background = getComputedStyle(state.cardsEl).backgroundColor;
