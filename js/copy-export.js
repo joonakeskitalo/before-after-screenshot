@@ -1,6 +1,7 @@
 import state from './state.js';
 import { redrawAllCanvasesForExport, restoreAllCanvases } from './drawing.js';
 import { applyGridZoom } from './zoom.js';
+import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
 
 // Ensure all visible images within a container are fully decoded before capture.
 // dom-to-image serializes the DOM to SVG foreignObject and renders it — if images
@@ -1311,6 +1312,187 @@ const copySelectedRawImages = async () => {
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 };
 
+// Copy selected image(s) rendered with all color filters, each labeled below.
+// Produces a grid: columns = filters, rows = selected images.
+const copyWithAllFilters = async () => {
+  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+
+  // Determine which images to include
+  const indices = state.selectedCells.size > 0
+    ? [...state.selectedCells].sort((a, b) => a - b)
+    : state.selectedRows.size > 0
+      ? allCells.reduce((acc, cell, i) => {
+          if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
+          return acc;
+        }, [])
+      : allCells.map((_, i) => i);
+
+  // Collect visible images
+  const sourceImages = [];
+  for (const idx of indices) {
+    const cell = allCells[idx];
+    if (!cell) continue;
+    const img = cell.querySelector("img");
+    if (img && img.src && img.style.display !== "none") {
+      sourceImages.push(img);
+    }
+  }
+
+  if (sourceImages.length === 0) return;
+
+  const filters = FILTER_OPTIONS;
+  const gap = 4;
+
+  // Read the output scale from the copy-scale selector (same as other export functions)
+  const scaleSelect = document.getElementById("copy-scale");
+  const scaleValue = scaleSelect.value;
+  let imageScale;
+  if (scaleValue.startsWith("output-")) {
+    imageScale = parseFloat(scaleValue.replace("output-", ""));
+  } else {
+    imageScale = parseFloat(scaleValue);
+  }
+
+  // Decode all source images to get their natural dimensions
+  const bitmaps = await Promise.all(sourceImages.map((img) => createImageBitmap(img)));
+
+  // Scale images by the selected output scale
+  const maxNatW = Math.round(Math.max(...bitmaps.map((bm) => bm.width)) * imageScale);
+  const maxNatH = Math.round(Math.max(...bitmaps.map((bm) => bm.height)) * imageScale);
+
+  const labelFontSize = Math.max(14, Math.round(maxNatW * 0.03));
+  const labelHeight = labelFontSize + 12;
+  const padding = 0;
+
+  const cellW = maxNatW;
+  const cellH = maxNatH + labelHeight;
+
+  const cols = filters.length;
+  const rows = bitmaps.length;
+
+  const totalW = padding * 2 + cols * cellW + (cols - 1) * gap;
+  const totalH = padding * 2 + rows * cellH + (rows - 1) * gap;
+
+  const canvas = new OffscreenCanvas(totalW, totalH);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  // Color matrix definitions matching the SVG filters
+  const COLOR_MATRICES = {
+    "protanopia": [
+      0.567, 0.433, 0, 0, 0,
+      0.558, 0.442, 0, 0, 0,
+      0, 0.242, 0.758, 0, 0,
+      0, 0, 0, 1, 0,
+    ],
+    "deuteranopia": [
+      0.625, 0.375, 0, 0, 0,
+      0.7, 0.3, 0, 0, 0,
+      0, 0.3, 0.7, 0, 0,
+      0, 0, 0, 1, 0,
+    ],
+    "tritanopia": [
+      0.95, 0.05, 0, 0, 0,
+      0, 0.433, 0.567, 0, 0,
+      0, 0.475, 0.525, 0, 0,
+      0, 0, 0, 1, 0,
+    ],
+    "achromatopsia": [
+      0.299, 0.587, 0.114, 0, 0,
+      0.299, 0.587, 0.114, 0, 0,
+      0.299, 0.587, 0.114, 0, 0,
+      0, 0, 0, 1, 0,
+    ],
+  };
+
+  // Apply a color matrix to image data in-place
+  const applyMatrix = (imageData, matrix) => {
+    const d = imageData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+      d[i]     = Math.min(255, Math.max(0, matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4] * 255));
+      d[i + 1] = Math.min(255, Math.max(0, matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * a + matrix[9] * 255));
+      d[i + 2] = Math.min(255, Math.max(0, matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * a + matrix[14] * 255));
+    }
+  };
+
+  // Apply grayscale
+  const applyGrayscale = (imageData) => {
+    const d = imageData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      d[i] = d[i + 1] = d[i + 2] = gray;
+    }
+  };
+
+  // Apply contrast adjustment
+  const applyContrast = (imageData, factor) => {
+    const d = imageData.data;
+    const intercept = 128 * (1 - factor);
+    for (let i = 0; i < d.length; i += 4) {
+      d[i]     = Math.min(255, Math.max(0, d[i] * factor + intercept));
+      d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
+      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
+    }
+  };
+
+  for (let row = 0; row < rows; row++) {
+    const bm = bitmaps[row];
+
+    for (let col = 0; col < cols; col++) {
+      const filter = filters[col];
+      const x = padding + col * (cellW + gap);
+      const y = padding + row * (cellH + gap);
+
+      // Draw the image scaled to fit within cellW x maxNatH, centered
+      const scale = Math.min(cellW / bm.width, maxNatH / bm.height);
+      const drawW = Math.round(bm.width * scale);
+      const drawH = Math.round(bm.height * scale);
+      const imgX = x + Math.round((cellW - drawW) / 2);
+      const imgY = y + Math.round((maxNatH - drawH) / 2);
+
+      if (filter === "none") {
+        ctx.drawImage(bm, imgX, imgY, drawW, drawH);
+      } else {
+        // Draw to a temp canvas, apply filter, then draw to main canvas
+        const tmpCanvas = new OffscreenCanvas(drawW, drawH);
+        const tmpCtx = tmpCanvas.getContext("2d");
+        tmpCtx.drawImage(bm, 0, 0, drawW, drawH);
+        const imageData = tmpCtx.getImageData(0, 0, drawW, drawH);
+
+        if (filter === "grayscale") {
+          applyGrayscale(imageData);
+        } else if (filter === "low-contrast") {
+          applyContrast(imageData, 0.85);
+        } else if (filter === "high-contrast") {
+          applyContrast(imageData, 1.5);
+        } else if (COLOR_MATRICES[filter]) {
+          applyMatrix(imageData, COLOR_MATRICES[filter]);
+        }
+
+        tmpCtx.putImageData(imageData, 0, 0);
+        ctx.drawImage(tmpCanvas, imgX, imgY);
+      }
+
+      // Draw label below the image
+      ctx.fillStyle = "#333333";
+      ctx.font = `500 ${labelFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(FILTER_LABELS[filter] || filter, x + cellW / 2, y + maxNatH + 6);
+    }
+  }
+
+  // Clean up bitmaps
+  bitmaps.forEach((bm) => bm.close());
+
+  const blob = await canvas.convertToBlob({ type: "image/png" });
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+};
+
+document.getElementById("copy-all-filters-btn").addEventListener("click", copyWithAllFilters);
+
 export {
   setElementWidths,
   copyAsImage,
@@ -1324,6 +1506,7 @@ export {
   copySelectedRows,
   copySelectedRawImages,
   copyAsGridSize,
+  copyWithAllFilters,
   updateCopySelectedBtn,
   attachDragTo,
   clearOrCopyImage,

@@ -7,6 +7,17 @@ const grid = state.gridEl;
 
 const FILTER_OPTIONS = ["none", "grayscale", "protanopia", "deuteranopia", "tritanopia", "achromatopsia", "low-contrast", "high-contrast"];
 
+const FILTER_LABELS = {
+  "none": "Original",
+  "grayscale": "Grayscale",
+  "protanopia": "Protanopia",
+  "deuteranopia": "Deuteranopia",
+  "tritanopia": "Tritanopia",
+  "achromatopsia": "Achromatopsia",
+  "low-contrast": "Low contrast",
+  "high-contrast": "High contrast",
+};
+
 const applyColorFilter = (filter) => {
   // Remove all filter classes
   FILTER_OPTIONS.forEach((f) => {
@@ -33,4 +44,4 @@ colorFilterSelect.addEventListener("change", (e) => {
   applyColorFilter(e.target.value);
 });
 
-export { applyColorFilter, cycleColorFilter };
+export { applyColorFilter, cycleColorFilter, FILTER_OPTIONS, FILTER_LABELS };

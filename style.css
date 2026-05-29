@@ -982,7 +982,7 @@ body.cell-dragging .grid-cell.keyboard-selected {
 }
 
 .color-filter-low-contrast .grid-cell img {
-    filter: contrast(0.75);
+    filter: contrast(0.85);
 }
 
 .color-filter-high-contrast .grid-cell img {
