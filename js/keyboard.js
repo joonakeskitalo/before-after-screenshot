@@ -528,6 +528,34 @@ document.addEventListener("keydown", (e) => {
       applyGridZoom(state.gridZoom + 10);
       e.preventDefault();
       break;
+    case "s": {
+      // Move selected image(s) back to staging area
+      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const indices = state.selectedCells.size > 0
+        ? [...state.selectedCells]
+        : (state.focusedCellIndex >= 0 ? [state.focusedCellIndex] : []);
+      let moved = false;
+      for (const idx of indices) {
+        const cell = cells[idx];
+        if (!cell) continue;
+        const img = cell.querySelector("img");
+        if (!img || !img.src || img.style.display === "none") continue;
+        // Add back to staging
+        state.addImageToToolbar(img.src, img.alt || "");
+        // Clear the cell
+        img.src = "";
+        img.style.display = "none";
+        const drop = cell.querySelector(".drop");
+        const span = cell.querySelector("span");
+        if (drop) drop.style.border = "var(--border)";
+        if (span) span.style.display = "block";
+        const textarea = cell.querySelector("textarea");
+        if (textarea) textarea.value = "";
+        if (state.updateFilenameLabel) state.updateFilenameLabel(cell);
+        moved = true;
+      }
+      break;
+    }
     case "h":
       // Toggle staging area visibility
       toggleStagingArea();
