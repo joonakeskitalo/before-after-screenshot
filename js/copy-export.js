@@ -2,6 +2,21 @@ import state from './state.js';
 import { redrawAllCanvasesForExport, restoreAllCanvases } from './drawing.js';
 import { applyGridZoom } from './zoom.js';
 
+// Ensure all visible images within a container are fully decoded before capture.
+// dom-to-image serializes the DOM to SVG foreignObject and renders it — if images
+// haven't finished decoding (common with large data URLs), they appear blank.
+const waitForImagesDecode = async (container) => {
+  const images = container.querySelectorAll("img");
+  const promises = [];
+  for (const img of images) {
+    if (img.src && img.style.display !== "none" && img.naturalWidth > 0) {
+      // decode() returns a promise that resolves once the image is ready to render
+      promises.push(img.decode().catch(() => {}));
+    }
+  }
+  await Promise.all(promises);
+};
+
 // Hide the cards container during export to prevent the UI from flashing
 // while styles are temporarily modified for capture. We place a fixed overlay
 // over the content area with the current background color so the user sees
@@ -256,6 +271,9 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const exportScale = useFullSize ? resolutionScale : 1;
     await redrawAllCanvasesForExport(exportScale);
 
+    // Ensure all images are fully decoded before capture to prevent blank images
+    await waitForImagesDecode(state.cardsEl);
+
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
       filter: exportNodeFilter,
@@ -421,6 +439,9 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     const captureHeight = state.cardsEl.offsetHeight;
 
     await redrawAllCanvasesForExport(cappedMultiplier);
+
+    // Ensure all images are fully decoded before capture to prevent blank images
+    await waitForImagesDecode(state.cardsEl);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
@@ -653,6 +674,9 @@ const copyAsGridSize = async () => {
 
     // Redraw canvases at 1:1 since we're keeping display size
     await redrawAllCanvasesForExport(1);
+
+    // Ensure all images are fully decoded before capture to prevent blank images
+    await waitForImagesDecode(state.cardsEl);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
@@ -913,6 +937,9 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const exportScale = useFullSize ? resolutionScale : 1;
     await redrawAllCanvasesForExport(exportScale);
 
+    // Ensure all images are fully decoded before capture to prevent blank images
+    await waitForImagesDecode(state.cardsEl);
+
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
       filter: exportNodeFilter,
@@ -1094,6 +1121,9 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
     const captureHeight = state.cardsEl.offsetHeight;
 
     await redrawAllCanvasesForExport(cappedMultiplier);
+
+    // Ensure all images are fully decoded before capture to prevent blank images
+    await waitForImagesDecode(state.cardsEl);
 
     let blob = await domtoimage.toBlob(state.cardsEl, {
       height: captureHeight,
