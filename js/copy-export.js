@@ -1493,6 +1493,209 @@ const copyWithAllFilters = async () => {
 
 document.getElementById("copy-all-filters-btn").addEventListener("click", copyWithAllFilters);
 
+// --- Preview All Filters ---
+// Opens an overlay showing all images with every filter applied, one row per image.
+
+const COLOR_MATRICES_PREVIEW = {
+  "protanopia": [
+    0.567, 0.433, 0, 0, 0,
+    0.558, 0.442, 0, 0, 0,
+    0, 0.242, 0.758, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+  "deuteranopia": [
+    0.625, 0.375, 0, 0, 0,
+    0.7, 0.3, 0, 0, 0,
+    0, 0.3, 0.7, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+  "tritanopia": [
+    0.95, 0.05, 0, 0, 0,
+    0, 0.433, 0.567, 0, 0,
+    0, 0.475, 0.525, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+  "achromatopsia": [
+    0.299, 0.587, 0.114, 0, 0,
+    0.299, 0.587, 0.114, 0, 0,
+    0.299, 0.587, 0.114, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+};
+
+const applyFilterToCanvas = (sourceCanvas, filter) => {
+  const w = sourceCanvas.width;
+  const h = sourceCanvas.height;
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = w;
+  outCanvas.height = h;
+  const ctx = outCanvas.getContext("2d");
+  ctx.drawImage(sourceCanvas, 0, 0);
+
+  if (filter === "none") return outCanvas;
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const d = imageData.data;
+
+  if (filter === "grayscale") {
+    for (let i = 0; i < d.length; i += 4) {
+      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      d[i] = d[i + 1] = d[i + 2] = gray;
+    }
+  } else if (filter === "low-contrast") {
+    const factor = 0.85;
+    const intercept = 128 * (1 - factor);
+    for (let i = 0; i < d.length; i += 4) {
+      d[i] = Math.min(255, Math.max(0, d[i] * factor + intercept));
+      d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
+      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
+    }
+  } else if (filter === "high-contrast") {
+    const factor = 1.5;
+    const intercept = 128 * (1 - factor);
+    for (let i = 0; i < d.length; i += 4) {
+      d[i] = Math.min(255, Math.max(0, d[i] * factor + intercept));
+      d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
+      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
+    }
+  } else if (COLOR_MATRICES_PREVIEW[filter]) {
+    const matrix = COLOR_MATRICES_PREVIEW[filter];
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+      d[i] = Math.min(255, Math.max(0, matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4] * 255));
+      d[i + 1] = Math.min(255, Math.max(0, matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * a + matrix[9] * 255));
+      d[i + 2] = Math.min(255, Math.max(0, matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * a + matrix[14] * 255));
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return outCanvas;
+};
+
+const previewAllFilters = () => {
+  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+
+  // Determine which images to include (selected only)
+  const indices = state.selectedCells.size > 0
+    ? [...state.selectedCells].sort((a, b) => a - b)
+    : state.selectedRows.size > 0
+      ? allCells.reduce((acc, cell, i) => {
+          if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
+          return acc;
+        }, [])
+      : [];
+
+  if (indices.length === 0) return;
+
+  // Collect visible images from selected cells
+  const sourceImages = [];
+  for (const idx of indices) {
+    const cell = allCells[idx];
+    if (!cell) continue;
+    const img = cell.querySelector("img");
+    if (img && img.src && img.style.display !== "none") {
+      sourceImages.push({ img, name: img.alt || "" });
+    }
+  }
+
+  if (sourceImages.length === 0) return;
+
+  // Create overlay
+  const overlay = document.createElement("div");
+  overlay.className = "filter-preview-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "filter-preview-panel";
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "filter-preview-header";
+  const title = document.createElement("h3");
+  title.textContent = "Filter Preview";
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "filter-preview-close";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  panel.appendChild(header);
+
+  // Body
+  const body = document.createElement("div");
+  body.className = "filter-preview-body";
+
+  const grid = document.createElement("div");
+  grid.className = "filter-preview-grid";
+
+  const filters = FILTER_OPTIONS;
+
+  for (const { img, name } of sourceImages) {
+    const rowContainer = document.createElement("div");
+
+    // Row label (filename)
+    if (name) {
+      const rowLabel = document.createElement("div");
+      rowLabel.className = "filter-preview-row-label";
+      rowLabel.textContent = name;
+      rowLabel.title = name;
+      rowContainer.appendChild(rowLabel);
+    }
+
+    const row = document.createElement("div");
+    row.className = "filter-preview-row";
+
+    // Draw source image to a canvas for pixel manipulation
+    const srcCanvas = document.createElement("canvas");
+    srcCanvas.width = img.naturalWidth;
+    srcCanvas.height = img.naturalHeight;
+    const srcCtx = srcCanvas.getContext("2d");
+    srcCtx.drawImage(img, 0, 0);
+
+    for (const filter of filters) {
+      const cell = document.createElement("div");
+      cell.className = "filter-preview-cell";
+
+      const filteredCanvas = applyFilterToCanvas(srcCanvas, filter);
+      const filteredImg = document.createElement("img");
+      filteredImg.src = filteredCanvas.toDataURL("image/png");
+      filteredImg.alt = `${name} - ${FILTER_LABELS[filter]}`;
+
+      const label = document.createElement("span");
+      label.className = "filter-label";
+      label.textContent = FILTER_LABELS[filter] || filter;
+
+      cell.appendChild(filteredImg);
+      cell.appendChild(label);
+      row.appendChild(cell);
+    }
+
+    rowContainer.appendChild(row);
+    grid.appendChild(rowContainer);
+  }
+
+  body.appendChild(grid);
+  panel.appendChild(body);
+  overlay.appendChild(panel);
+
+  // Close on overlay background click
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Close on Escape
+  const handleEsc = (e) => {
+    if (e.key === "Escape") {
+      overlay.remove();
+      document.removeEventListener("keydown", handleEsc);
+    }
+  };
+  document.addEventListener("keydown", handleEsc);
+
+  document.body.appendChild(overlay);
+};
+
+document.getElementById("preview-all-filters-btn").addEventListener("click", previewAllFilters);
+
 export {
   setElementWidths,
   copyAsImage,
@@ -1507,6 +1710,7 @@ export {
   copySelectedRawImages,
   copyAsGridSize,
   copyWithAllFilters,
+  previewAllFilters,
   updateCopySelectedBtn,
   attachDragTo,
   clearOrCopyImage,
