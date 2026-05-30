@@ -1785,10 +1785,10 @@ const previewAllFilters = () => {
   headerBtns.style.alignItems = "center";
   headerBtns.style.gap = "8px";
 
-  // Copy all to staging button
+  // Add all to staging button
   const copyToStagingBtn = document.createElement("button");
   copyToStagingBtn.className = "filter-preview-copy-btn";
-  copyToStagingBtn.textContent = "Copy all to staging";
+  copyToStagingBtn.textContent = "Add all to staging";
   copyToStagingBtn.title = "Copy all filtered preview images (with drawings) to the staging area";
   copyToStagingBtn.addEventListener("click", () => {
     const previewCells = overlay.querySelectorAll(".filter-preview-cell");
@@ -1799,6 +1799,11 @@ const previewAllFilters = () => {
       }
     }
   });
+
+
+
+
+  
 
   // Copy with filters button — renders the entire preview grid as a single image to clipboard
   const copyWithFiltersBtn = document.createElement("button");
@@ -1902,7 +1907,7 @@ const previewAllFilters = () => {
   // Stage merged grid image button
   const stageMergedBtn = document.createElement("button");
   stageMergedBtn.className = "filter-preview-copy-btn";
-  stageMergedBtn.textContent = "Stage merged";
+  stageMergedBtn.textContent = "Add as merged to staging";
   stageMergedBtn.title = "Add the combined filter grid image (with drawings) to the staging area";
   stageMergedBtn.addEventListener("click", async () => {
     const canvas = await renderPreviewGrid();
@@ -1924,8 +1929,8 @@ const previewAllFilters = () => {
 
   header.appendChild(title);
   headerBtns.appendChild(copyToStagingBtn);
-  headerBtns.appendChild(copyWithFiltersBtn);
   headerBtns.appendChild(stageMergedBtn);
+  headerBtns.appendChild(copyWithFiltersBtn);
   headerBtns.appendChild(closeBtn);
   header.appendChild(headerBtns);
   panel.appendChild(header);
