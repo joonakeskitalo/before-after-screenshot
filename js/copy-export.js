@@ -4,6 +4,34 @@ import { applyGridZoom } from './zoom.js';
 import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
 import { domToBlob } from '../lib/modern-screenshot.mjs';
 
+// Color matrix definitions matching the SVG filters (shared across export and preview)
+const COLOR_MATRICES = {
+  "protanopia": [
+    0.567, 0.433, 0, 0, 0,
+    0.558, 0.442, 0, 0, 0,
+    0, 0.242, 0.758, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+  "deuteranopia": [
+    0.625, 0.375, 0, 0, 0,
+    0.7, 0.3, 0, 0, 0,
+    0, 0.3, 0.7, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+  "tritanopia": [
+    0.95, 0.05, 0, 0, 0,
+    0, 0.433, 0.567, 0, 0,
+    0, 0.475, 0.525, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+  "achromatopsia": [
+    0.299, 0.587, 0.114, 0, 0,
+    0.299, 0.587, 0.114, 0, 0,
+    0.299, 0.587, 0.114, 0, 0,
+    0, 0, 0, 1, 0,
+  ],
+};
+
 // Guard against concurrent exports — prevents DOM corruption from double-clicks.
 let isExporting = false;
 
@@ -1163,34 +1191,6 @@ const copyWithAllFilters = async () => {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, totalW, totalH);
 
-  // Color matrix definitions matching the SVG filters
-  const COLOR_MATRICES = {
-    "protanopia": [
-      0.567, 0.433, 0, 0, 0,
-      0.558, 0.442, 0, 0, 0,
-      0, 0.242, 0.758, 0, 0,
-      0, 0, 0, 1, 0,
-    ],
-    "deuteranopia": [
-      0.625, 0.375, 0, 0, 0,
-      0.7, 0.3, 0, 0, 0,
-      0, 0.3, 0.7, 0, 0,
-      0, 0, 0, 1, 0,
-    ],
-    "tritanopia": [
-      0.95, 0.05, 0, 0, 0,
-      0, 0.433, 0.567, 0, 0,
-      0, 0.475, 0.525, 0, 0,
-      0, 0, 0, 1, 0,
-    ],
-    "achromatopsia": [
-      0.299, 0.587, 0.114, 0, 0,
-      0.299, 0.587, 0.114, 0, 0,
-      0.299, 0.587, 0.114, 0, 0,
-      0, 0, 0, 1, 0,
-    ],
-  };
-
   // Apply a color matrix to image data in-place
   const applyMatrix = (imageData, matrix) => {
     const d = imageData.data;
@@ -1282,33 +1282,6 @@ const copyWithAllFilters = async () => {
 // --- Preview All Filters ---
 // Opens an overlay showing all images with every filter applied, one row per image.
 
-const COLOR_MATRICES_PREVIEW = {
-  "protanopia": [
-    0.567, 0.433, 0, 0, 0,
-    0.558, 0.442, 0, 0, 0,
-    0, 0.242, 0.758, 0, 0,
-    0, 0, 0, 1, 0,
-  ],
-  "deuteranopia": [
-    0.625, 0.375, 0, 0, 0,
-    0.7, 0.3, 0, 0, 0,
-    0, 0.3, 0.7, 0, 0,
-    0, 0, 0, 1, 0,
-  ],
-  "tritanopia": [
-    0.95, 0.05, 0, 0, 0,
-    0, 0.433, 0.567, 0, 0,
-    0, 0.475, 0.525, 0, 0,
-    0, 0, 0, 1, 0,
-  ],
-  "achromatopsia": [
-    0.299, 0.587, 0.114, 0, 0,
-    0.299, 0.587, 0.114, 0, 0,
-    0.299, 0.587, 0.114, 0, 0,
-    0, 0, 0, 1, 0,
-  ],
-};
-
 const applyFilterToCanvas = (sourceCanvas, filter) => {
   const w = sourceCanvas.width;
   const h = sourceCanvas.height;
@@ -1344,8 +1317,8 @@ const applyFilterToCanvas = (sourceCanvas, filter) => {
       d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
       d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
     }
-  } else if (COLOR_MATRICES_PREVIEW[filter]) {
-    const matrix = COLOR_MATRICES_PREVIEW[filter];
+  } else if (COLOR_MATRICES[filter]) {
+    const matrix = COLOR_MATRICES[filter];
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
       d[i] = Math.min(255, Math.max(0, matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4] * 255));
