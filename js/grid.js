@@ -49,8 +49,7 @@ const revokeOrphanedBlobUrls = (previousUrls) => {
 
 let cellDragState = null; // { startIndex, startX, startY, active }
 
-const getCellIndexAtPoint = (x, y) => {
-  const cells = state.getCells();
+const getCellIndexAtPoint = (x, y, cells = state.getCells()) => {
   if (cells.length === 0) return -1;
 
   // O(1) hit test using the browser's built-in spatial index
@@ -82,15 +81,14 @@ const getCellIndexAtPoint = (x, y) => {
   return -1;
 };
 
-const clearCellDropTarget = () => {
-  state.getCells().forEach((cell) => {
+const clearCellDropTarget = (cells = state.getCells()) => {
+  cells.forEach((cell) => {
     cell.classList.remove("cell-drop-target");
   });
 };
 
-const showCellDropTargets = (targetIndices) => {
-  clearCellDropTarget();
-  const cells = state.getCells();
+const showCellDropTargets = (targetIndices, cells = state.getCells()) => {
+  clearCellDropTarget(cells);
   for (const idx of targetIndices) {
     if (idx >= 0 && idx < cells.length) {
       cells[idx].classList.add("cell-drop-target");
@@ -98,12 +96,11 @@ const showCellDropTargets = (targetIndices) => {
   }
 };
 
-const computeMoveTargets = (selectedIndices, fromIndex, toIndex) => {
+const computeMoveTargets = (selectedIndices, fromIndex, toIndex, cells = state.getCells()) => {
   if (fromIndex === toIndex) return null;
 
   const offset = toIndex - fromIndex;
 
-  const cells = state.getCells();
   const totalCells = cells.length;
 
   // Check that ALL selected cells can move with this offset
@@ -325,19 +322,22 @@ const handleCellDragMove = (e) => {
     expandGridForDrag(edgeDir);
   }
 
-  const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY);
+  // Grab cells once for the entire operation
+  const cells = state.getCells();
+
+  const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY, cells);
   if (targetIndex === -1) {
-    clearCellDropTarget();
+    clearCellDropTarget(cells);
     return;
   }
 
   const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
-  const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex);
+  const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex, cells);
 
   if (targets) {
-    showCellDropTargets(targets);
+    showCellDropTargets(targets, cells);
   } else {
-    clearCellDropTarget();
+    clearCellDropTarget(cells);
   }
 };
 
@@ -347,15 +347,16 @@ const handleCellDragEnd = (e) => {
   const wasDragActive = cellDragState.active;
 
   if (cellDragState.active) {
-    const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY);
+    const cells = state.getCells();
+    const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY, cells);
     if (targetIndex !== -1 && targetIndex !== cellDragState.startIndex) {
       const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
-      const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex);
+      const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex, cells);
       if (targets) {
         performCellMove(selectedIndices, targets);
       }
     }
-    clearCellDropTarget();
+    clearCellDropTarget(cells);
     document.body.classList.remove("cell-dragging");
   }
 
@@ -1384,12 +1385,13 @@ const clearRowDropIndicators = () => {
 };
 
 const setRowDropTarget = (row) => {
+  const cells = state.getCells();
   // Clear previous target
-  state.getCells().forEach((cell) => {
+  cells.forEach((cell) => {
     cell.classList.remove("row-drop-target");
   });
   // Highlight all cells in the target row
-  state.getCells().forEach((cell) => {
+  cells.forEach((cell) => {
     if (parseInt(cell.dataset.row) === row, 10) {
       cell.classList.add("row-drop-target");
     }
