@@ -1,5 +1,5 @@
 import state from './state.js';
-import { redrawAllCanvasesForExport, restoreAllCanvases } from './drawing.js';
+import { redrawAllCanvasesForExport, restoreAllCanvases, initDrawingCanvas } from './drawing.js';
 import { applyGridZoom } from './zoom.js';
 import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
 
@@ -1600,6 +1600,149 @@ const previewAllFilters = () => {
 
   if (sourceImages.length === 0) return;
 
+  // Helper: bake drawings onto a preview cell's image and return a data URL
+  const bakePreviewCell = (cell) => {
+    const container = cell.querySelector(".filter-preview-img-container");
+    if (!container) return null;
+    const img = container.querySelector("img");
+    const canvas = container.querySelector(".drawing-canvas");
+    if (!img || !img.src) return null;
+
+    let dataUrl = img.src;
+    const data = canvas ? state.canvasDataMap.get(canvas) : null;
+    if (data && data.paths.length > 0) {
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = img.naturalWidth;
+      tempCanvas.height = img.naturalHeight;
+      const ctx = tempCanvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      const toX = (nx) => nx * tempCanvas.width;
+      const toY = (ny) => ny * tempCanvas.height;
+
+      for (const path of data.paths) {
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = path.lineWidth;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        if (path.type === "text") {
+          const fontSize = path.fontSize || 13;
+          const lineHeight = fontSize * 1.3;
+          ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
+          ctx.textBaseline = "top";
+          const x = toX(path.position.x);
+          const y = toY(path.position.y);
+          const lines = path.text.split("\n");
+          const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+          const totalHeight = fontSize + (lines.length - 1) * lineHeight;
+          const padding = 4;
+          ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+          const radius = fontSize * 0.2;
+          ctx.beginPath();
+          ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
+          ctx.fill();
+          ctx.fillStyle = path.color;
+          lines.forEach((line, i) => {
+            ctx.fillText(line, x, y + i * lineHeight);
+          });
+        } else if (path.type === "arrow" || path.type === "line") {
+          const fromX = toX(path.from.x);
+          const fromY = toY(path.from.y);
+          const toXv = toX(path.to.x);
+          const toYv = toY(path.to.y);
+          ctx.beginPath();
+          ctx.moveTo(fromX, fromY);
+          ctx.lineTo(toXv, toYv);
+          ctx.stroke();
+          if (path.type === "arrow") {
+            const headLength = Math.max(10, path.lineWidth * 4);
+            const angle = Math.atan2(toYv - fromY, toXv - fromX);
+            ctx.beginPath();
+            ctx.moveTo(toXv, toYv);
+            ctx.lineTo(toXv - headLength * Math.cos(angle - Math.PI / 6), toYv - headLength * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(toXv, toYv);
+            ctx.lineTo(toXv - headLength * Math.cos(angle + Math.PI / 6), toYv - headLength * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+          }
+        } else if (path.type === "rect") {
+          const rx = toX(Math.min(path.from.x, path.to.x));
+          const ry = toY(Math.min(path.from.y, path.to.y));
+          const rw = toX(Math.max(path.from.x, path.to.x)) - rx;
+          const rh = toY(Math.max(path.from.y, path.to.y)) - ry;
+          ctx.fillStyle = path.color;
+          ctx.fillRect(rx, ry, rw, rh);
+        } else if (path.type === "rectstroke") {
+          const rx = toX(Math.min(path.from.x, path.to.x));
+          const ry = toY(Math.min(path.from.y, path.to.y));
+          const rw = toX(Math.max(path.from.x, path.to.x)) - rx;
+          const rh = toY(Math.max(path.from.y, path.to.y)) - ry;
+          ctx.strokeRect(rx, ry, rw, rh);
+        } else if (path.type === "oval") {
+          const rx = toX(Math.min(path.from.x, path.to.x));
+          const ry = toY(Math.min(path.from.y, path.to.y));
+          const rw = toX(Math.max(path.from.x, path.to.x)) - rx;
+          const rh = toY(Math.max(path.from.y, path.to.y)) - ry;
+          ctx.beginPath();
+          ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (path.type === "ovalfill") {
+          const rx = toX(Math.min(path.from.x, path.to.x));
+          const ry = toY(Math.min(path.from.y, path.to.y));
+          const rw = toX(Math.max(path.from.x, path.to.x)) - rx;
+          const rh = toY(Math.max(path.from.y, path.to.y)) - ry;
+          ctx.fillStyle = path.color;
+          ctx.beginPath();
+          ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (path.type === "dot") {
+          const cx = toX(path.position.x);
+          const cy = toY(path.position.y);
+          const radius = path.lineWidth + 4;
+          ctx.globalAlpha = 0.7;
+          ctx.fillStyle = path.color;
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+        } else if (path.type === "eraser") {
+          if (path.points && path.points.length >= 2) {
+            ctx.save();
+            ctx.globalCompositeOperation = "destination-out";
+            ctx.strokeStyle = "rgba(0,0,0,1)";
+            ctx.lineWidth = path.lineWidth + 8;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));
+            for (let i = 1; i < path.points.length; i++) {
+              ctx.lineTo(toX(path.points[i].x), toY(path.points[i].y));
+            }
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else if (path.points && path.points.length >= 2) {
+          ctx.beginPath();
+          ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));
+          for (let i = 1; i < path.points.length; i++) {
+            ctx.lineTo(toX(path.points[i].x), toY(path.points[i].y));
+          }
+          ctx.stroke();
+        }
+      }
+      dataUrl = tempCanvas.toDataURL("image/png");
+    }
+    return dataUrl;
+  };
+
+  // Helper: get filename for a preview cell
+  const getPreviewCellName = (cell) => {
+    const container = cell.querySelector(".filter-preview-img-container");
+    const img = container?.querySelector("img");
+    const filterLabel = cell.querySelector(".filter-label");
+    return (img?.alt || filterLabel?.textContent || "filtered") + ".png";
+  };
+
   // Create overlay
   const overlay = document.createElement("div");
   overlay.className = "filter-preview-overlay";
@@ -1612,12 +1755,37 @@ const previewAllFilters = () => {
   header.className = "filter-preview-header";
   const title = document.createElement("h3");
   title.textContent = "Filter Preview";
+
+  // Header buttons container
+  const headerBtns = document.createElement("div");
+  headerBtns.style.display = "flex";
+  headerBtns.style.alignItems = "center";
+  headerBtns.style.gap = "8px";
+
+  // Copy all to staging button
+  const copyToStagingBtn = document.createElement("button");
+  copyToStagingBtn.className = "filter-preview-copy-btn";
+  copyToStagingBtn.textContent = "Copy all to staging";
+  copyToStagingBtn.title = "Copy all filtered preview images (with drawings) to the staging area";
+  copyToStagingBtn.addEventListener("click", () => {
+    const previewCells = overlay.querySelectorAll(".filter-preview-cell");
+    for (const cell of previewCells) {
+      const dataUrl = bakePreviewCell(cell);
+      if (dataUrl) {
+        state.addImageToToolbar(dataUrl, getPreviewCellName(cell));
+      }
+    }
+  });
+
   const closeBtn = document.createElement("button");
   closeBtn.className = "filter-preview-close";
   closeBtn.textContent = "×";
   closeBtn.addEventListener("click", () => overlay.remove());
+
   header.appendChild(title);
-  header.appendChild(closeBtn);
+  headerBtns.appendChild(copyToStagingBtn);
+  headerBtns.appendChild(closeBtn);
+  header.appendChild(headerBtns);
   panel.appendChild(header);
 
   // Body
@@ -1660,11 +1828,59 @@ const previewAllFilters = () => {
       filteredImg.src = filteredCanvas.toDataURL("image/png");
       filteredImg.alt = `${name} - ${FILTER_LABELS[filter]}`;
 
+      // Wrap image in a container that supports drawing
+      const imgContainer = document.createElement("div");
+      imgContainer.className = "filter-preview-img-container";
+      imgContainer.appendChild(filteredImg);
+
+      // Initialize drawing canvas on this container
+      initDrawingCanvas(imgContainer);
+
+      // Per-image action buttons
+      const actions = document.createElement("div");
+      actions.className = "filter-preview-cell-actions";
+
+      const copyClipBtn = document.createElement("button");
+      copyClipBtn.className = "filter-preview-action-btn";
+      copyClipBtn.title = "Copy to clipboard";
+      copyClipBtn.textContent = "📋";
+      copyClipBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const dataUrl = bakePreviewCell(cell);
+        if (!dataUrl) return;
+        try {
+          const resp = await fetch(dataUrl);
+          const blob = await resp.blob();
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          copyClipBtn.textContent = "✓";
+          setTimeout(() => { copyClipBtn.textContent = "📋"; }, 1200);
+        } catch (err) {
+          console.error("Failed to copy to clipboard:", err);
+        }
+      });
+
+      const addStagingBtn = document.createElement("button");
+      addStagingBtn.className = "filter-preview-action-btn";
+      addStagingBtn.title = "Add to staging";
+      addStagingBtn.textContent = "⬇";
+      addStagingBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const dataUrl = bakePreviewCell(cell);
+        if (!dataUrl) return;
+        state.addImageToToolbar(dataUrl, getPreviewCellName(cell));
+        addStagingBtn.textContent = "✓";
+        setTimeout(() => { addStagingBtn.textContent = "⬇"; }, 1200);
+      });
+
+      actions.appendChild(copyClipBtn);
+      actions.appendChild(addStagingBtn);
+
       const label = document.createElement("span");
       label.className = "filter-label";
       label.textContent = FILTER_LABELS[filter] || filter;
 
-      cell.appendChild(filteredImg);
+      cell.appendChild(imgContainer);
+      cell.appendChild(actions);
       cell.appendChild(label);
       row.appendChild(cell);
     }
