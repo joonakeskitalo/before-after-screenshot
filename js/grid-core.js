@@ -245,6 +245,7 @@ const setupCell = (cell) => {
       const source = e.dataTransfer.getData("source");
       const draggedId = e.dataTransfer.getData("id");
       if (source === "toolbar" && draggedId && isValidElementId(draggedId)) {
+        pushUndo();
         const draggedFilename = sanitizeFilename(e.dataTransfer.getData("filename") || "");
         img.style.display = "block";
         img.src = src;

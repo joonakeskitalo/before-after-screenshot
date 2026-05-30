@@ -170,6 +170,7 @@ state.addImageToToolbar = (srcUrl, fileName = "") => {
     for (const cell of cells) {
       const cellImg = cell.querySelector("img");
       if (!cellImg || !cellImg.src || cellImg.style.display === "none") {
+        pushUndo();
         const drop = cell.querySelector(".drop");
         const span = cell.querySelector("span");
         cellImg.src = img.src;
