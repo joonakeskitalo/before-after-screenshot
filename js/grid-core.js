@@ -29,13 +29,6 @@ const toDataMap = (dataArray) => {
   return map;
 };
 
-// Remove canvasDataMap entries for canvases that are about to be destroyed.
-const cleanupCanvasData = (canvases) => {
-  for (const canvas of canvases) {
-    state.canvasDataMap.delete(canvas);
-  }
-};
-
 // Collect all blob URLs currently used in grid cells.
 const collectBlobUrls = () => {
   const urls = new Set();
@@ -366,27 +359,18 @@ const createCell = (row, col) => {
   return cell;
 };
 
-// --- buildGrid ---
+// --- buildGrid (incremental — reuses existing DOM cells to avoid flash) ---
 
 const buildGrid = () => {
   // Clear keyboard focus
   state.focusedCellIndex = -1;
 
-  // Disconnect ResizeObservers from old canvases to prevent leaks
-  const oldCanvases = state.gridEl.querySelectorAll(".drawing-canvas");
-  oldCanvases.forEach((canvas) => {
-    const drop = canvas.parentElement;
-    if (drop) unobserveDrop(drop);
-    const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
-    if (mouseUpHandler) {
-      document.removeEventListener("mouseup", mouseUpHandler);
-      state.canvasMouseUpHandlers.delete(canvas);
-    }
-  });
-
-  // Save existing cell data
-  const existingData = [];
+  const targetTotal = state.gridRows * state.gridCols;
   const existingCells = state.getCells();
+  const currentTotal = existingCells.length;
+
+  // Save data from all existing cells keyed by their current row,col
+  const existingData = [];
   const previousBlobUrls = collectBlobUrls();
   existingCells.forEach((cell) => {
     const img = cell.querySelector("img");
@@ -399,60 +383,104 @@ const buildGrid = () => {
       imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
       imgAlt: img ? img.alt : "",
       text: textarea ? textarea.value : "",
-      drawingPaths: drawingPaths,
+      drawingPaths,
     });
   });
 
-  // Clean up canvasDataMap entries before destroying old canvases
-  cleanupCanvasData(oldCanvases);
-
-  state.gridEl.replaceChildren();
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
-  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-
   const existingDataMap = toDataMap(existingData);
-  const canvasesToRedraw = [];
 
-  for (let r = 0; r < state.gridRows; r++) {
-    for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
-
-      // Restore data if it existed at this position
-      const existing = existingDataMap.get(`${r},${c}`);
-      if (existing) {
-        const img = cell.querySelector("img");
-        const drop = cell.querySelector(".drop");
-        const span = cell.querySelector("span");
-        const textarea = cell.querySelector("textarea");
-
-        if (existing.imgSrc) {
-          img.src = existing.imgSrc;
-          img.alt = existing.imgAlt;
-          img.style.display = "block";
-          drop.style.border = "unset";
-          span.style.display = "none";
+  // Remove excess cells from the end (with proper cleanup)
+  if (currentTotal > targetTotal) {
+    for (let i = currentTotal - 1; i >= targetTotal; i--) {
+      const cell = existingCells[i];
+      const canvas = cell.querySelector(".drawing-canvas");
+      if (canvas) {
+        const drop = canvas.parentElement;
+        if (drop) unobserveDrop(drop);
+        const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
+        if (mouseUpHandler) {
+          document.removeEventListener("mouseup", mouseUpHandler);
+          state.canvasMouseUpHandlers.delete(canvas);
         }
-        if (existing.text) {
-          textarea.value = existing.text;
-        }
-        updateFilenameLabel(cell);
-        // Restore drawing paths (defer redraw until after grid is fully built)
-        if (existing.drawingPaths && existing.drawingPaths.length > 0) {
-          const canvas = cell.querySelector(".drawing-canvas");
-          if (canvas) {
-            const data = state.canvasDataMap.get(canvas);
-            if (data) {
-              data.paths = existing.drawingPaths;
-              canvasesToRedraw.push(canvas);
-            }
-          }
-        }
+        state.canvasDataMap.delete(canvas);
       }
+      cell.remove();
     }
   }
 
-  // Batch redraw all canvases once after the grid is fully rebuilt
+  // Add missing cells at the end
+  if (currentTotal < targetTotal) {
+    for (let i = currentTotal; i < targetTotal; i++) {
+      const r = Math.floor(i / state.gridCols);
+      const c = i % state.gridCols;
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+    }
+  }
+
+  // Update grid template
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+
+  // Invalidate cache and get the current set of cells
+  state.invalidateCellsCache();
+  const cells = state.getCells();
+  const canvasesToRedraw = [];
+
+  // Update each cell's position and restore data
+  for (let i = 0; i < targetTotal; i++) {
+    const r = Math.floor(i / state.gridCols);
+    const c = i % state.gridCols;
+    const cell = cells[i];
+    cell.dataset.row = String(r);
+    cell.dataset.col = String(c);
+
+    // Look up data that belonged to this position
+    const existing = existingDataMap.get(`${r},${c}`);
+
+    const img = cell.querySelector("img");
+    const drop = cell.querySelector(".drop");
+    const span = cell.querySelector("span");
+    const textarea = cell.querySelector("textarea");
+    const canvas = cell.querySelector(".drawing-canvas");
+
+    if (existing && existing.imgSrc) {
+      img.src = existing.imgSrc;
+      img.alt = existing.imgAlt;
+      img.style.display = "block";
+      drop.style.border = "unset";
+      if (span) span.style.display = "none";
+    } else {
+      if (img.src && img.src.startsWith("blob:") && !existingDataMap.has(`${r},${c}`)) {
+        // Only revoke if this blob is truly orphaned (not reused at another position)
+      }
+      img.src = "";
+      img.alt = "";
+      img.style.display = "none";
+      drop.style.border = "var(--border)";
+      if (span) span.style.display = "block";
+    }
+
+    textarea.value = existing && existing.text ? existing.text : "";
+
+    // Restore drawing paths
+    if (canvas) {
+      const canvasData = state.canvasDataMap.get(canvas);
+      if (canvasData) {
+        if (existing && existing.drawingPaths && existing.drawingPaths.length > 0) {
+          canvasData.paths = existing.drawingPaths;
+          canvasesToRedraw.push(canvas);
+        } else {
+          canvasData.paths = [];
+          canvasesToRedraw.push(canvas);
+        }
+      }
+    }
+
+    updateFilenameLabel(cell);
+  }
+
+  // Batch redraw all canvases
   if (canvasesToRedraw.length > 0) {
     const dpr = window.devicePixelRatio || 1;
     for (const canvas of canvasesToRedraw) {
@@ -460,7 +488,6 @@ const buildGrid = () => {
     }
   }
 
-  // Build row controls (drag handles + add-row buttons)
   revokeOrphanedBlobUrls(previousBlobUrls);
   buildRowControls();
 };
@@ -516,7 +543,7 @@ const restoreCellData = (cell, data) => {
   updateFilenameLabel(cell);
 };
 
-// --- relayoutGrid ---
+// --- relayoutGrid (incremental — reuses existing DOM cells to avoid flash) ---
 
 const relayoutGrid = () => {
   // Collect all cells that have content (image, text, or drawings)
@@ -542,26 +569,107 @@ const relayoutGrid = () => {
 
   // Clear selections since positions changed
   state.selectedRows.clear();
+  state.selectedCells.clear();
   updateCopySelectedBtn();
   state.focusedCellIndex = -1;
 
-  // Rebuild grid with compacted data
-  cleanupCanvasData(state.gridEl.querySelectorAll(".drawing-canvas"));
-  state.gridEl.replaceChildren();
+  const targetTotal = state.gridRows * state.gridCols;
+  const existingCells = state.getCells();
+  const currentTotal = existingCells.length;
+
+  // Remove excess cells from the end (with proper cleanup)
+  if (currentTotal > targetTotal) {
+    for (let i = currentTotal - 1; i >= targetTotal; i--) {
+      const cell = existingCells[i];
+      const canvas = cell.querySelector(".drawing-canvas");
+      if (canvas) {
+        const drop = canvas.parentElement;
+        if (drop) unobserveDrop(drop);
+        const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
+        if (mouseUpHandler) {
+          document.removeEventListener("mouseup", mouseUpHandler);
+          state.canvasMouseUpHandlers.delete(canvas);
+        }
+        state.canvasDataMap.delete(canvas);
+      }
+      cell.remove();
+    }
+  }
+
+  // Add missing cells at the end
+  if (currentTotal < targetTotal) {
+    for (let i = currentTotal; i < targetTotal; i++) {
+      const r = Math.floor(i / state.gridCols);
+      const c = i % state.gridCols;
+      const cell = createCell(r, c);
+      state.gridEl.appendChild(cell);
+    }
+  }
+
+  // Update grid template
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  // Invalidate cache and get the current set of cells
+  state.invalidateCellsCache();
+  const cells = state.getCells();
   const reindexedMap = toDataMap(reindexed);
+  const canvasesToRedraw = [];
 
-  for (let r = 0; r < state.gridRows; r++) {
-    for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
+  // Update each cell's position and restore compacted data
+  for (let i = 0; i < targetTotal; i++) {
+    const r = Math.floor(i / state.gridCols);
+    const c = i % state.gridCols;
+    const cell = cells[i];
+    cell.dataset.row = String(r);
+    cell.dataset.col = String(c);
 
-      const existing = reindexedMap.get(`${r},${c}`);
-      if (existing) {
-        restoreCellData(cell, existing);
+    const existing = reindexedMap.get(`${r},${c}`);
+
+    const img = cell.querySelector("img");
+    const drop = cell.querySelector(".drop");
+    const span = cell.querySelector("span");
+    const textarea = cell.querySelector("textarea");
+    const canvas = cell.querySelector(".drawing-canvas");
+
+    if (existing && existing.imgSrc) {
+      img.src = existing.imgSrc;
+      img.alt = existing.imgAlt;
+      img.style.display = "block";
+      drop.style.border = "unset";
+      if (span) span.style.display = "none";
+    } else {
+      img.src = "";
+      img.alt = "";
+      img.style.display = "none";
+      drop.style.border = "var(--border)";
+      if (span) span.style.display = "block";
+    }
+
+    textarea.value = existing && existing.text ? existing.text : "";
+
+    // Restore drawing paths
+    if (canvas) {
+      const canvasData = state.canvasDataMap.get(canvas);
+      if (canvasData) {
+        if (existing && existing.drawingPaths && existing.drawingPaths.length > 0) {
+          canvasData.paths = existing.drawingPaths;
+          canvasesToRedraw.push(canvas);
+        } else {
+          canvasData.paths = [];
+          canvasesToRedraw.push(canvas);
+        }
       }
+    }
+
+    updateFilenameLabel(cell);
+  }
+
+  // Batch redraw all canvases
+  if (canvasesToRedraw.length > 0) {
+    const dpr = window.devicePixelRatio || 1;
+    for (const canvas of canvasesToRedraw) {
+      redrawCanvas(canvas, dpr);
     }
   }
 
