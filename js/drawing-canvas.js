@@ -257,6 +257,17 @@ export const initDrawingCanvas = (drop) => {
   observer.observe(drop);
   state.canvasObservers.set(canvas, observer);
 
+  // Listen for devicePixelRatio changes (e.g., moving window between Retina and non-Retina displays)
+  let dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  const handleDprChange = () => {
+    resizeCanvas();
+    // Re-register with the new DPR value since the media query is resolution-specific
+    dprMediaQuery.removeEventListener("change", handleDprChange);
+    dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    dprMediaQuery.addEventListener("change", handleDprChange);
+  };
+  dprMediaQuery.addEventListener("change", handleDprChange);
+
   // Helper: clear the preview canvas
   const clearPreview = () => {
     const ctx = previewCanvas.getContext("2d");
