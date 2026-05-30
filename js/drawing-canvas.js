@@ -145,21 +145,26 @@ export const initDrawingCanvas = (drop) => {
   // Initialize data store
   state.canvasDataMap.set(canvas, { paths: [], redoStack: [] });
 
-  // --- Resize handling ---
+  // --- Resize handling (debounced with rAF) ---
+  let resizeRafId = null;
   const resizeCanvas = () => {
-    const dpr = window.devicePixelRatio || 1;
-    const w = drop.clientWidth;
-    const h = drop.clientHeight;
-    if (w === 0 || h === 0) return;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = w + "px";
-    canvas.style.height = h + "px";
-    previewCanvas.width = w * dpr;
-    previewCanvas.height = h * dpr;
-    previewCanvas.style.width = w + "px";
-    previewCanvas.style.height = h + "px";
-    redrawCanvas(canvas, dpr);
+    if (resizeRafId) return;
+    resizeRafId = requestAnimationFrame(() => {
+      resizeRafId = null;
+      const dpr = window.devicePixelRatio || 1;
+      const w = drop.clientWidth;
+      const h = drop.clientHeight;
+      if (w === 0 || h === 0) return;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      previewCanvas.width = w * dpr;
+      previewCanvas.height = h * dpr;
+      previewCanvas.style.width = w + "px";
+      previewCanvas.style.height = h + "px";
+      redrawCanvas(canvas, dpr);
+    });
   };
 
   const resizeObserver = new ResizeObserver(resizeCanvas);
