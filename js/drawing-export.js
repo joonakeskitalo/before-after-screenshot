@@ -11,6 +11,8 @@ export const redrawAllCanvasesForExport = async (scale) => {
   document.querySelectorAll(".drawing-canvas").forEach((canvas) => {
     const obs = state.canvasObservers.get(canvas);
     if (obs) obs.disconnect();
+    const visObs = state.canvasVisibilityObservers.get(canvas);
+    if (visObs) visObs.disconnect();
   });
 
   // Ensure all images are fully decoded before reading naturalWidth/naturalHeight.
@@ -122,5 +124,7 @@ export const restoreAllCanvases = () => {
 
     const obs = state.canvasObservers.get(canvas);
     if (obs) obs.observe(drop);
+    const visObs = state.canvasVisibilityObservers.get(canvas);
+    if (visObs) visObs.observe(drop);
   });
 };

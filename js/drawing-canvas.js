@@ -242,6 +242,9 @@ export const initDrawingCanvas = (drop) => {
     const dpr = window.devicePixelRatio || 1;
     const w = drop.clientWidth;
     const h = drop.clientHeight;
+    // Skip resize when the drop zone is hidden or has zero dimensions.
+    // The IntersectionObserver below will trigger a resize when it becomes visible.
+    if (w === 0 || h === 0) return;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     canvas.style.width = w + "px";
@@ -253,9 +256,22 @@ export const initDrawingCanvas = (drop) => {
     redrawCanvas(canvas, dpr);
   };
 
-  const observer = new ResizeObserver(resizeCanvas);
-  observer.observe(drop);
-  state.canvasObservers.set(canvas, observer);
+  const resizeObserver = new ResizeObserver(resizeCanvas);
+  resizeObserver.observe(drop);
+  state.canvasObservers.set(canvas, resizeObserver);
+
+  // Re-trigger resize when the drop zone becomes visible after being hidden/collapsed.
+  // ResizeObserver may not fire if the element transitions from display:none to visible
+  // without a size change, so we use IntersectionObserver as a fallback.
+  const visibilityObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting && (canvas.width === 0 || canvas.height === 0)) {
+        resizeCanvas();
+      }
+    }
+  });
+  visibilityObserver.observe(drop);
+  state.canvasVisibilityObservers.set(canvas, visibilityObserver);
 
   // Listen for devicePixelRatio changes (e.g., moving window between Retina and non-Retina displays)
   let dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);

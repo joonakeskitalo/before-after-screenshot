@@ -767,6 +767,11 @@ const buildGrid = () => {
       observer.disconnect();
       state.canvasObservers.delete(canvas);
     }
+    const visObserver = state.canvasVisibilityObservers.get(canvas);
+    if (visObserver) {
+      visObserver.disconnect();
+      state.canvasVisibilityObservers.delete(canvas);
+    }
   });
 
   // Save existing cell data
@@ -1192,6 +1197,11 @@ const deleteRowAt = (rowIndex) => {
       if (observer) {
         observer.disconnect();
         state.canvasObservers.delete(canvas);
+      }
+      const visObserver = state.canvasVisibilityObservers.get(canvas);
+      if (visObserver) {
+        visObserver.disconnect();
+        state.canvasVisibilityObservers.delete(canvas);
       }
       state.canvasDataMap.delete(canvas);
     }

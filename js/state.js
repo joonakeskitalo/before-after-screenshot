@@ -36,6 +36,7 @@ const state = {
   // the DOM, which can race with code that reads paths during grid rebuilds.
   canvasDataMap: new Map(),
   canvasObservers: new WeakMap(),
+  canvasVisibilityObservers: new WeakMap(),
 
   // Row drag
   rowDragState: null,
