@@ -1777,6 +1777,123 @@ const previewAllFilters = () => {
     }
   });
 
+  // Copy with filters button — renders the entire preview grid as a single image to clipboard
+  const copyWithFiltersBtn = document.createElement("button");
+  copyWithFiltersBtn.className = "filter-preview-copy-btn";
+  copyWithFiltersBtn.textContent = "Copy with filters";
+  copyWithFiltersBtn.title = "Copy all preview images (with drawings) as a single grid image to clipboard";
+  // Shared helper: render the preview grid into an OffscreenCanvas
+  const renderPreviewGrid = async () => {
+    const rows = overlay.querySelectorAll(".filter-preview-row");
+    if (rows.length === 0) return null;
+
+    const rowImages = [];
+    for (const row of rows) {
+      const cells = row.querySelectorAll(".filter-preview-cell");
+      const imgs = [];
+      for (const cell of cells) {
+        const dataUrl = bakePreviewCell(cell);
+        if (dataUrl) {
+          const img = new Image();
+          img.src = dataUrl;
+          await img.decode();
+          imgs.push(img);
+        }
+      }
+      if (imgs.length > 0) rowImages.push(imgs);
+    }
+
+    if (rowImages.length === 0) return null;
+
+    const filters = FILTER_OPTIONS;
+    const gap = 4;
+
+    const scaleSelect = document.getElementById("copy-scale");
+    const scaleValue = scaleSelect.value;
+    let imageScale;
+    if (scaleValue.startsWith("output-")) {
+      imageScale = parseFloat(scaleValue.replace("output-", ""));
+    } else {
+      imageScale = parseFloat(scaleValue);
+    }
+
+    const maxNatW = Math.round(Math.max(...rowImages.flat().map((img) => img.naturalWidth)) * imageScale);
+    const maxNatH = Math.round(Math.max(...rowImages.flat().map((img) => img.naturalHeight)) * imageScale);
+
+    const labelFontSize = Math.max(14, Math.round(maxNatW * 0.03));
+    const labelHeight = labelFontSize + 12;
+
+    const cellW = maxNatW;
+    const cellH = maxNatH + labelHeight;
+
+    const cols = filters.length;
+    const numRows = rowImages.length;
+
+    const totalW = cols * cellW + (cols - 1) * gap;
+    const totalH = numRows * cellH + (numRows - 1) * gap;
+
+    const canvas = new OffscreenCanvas(totalW, totalH);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    for (let r = 0; r < numRows; r++) {
+      const imgs = rowImages[r];
+      for (let c = 0; c < imgs.length; c++) {
+        const img = imgs[c];
+        const x = c * (cellW + gap);
+        const y = r * (cellH + gap);
+
+        const scale = Math.min(cellW / img.naturalWidth, maxNatH / img.naturalHeight);
+        const drawW = Math.round(img.naturalWidth * scale);
+        const drawH = Math.round(img.naturalHeight * scale);
+        const imgX = x + Math.round((cellW - drawW) / 2);
+        const imgY = y + Math.round((maxNatH - drawH) / 2);
+
+        ctx.drawImage(img, imgX, imgY, drawW, drawH);
+
+        ctx.fillStyle = "#333333";
+        ctx.font = `500 ${labelFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(FILTER_LABELS[filters[c]] || filters[c], x + cellW / 2, y + maxNatH + 6);
+      }
+    }
+
+    return canvas;
+  };
+
+  copyWithFiltersBtn.addEventListener("click", async () => {
+    const canvas = await renderPreviewGrid();
+    if (!canvas) return;
+    try {
+      const blob = await canvas.convertToBlob({ type: "image/png" });
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      copyWithFiltersBtn.textContent = "Copied ✓";
+      setTimeout(() => { copyWithFiltersBtn.textContent = "Copy with filters"; }, 1500);
+    } catch (err) {
+      console.error("Failed to copy with filters:", err);
+    }
+  });
+
+  // Stage merged grid image button
+  const stageMergedBtn = document.createElement("button");
+  stageMergedBtn.className = "filter-preview-copy-btn";
+  stageMergedBtn.textContent = "Stage merged";
+  stageMergedBtn.title = "Add the combined filter grid image (with drawings) to the staging area";
+  stageMergedBtn.addEventListener("click", async () => {
+    const canvas = await renderPreviewGrid();
+    if (!canvas) return;
+    const blob = await canvas.convertToBlob({ type: "image/png" });
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      state.addImageToToolbar(reader.result, "filter-grid.png");
+      stageMergedBtn.textContent = "Staged ✓";
+      setTimeout(() => { stageMergedBtn.textContent = "Stage merged"; }, 1500);
+    };
+    reader.readAsDataURL(blob);
+  });
+
   const closeBtn = document.createElement("button");
   closeBtn.className = "filter-preview-close";
   closeBtn.textContent = "×";
@@ -1784,6 +1901,8 @@ const previewAllFilters = () => {
 
   header.appendChild(title);
   headerBtns.appendChild(copyToStagingBtn);
+  headerBtns.appendChild(copyWithFiltersBtn);
+  headerBtns.appendChild(stageMergedBtn);
   headerBtns.appendChild(closeBtn);
   header.appendChild(headerBtns);
   panel.appendChild(header);
