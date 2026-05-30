@@ -81,7 +81,10 @@ export const redrawAllCanvasesForExport = async (scale) => {
     // Store original src for restoration
     canvas.dataset.originalImgSrc = img.src;
     const blobUrl = await new Promise((resolve) => {
-      tempCanvas.toBlob((b) => resolve(URL.createObjectURL(b)), "image/png");
+      tempCanvas.toBlob(
+        (b) => resolve(b ? URL.createObjectURL(b) : null),
+        "image/png"
+      );
     });
     canvas.dataset.blobUrl = blobUrl;
     img.style.width = fitRect.width + "px";
