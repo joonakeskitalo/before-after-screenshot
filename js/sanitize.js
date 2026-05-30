@@ -39,11 +39,20 @@ export const isAllowedImageFile = (file) => {
 
 /**
  * Check whether a URL is safe to use as an image source.
- * Accepts only blob: URLs and data: URLs with image MIME types.
+ * Accepts only blob: URLs (same-origin, valid UUID path) and data: URLs with image MIME types.
  */
 export const isAllowedImageSrc = (src) => {
   if (!src || typeof src !== "string") return false;
-  if (src.startsWith("blob:")) return true;
+  if (src.startsWith("blob:")) {
+    // Validate blob URL structure: blob:<origin>/<uuid>
+    // Only accept blobs created by the current origin to prevent external blob references.
+    const blobContent = src.slice(5); // strip "blob:"
+    const origin = globalThis.location?.origin;
+    if (!origin || !blobContent.startsWith(origin + "/")) return false;
+    const uuid = blobContent.slice(origin.length + 1);
+    // RFC 4122 UUID format (hex with hyphens, 36 chars)
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+  }
   if (src.startsWith("data:")) return ALLOWED_IMAGE_MIMES.test(src);
   return false;
 };
