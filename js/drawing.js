@@ -82,6 +82,35 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// Track the last-interacted drawing canvas for undo/redo targeting
+let lastActiveDrawingCanvas = null;
+
+// Undo/Redo keyboard handler (Cmd+Z / Cmd+Shift+Z)
+document.addEventListener("keydown", (e) => {
+  if (!state.drawingMode) return;
+  if (e.key === "z" && (e.metaKey || e.ctrlKey)) {
+    // Skip if typing in an input
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+
+    e.preventDefault();
+    if (!lastActiveDrawingCanvas) return;
+    const data = state.canvasDataMap.get(lastActiveDrawingCanvas);
+    if (!data) return;
+
+    if (e.shiftKey) {
+      // Redo
+      if (data.redoStack.length === 0) return;
+      data.paths.push(data.redoStack.pop());
+    } else {
+      // Undo
+      if (data.paths.length === 0) return;
+      data.redoStack.push(data.paths.pop());
+    }
+    const dpr = window.devicePixelRatio || 1;
+    redrawCanvas(lastActiveDrawingCanvas, dpr);
+  }
+});
 
 
 // Wire up toolbar drawing controls
@@ -763,18 +792,15 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
     committed = true;
     const text = input.value.trim();
     if (text) {
-      const data = state.canvasDataMap.get(canvas);
-      if (data) {
-        data.paths.push({
-          type: "text",
-          color: state.drawColor,
-          fontSize: state.drawFontSize,
-          position: { x: normX, y: normY },
-          text: text,
-        });
-        const dpr = window.devicePixelRatio || 1;
-        redrawCanvas(canvas, dpr);
-      }
+      commitPath({
+        type: "text",
+        color: state.drawColor,
+        fontSize: state.drawFontSize,
+        position: { x: normX, y: normY },
+        text: text,
+      });
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
     }
     input.remove();
     measurer.remove();
@@ -921,14 +947,17 @@ const initDrawingCanvas = (drop) => {
     e.preventDefault();
     e.stopPropagation();
     const data = state.canvasDataMap.get(canvas);
-    if (data) data.paths = [];
+    if (data) {
+      data.paths = [];
+      data.redoStack.length = 0;
+    }
     const dpr = window.devicePixelRatio || 1;
     redrawCanvas(canvas, dpr);
   });
   drop.appendChild(clearBtn);
 
   // Initialize data store
-  state.canvasDataMap.set(canvas, { paths: [] });
+  state.canvasDataMap.set(canvas, { paths: [], redoStack: [] });
 
   // Resize canvas to match drop zone
   const resizeCanvas = () => {
@@ -977,6 +1006,14 @@ const initDrawingCanvas = (drop) => {
     return { contentOffsetX, contentOffsetY, contentWidth, contentHeight, toCanvasX, toCanvasY };
   };
 
+  // Helper: commit a new path and clear the redo stack
+  const commitPath = (path) => {
+    const data = state.canvasDataMap.get(canvas);
+    if (!data) return;
+    data.paths.push(path);
+    data.redoStack.length = 0;
+  };
+
   // Drawing state
   let isDrawing = false;
   let currentPath = null;
@@ -990,6 +1027,9 @@ const initDrawingCanvas = (drop) => {
     if (!state.drawingMode) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Track this as the last active canvas for undo/redo
+    lastActiveDrawingCanvas = canvas;
 
     // Store coordinates relative to the visible image content (accounting for object-fit)
     const img = drop.querySelector("img");
@@ -1016,17 +1056,14 @@ const initDrawingCanvas = (drop) => {
 
     if (state.drawTool === "dot") {
       // Place a small dot immediately at the click position
-      const data = state.canvasDataMap.get(canvas);
-      if (data) {
-        data.paths.push({
-          type: "dot",
-          color: state.drawColor,
-          lineWidth: state.drawLineWidth,
-          position: { x, y },
-        });
-        const dpr = window.devicePixelRatio || 1;
-        redrawCanvas(canvas, dpr);
-      }
+      commitPath({
+        type: "dot",
+        color: state.drawColor,
+        lineWidth: state.drawLineWidth,
+        position: { x, y },
+      });
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
       return;
     }
 
@@ -1038,6 +1075,7 @@ const initDrawingCanvas = (drop) => {
         for (let i = data.paths.length - 1; i >= 0; i--) {
           if (hitTestPath(data.paths[i], x, y)) {
             data.paths.splice(i, 1);
+            data.redoStack.length = 0; // new action clears redo
             const dpr = window.devicePixelRatio || 1;
             redrawCanvas(canvas, dpr);
             break;
@@ -1347,16 +1385,13 @@ const initDrawingCanvas = (drop) => {
       const dx = x - arrowStart.x;
       const dy = y - arrowStart.y;
       if (Math.sqrt(dx * dx + dy * dy) > 0.005) {
-        const data = state.canvasDataMap.get(canvas);
-        if (data) {
-          data.paths.push({
-            type: state.drawTool,
-            color: state.drawColor,
-            lineWidth: state.drawLineWidth,
-            from: arrowStart,
-            to: { x, y },
-          });
-        }
+        commitPath({
+          type: state.drawTool,
+          color: state.drawColor,
+          lineWidth: state.drawLineWidth,
+          from: arrowStart,
+          to: { x, y },
+        });
       }
       arrowStart = null;
       // Redraw to finalize
@@ -1364,8 +1399,7 @@ const initDrawingCanvas = (drop) => {
       redrawCanvas(canvas, dpr);
     } else {
       if (currentPath && currentPath.points.length > 1) {
-        const data = state.canvasDataMap.get(canvas);
-        if (data) data.paths.push(currentPath);
+        commitPath(currentPath);
       }
       currentPath = null;
     }

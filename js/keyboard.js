@@ -587,8 +587,10 @@ document.addEventListener("keydown", (e) => {
       document.getElementById("insert-all-btn").click();
       break;
     case "z":
-      // Toggle zoom between 100% and 200%
-      applyGridZoom(state.gridZoom === 200 ? 100 : 200);
+      // Toggle zoom between 100% and 200% (skip if Cmd/Ctrl held — that's undo)
+      if (!e.metaKey && !e.ctrlKey) {
+        applyGridZoom(state.gridZoom === 200 ? 100 : 200);
+      }
       break;
     case "x": {
       // Cycle through preset colors
