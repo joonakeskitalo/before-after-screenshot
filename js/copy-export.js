@@ -3,6 +3,9 @@ import { redrawAllCanvasesForExport, restoreAllCanvases, initDrawingCanvas } fro
 import { applyGridZoom } from './zoom.js';
 import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
 
+// Guard against concurrent exports — prevents DOM corruption from double-clicks.
+let isExporting = false;
+
 // Ensure all visible images within a container are fully decoded before capture.
 // dom-to-image serializes the DOM to SVG foreignObject and renders it — if images
 // haven't finished decoding (common with large data URLs), they appear blank.
@@ -335,6 +338,9 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 };
 
 const copyWithScale = () => {
+  if (isExporting) return;
+  isExporting = true;
+
   const container = document.querySelector(".content-container");
   const savedScrollTop = container.scrollTop;
   const savedScrollLeft = container.scrollLeft;
@@ -351,6 +357,7 @@ const copyWithScale = () => {
   }
 
   Promise.resolve(doExport).finally(() => {
+    isExporting = false;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         container.scrollTop = savedScrollTop;
@@ -561,11 +568,15 @@ const cropAndScaleBlob = async (blob, maxHeight, scale) => {
 };
 
 const copySelectedRows = () => {
+  if (isExporting) return;
+
   if (state.selectedRows.size === 0 && state.selectedCells.size === 0 && state.focusedCellIndex < 0) {
     // Nothing selected or focused — fall back to copying all
     copyWithScale();
     return;
   }
+
+  isExporting = true;
 
   // Save scroll position before any DOM changes
   const container = document.querySelector(".content-container");
@@ -628,6 +639,7 @@ const copySelectedRows = () => {
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
     });
+    isExporting = false;
     // Restore scroll after cells are visible again
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -1029,6 +1041,9 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
 };
 
 const downloadWithScale = () => {
+  if (isExporting) return;
+  isExporting = true;
+
   const container = document.querySelector(".content-container");
   const savedScrollTop = container.scrollTop;
   const savedScrollLeft = container.scrollLeft;
@@ -1087,6 +1102,7 @@ const downloadWithScale = () => {
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
     });
+    isExporting = false;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         container.scrollTop = savedScrollTop;
@@ -1312,64 +1328,73 @@ document.getElementById("bulk-download-btn").addEventListener("click", bulkDownl
 // Copy the raw image(s) from selected grid cells to clipboard without any scaling/rendering.
 // If multiple images are selected they are placed side-by-side at native resolution.
 const copySelectedRawImages = async () => {
-  const allCells = state.getCells();
-  const indices = state.selectedCells.size > 0
-    ? [...state.selectedCells].sort((a, b) => a - b)
-    : state.selectedRows.size > 0
-      ? allCells.reduce((acc, cell, i) => {
-          if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
-          return acc;
-        }, [])
-      : state.focusedCellIndex >= 0
-        ? [state.focusedCellIndex]
-        : [];
+  if (isExporting) return;
+  isExporting = true;
+  try {
+    const allCells = state.getCells();
+    const indices = state.selectedCells.size > 0
+      ? [...state.selectedCells].sort((a, b) => a - b)
+      : state.selectedRows.size > 0
+        ? allCells.reduce((acc, cell, i) => {
+            if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
+            return acc;
+          }, [])
+        : state.focusedCellIndex >= 0
+          ? [state.focusedCellIndex]
+          : [];
 
-  // Collect visible images from the selected cells
-  const images = [];
-  for (const idx of indices) {
-    const cell = allCells[idx];
-    if (!cell) continue;
-    const img = cell.querySelector("img");
-    if (img && img.src && img.style.display !== "none") {
-      images.push(img);
+    // Collect visible images from the selected cells
+    const images = [];
+    for (const idx of indices) {
+      const cell = allCells[idx];
+      if (!cell) continue;
+      const img = cell.querySelector("img");
+      if (img && img.src && img.style.display !== "none") {
+        images.push(img);
+      }
     }
-  }
 
-  if (images.length === 0) return;
+    if (images.length === 0) return;
 
-  if (images.length === 1) {
-    // Single image — fetch the raw blob directly from its src
-    const response = await fetch(images[0].src);
-    const blob = await response.blob();
+    if (images.length === 1) {
+      // Single image — fetch the raw blob directly from its src
+      const response = await fetch(images[0].src);
+      const blob = await response.blob();
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      return;
+    }
+
+    // Multiple images — composite side-by-side at native resolution
+    const bitmaps = await Promise.all(images.map((img) => createImageBitmap(img)));
+    const gap = 32;
+    const totalWidth = bitmaps.reduce((sum, bm) => sum + bm.width, 0) + gap * (bitmaps.length - 1);
+    const maxHeight = Math.max(...bitmaps.map((bm) => bm.height));
+
+    const canvas = new OffscreenCanvas(totalWidth, maxHeight);
+    const ctx = canvas.getContext("2d");
+    let x = 0;
+    for (const bm of bitmaps) {
+      // Center vertically
+      const y = Math.round((maxHeight - bm.height) / 2);
+      ctx.drawImage(bm, x, y);
+      x += bm.width + gap;
+      bm.close();
+    }
+
+    const blob = await canvas.convertToBlob({ type: "image/png" });
     await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-    return;
+  } finally {
+    isExporting = false;
   }
-
-  // Multiple images — composite side-by-side at native resolution
-  const bitmaps = await Promise.all(images.map((img) => createImageBitmap(img)));
-  const gap = 32;
-  const totalWidth = bitmaps.reduce((sum, bm) => sum + bm.width, 0) + gap * (bitmaps.length - 1);
-  const maxHeight = Math.max(...bitmaps.map((bm) => bm.height));
-
-  const canvas = new OffscreenCanvas(totalWidth, maxHeight);
-  const ctx = canvas.getContext("2d");
-  let x = 0;
-  for (const bm of bitmaps) {
-    // Center vertically
-    const y = Math.round((maxHeight - bm.height) / 2);
-    ctx.drawImage(bm, x, y);
-    x += bm.width + gap;
-    bm.close();
-  }
-
-  const blob = await canvas.convertToBlob({ type: "image/png" });
-  await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 };
 
 // Copy selected image(s) rendered with all color filters, each labeled below.
 // Produces a grid: columns = filters, rows = selected images.
 const copyWithAllFilters = async () => {
-  const allCells = state.getCells();
+  if (isExporting) return;
+  isExporting = true;
+  try {
+    const allCells = state.getCells();
 
   // Determine which images to include
   const indices = state.selectedCells.size > 0
@@ -1545,6 +1570,9 @@ const copyWithAllFilters = async () => {
 
   const blob = await canvas.convertToBlob({ type: "image/png" });
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+  } finally {
+    isExporting = false;
+  }
 };
 
 // --- Preview All Filters ---
