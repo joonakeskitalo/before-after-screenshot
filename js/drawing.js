@@ -378,6 +378,42 @@ const renderPaths = (ctx, paths, toX, toY, scale) => {
   }
 };
 
+// Compute the content offset, size, and coordinate mapping functions for a canvas.
+// This is the single source of truth for the "get image rect → get fitRect → compute
+// normalized coordinates" pattern used by redrawCanvas, mousemove, and shape previews.
+// Accepts either live DOM lookups (no cached args) or pre-cached rects for use during
+// mouse event handlers where repeated getBoundingClientRect() calls are expensive.
+const getCanvasContentMetrics = (canvas, dpr, { img: cachedImg, imgRect: cachedImgRect, canvasRect: cachedCanvasRect, fitRect: cachedFitRect } = {}) => {
+  let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+
+  // If no cached values provided, look them up from the DOM
+  let img = cachedImg;
+  let fitRect = cachedFitRect;
+  let imgRect = cachedImgRect;
+  let canvasRect = cachedCanvasRect;
+
+  if (!img) {
+    const drop = canvas.parentElement;
+    img = drop ? drop.querySelector("img") : null;
+  }
+  if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+    if (!fitRect) fitRect = getObjectFitRect(img);
+    if (fitRect) {
+      if (!imgRect) imgRect = img.getBoundingClientRect();
+      if (!canvasRect) canvasRect = canvas.getBoundingClientRect();
+      contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+      contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
+      contentWidth = fitRect.width;
+      contentHeight = fitRect.height;
+    }
+  }
+
+  const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+  const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+
+  return { contentOffsetX, contentOffsetY, contentWidth, contentHeight, toCanvasX, toCanvasY };
+};
+
 // Redraw all stored paths on a canvas at current size.
 // Coordinates are relative to the visible image content (0-1), so we map them
 // to canvas space accounting for object-fit positioning.
@@ -387,32 +423,11 @@ const redrawCanvas = (canvas, dpr) => {
   const data = state.canvasDataMap.get(canvas);
   if (!data) return;
 
-  const drop = canvas.parentElement;
-  const img = drop ? drop.querySelector("img") : null;
-
-  // Calculate where the visible image content sits within the canvas
-  let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-  if (drop && img && img.src && img.style.display !== "none" && img.naturalWidth) {
-    const fitRect = getObjectFitRect(img);
-    if (fitRect) {
-      const canvasRect = canvas.getBoundingClientRect();
-      const imgRect = img.getBoundingClientRect();
-      const imgOffsetX = imgRect.left - canvasRect.left;
-      const imgOffsetY = imgRect.top - canvasRect.top;
-      contentOffsetX = imgOffsetX + fitRect.x;
-      contentOffsetY = imgOffsetY + fitRect.y;
-      contentWidth = fitRect.width;
-      contentHeight = fitRect.height;
-    }
-  }
-
   // Scale line widths proportionally to zoom so drawings maintain their
   // relative size to the image (same proportion as at 100% zoom)
   const zoomScale = state.gridZoom / 100;
 
-  const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-  const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
-
+  const { toCanvasX, toCanvasY } = getCanvasContentMetrics(canvas, dpr);
   renderPaths(ctx, data.paths, toCanvasX, toCanvasY, zoomScale * dpr);
 };
 
@@ -706,18 +721,14 @@ const initDrawingCanvas = (drop) => {
     ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
   };
 
-  // Helper: compute content offset/size for coordinate mapping
+  // Helper: compute content offset/size for coordinate mapping (delegates to shared helper)
   const getContentMetrics = (dpr) => {
-    let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-    if (cachedImg && cachedFitRect) {
-      contentOffsetX = (cachedImgRect.left - cachedCanvasRect.left) + cachedFitRect.x;
-      contentOffsetY = (cachedImgRect.top - cachedCanvasRect.top) + cachedFitRect.y;
-      contentWidth = cachedFitRect.width;
-      contentHeight = cachedFitRect.height;
-    }
-    const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-    const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
-    return { contentOffsetX, contentOffsetY, contentWidth, contentHeight, toCanvasX, toCanvasY };
+    return getCanvasContentMetrics(canvas, dpr, {
+      img: cachedImg,
+      imgRect: cachedImgRect,
+      canvasRect: cachedCanvasRect,
+      fitRect: cachedFitRect,
+    });
   };
 
   // Helper: commit a new path and clear the redo stack
@@ -1034,16 +1045,7 @@ const initDrawingCanvas = (drop) => {
         const from = points[points.length - 2];
         const to = points[points.length - 1];
 
-        // Map image-content-relative coords to canvas pixel coords for live drawing
-        let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-        if (cachedImg && cachedFitRect) {
-          contentOffsetX = (cachedImgRect.left - cachedCanvasRect.left) + cachedFitRect.x;
-          contentOffsetY = (cachedImgRect.top - cachedCanvasRect.top) + cachedFitRect.y;
-          contentWidth = cachedFitRect.width;
-          contentHeight = cachedFitRect.height;
-        }
-        const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-        const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+        const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
         if (currentPath.type === "eraser") {
           ctx.save();
@@ -1288,6 +1290,7 @@ export {
   isColorDark,
   updatePresetColorSelection,
   getObjectFitRect,
+  getCanvasContentMetrics,
   renderPaths,
   redrawCanvas,
   drawArrow,
