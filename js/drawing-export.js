@@ -13,6 +13,16 @@ export const redrawAllCanvasesForExport = async (scale) => {
     if (obs) obs.disconnect();
   });
 
+  // Ensure all images are fully decoded before reading naturalWidth/naturalHeight.
+  // getObjectFitRect returns null for images that haven't loaded yet, which would
+  // cause their drawing annotations to be silently skipped during export.
+  const allImages = document.querySelectorAll(".drop img");
+  await Promise.all(
+    Array.from(allImages)
+      .filter((img) => img.src && img.style.display !== "none")
+      .map((img) => img.decode().catch(() => {}))
+  );
+
   const canvases = document.querySelectorAll(".drawing-canvas");
   for (const canvas of canvases) {
     const drop = canvas.parentElement;
