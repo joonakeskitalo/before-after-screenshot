@@ -494,7 +494,7 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
 };
 
 // Bulk download all images from the staging area and grid cells
-const bulkDownloadImages = () => {
+const bulkDownloadImages = async () => {
   const images = [];
 
   const isImageSrc = (src) => src && (src.startsWith("data:") || src.startsWith("blob:"));
@@ -538,22 +538,25 @@ const bulkDownloadImages = () => {
 
   if (images.length === 0) return;
 
-  images.forEach((image, index) => {
+  for (let index = 0; index < images.length; index++) {
+    const image = images[index];
     let filename = image.name || `image-${index + 1}`;
     const ext = image.src.startsWith("data:image/png") ? ".png" :
                 image.src.startsWith("data:image/jpeg") ? ".jpg" :
                 image.src.startsWith("data:image/webp") ? ".webp" : ".png";
     filename = filename.replace(/\.[^.]+$/, "") + ext;
 
-    setTimeout(() => {
-      const a = document.createElement("a");
-      a.href = image.src;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }, index * 100);
-  });
+    // Convert data:/blob: source to a fresh blob so triggerDownload can
+    // create and immediately revoke the object URL, preventing leaks.
+    const response = await fetch(image.src);
+    const blob = await response.blob();
+    triggerDownload(blob, filename);
+
+    // Stagger downloads to avoid browser throttling
+    if (index < images.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
 };
 
 // Wire up copy buttons
