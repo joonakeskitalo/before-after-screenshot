@@ -29,8 +29,8 @@ const read = (rel) => readFileSync(resolve(root, rel), "utf-8");
 // Check if esbuild is available, install temporarily if not
 let esbuildBin;
 try {
-  execSync("npx --yes esbuild --version", { cwd: root, stdio: "pipe" });
-  esbuildBin = "npx --yes esbuild";
+  execSync("npx --yes esbuild@0.21.x --version", { cwd: root, stdio: "pipe" });
+  esbuildBin = "npx --yes esbuild@0.21.x";
 } catch {
   console.error(
     "esbuild is required. Install it with: npm install --save-dev esbuild"
