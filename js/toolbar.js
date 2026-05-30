@@ -240,7 +240,10 @@ document.addEventListener("paste", function (event) {
         if (blob) blobs.push(blob);
       }
     }
+    // No image files — let the browser handle the paste normally (e.g. text into a textarea)
     if (blobs.length === 0) return;
+
+    event.preventDefault();
 
     // Paste images starting at the focused cell, continuing to the right.
     // Skip cells that already have an image. If the row runs out, add a new row.
