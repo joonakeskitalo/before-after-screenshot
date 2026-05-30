@@ -841,6 +841,21 @@ const initDrawingCanvas = (drop) => {
             moveStartX = x;
             moveStartY = y;
             isDrawing = true;
+
+            // Render all paths EXCEPT the moving one onto the main canvas (static background).
+            // The moving path will be drawn on the preview canvas during mousemove.
+            const dpr = window.devicePixelRatio || 1;
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
+            const zoomScale = state.gridZoom / 100;
+            const staticPaths = data.paths.filter((p) => p !== movingPath);
+            renderPaths(ctx, staticPaths, toCanvasX, toCanvasY, zoomScale * dpr);
+
+            // Draw the moving path on the preview canvas at its current position
+            clearPreview();
+            const pCtx = previewCanvas.getContext("2d");
+            renderPaths(pCtx, [movingPath], toCanvasX, toCanvasY, zoomScale * dpr);
             break;
           }
         }
@@ -880,8 +895,14 @@ const initDrawingCanvas = (drop) => {
       offsetPath(movingPath, dx, dy);
       moveStartX = x;
       moveStartY = y;
+
+      // Only redraw the moving path on the lightweight preview canvas
       const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
+      clearPreview();
+      const ctx = previewCanvas.getContext("2d");
+      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
+      const zoomScale = state.gridZoom / 100;
+      renderPaths(ctx, [movingPath], toCanvasX, toCanvasY, zoomScale * dpr);
       return;
     }
     if (e.shiftKey) {
@@ -1054,10 +1075,14 @@ const initDrawingCanvas = (drop) => {
     clearPreview();
 
     if (state.drawTool === "move" && movingPath) {
-      // Move is complete — just reset state
+      // Move is complete — do a final full redraw to composite the moved path
+      // back onto the main canvas with all other paths.
       movingPath = null;
       moveStartX = 0;
       moveStartY = 0;
+      clearPreview();
+      const dpr = window.devicePixelRatio || 1;
+      redrawCanvas(canvas, dpr);
       clearCachedRects();
       return;
     }
