@@ -164,50 +164,49 @@ const copyAsImageWithOutputScale = async (outputScale) => {
 
 const copySelectedRows = () => {
   if (isExporting) return;
-
-  if (state.selectedRows.size === 0 && state.selectedCells.size === 0 && state.focusedCellIndex < 0) {
-    copyWithScale();
-    return;
-  }
-
   isExporting = true;
 
   const container = document.querySelector(".content-container");
   const savedScrollTop = container.scrollTop;
   const savedScrollLeft = container.scrollLeft;
 
-  const allCells = state.getCells();
+  const hasSelection = state.selectedRows.size > 0 || state.selectedCells.size > 0 || state.focusedCellIndex >= 0;
+
+  const allCells = hasSelection ? state.getCells() : [];
   const hiddenCells = [];
-  const selectedColCount = state.gridCols;
 
-  if (state.selectedRows.size > 0) {
-    allCells.forEach((cell) => {
-      const row = parseInt(cell.dataset.row);
-      if (!state.selectedRows.has(row)) {
-        cell.style.display = "none";
-        hiddenCells.push(cell);
-      }
-    });
-  } else if (state.selectedCells.size > 0) {
-    const cellsArray = [...allCells];
-    cellsArray.forEach((cell, index) => {
-      if (!state.selectedCells.has(index)) {
-        cell.style.display = "none";
-        hiddenCells.push(cell);
-      }
-    });
-  } else {
-    const cellsArray = [...allCells];
-    cellsArray.forEach((cell, index) => {
-      if (index !== state.focusedCellIndex) {
-        cell.style.display = "none";
-        hiddenCells.push(cell);
-      }
-    });
+  if (hasSelection) {
+    const selectedColCount = state.gridCols;
+
+    if (state.selectedRows.size > 0) {
+      allCells.forEach((cell) => {
+        const row = parseInt(cell.dataset.row);
+        if (!state.selectedRows.has(row)) {
+          cell.style.display = "none";
+          hiddenCells.push(cell);
+        }
+      });
+    } else if (state.selectedCells.size > 0) {
+      const cellsArray = [...allCells];
+      cellsArray.forEach((cell, index) => {
+        if (!state.selectedCells.has(index)) {
+          cell.style.display = "none";
+          hiddenCells.push(cell);
+        }
+      });
+    } else {
+      const cellsArray = [...allCells];
+      cellsArray.forEach((cell, index) => {
+        if (index !== state.focusedCellIndex) {
+          cell.style.display = "none";
+          hiddenCells.push(cell);
+        }
+      });
+    }
+
+    state.gridEl.style.gridTemplateColumns = `repeat(${selectedColCount}, auto)`;
+    state.gridEl.style.gridTemplateRows = "auto";
   }
-
-  state.gridEl.style.gridTemplateColumns = `repeat(${selectedColCount}, auto)`;
-  state.gridEl.style.gridTemplateRows = "auto";
 
   const select = document.getElementById("copy-scale");
   const value = select.value;
