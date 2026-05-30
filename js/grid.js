@@ -1136,6 +1136,25 @@ const insertColumnAt = (insertIndex) => {
   state.gridCols++;
   document.getElementById("grid-cols").value = state.gridCols;
 
+  // Update selectedCells — shift indices to account for the new column
+  const newSelected = new Set();
+  state.selectedCells.forEach((idx) => {
+    const row = Math.floor(idx / oldCols);
+    const col = idx % oldCols;
+    const newCol = col >= insertIndex ? col + 1 : col;
+    newSelected.add(row * state.gridCols + newCol);
+  });
+  state.selectedCells.clear();
+  newSelected.forEach((idx) => state.selectedCells.add(idx));
+
+  // Update focusedCellIndex
+  if (state.focusedCellIndex >= 0) {
+    const row = Math.floor(state.focusedCellIndex / oldCols);
+    const col = state.focusedCellIndex % oldCols;
+    const newCol = col >= insertIndex ? col + 1 : col;
+    state.focusedCellIndex = row * state.gridCols + newCol;
+  }
+
   // Build new data array with shifted columns
   const newData = [];
   for (let r = 0; r < rows; r++) {
@@ -1171,6 +1190,18 @@ const insertColumnAt = (insertIndex) => {
   }
 
   buildRowControls();
+
+  // Re-apply selection CSS classes to the rebuilt DOM
+  const rebuiltCells = state.getCells();
+  state.selectedCells.forEach((idx) => {
+    if (idx >= 0 && idx < rebuiltCells.length) {
+      rebuiltCells[idx].classList.add("keyboard-selected");
+    }
+  });
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < rebuiltCells.length) {
+    rebuiltCells[state.focusedCellIndex].classList.add("keyboard-focused");
+  }
+  updateCopySelectedBtn();
 };
 
 const deleteRowAt = (rowIndex) => {
@@ -1233,6 +1264,30 @@ const deleteRowAt = (rowIndex) => {
   });
   state.selectedRows.clear();
   newSelected.forEach((r) => state.selectedRows.add(r));
+
+  // Update state.selectedCells — remove cells in the deleted row and shift indices
+  const newSelectedCells = new Set();
+  state.selectedCells.forEach((idx) => {
+    const row = Math.floor(idx / cols);
+    const col = idx % cols;
+    if (row === rowIndex) return; // remove selection for deleted row
+    const newRow = row > rowIndex ? row - 1 : row;
+    newSelectedCells.add(newRow * cols + col);
+  });
+  state.selectedCells.clear();
+  newSelectedCells.forEach((idx) => state.selectedCells.add(idx));
+
+  // Update focusedCellIndex
+  if (state.focusedCellIndex >= 0) {
+    const focusedRow = Math.floor(state.focusedCellIndex / cols);
+    const focusedCol = state.focusedCellIndex % cols;
+    if (focusedRow === rowIndex) {
+      state.focusedCellIndex = -1;
+    } else if (focusedRow > rowIndex) {
+      state.focusedCellIndex = (focusedRow - 1) * cols + focusedCol;
+    }
+  }
+
   updateCopySelectedBtn();
 
   state.gridRows--;
@@ -1249,6 +1304,19 @@ const deleteRowAt = (rowIndex) => {
     for (let c = 0; c < cols; c++) {
       updatedCells[r * cols + c].dataset.row = String(r);
     }
+  }
+
+  // Re-apply selection CSS classes after index shift
+  updatedCells.forEach((cell) => {
+    cell.classList.remove("keyboard-selected", "keyboard-focused");
+  });
+  state.selectedCells.forEach((idx) => {
+    if (idx >= 0 && idx < updatedCells.length) {
+      updatedCells[idx].classList.add("keyboard-selected");
+    }
+  });
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < updatedCells.length) {
+    updatedCells[state.focusedCellIndex].classList.add("keyboard-focused");
   }
 
   buildRowControls();
@@ -1522,6 +1590,31 @@ const deleteColumnAt = (colIndex) => {
     dataByPos.set(`${r},${newCol}`, getCellData(cell));
   }
 
+  // Update selectedCells — remove cells in the deleted column and shift indices
+  const newCols = oldCols - 1;
+  const newSelected = new Set();
+  state.selectedCells.forEach((idx) => {
+    const row = Math.floor(idx / oldCols);
+    const col = idx % oldCols;
+    if (col === colIndex) return; // remove selection for deleted column
+    const newCol = col > colIndex ? col - 1 : col;
+    newSelected.add(row * newCols + newCol);
+  });
+  state.selectedCells.clear();
+  newSelected.forEach((idx) => state.selectedCells.add(idx));
+
+  // Update focusedCellIndex
+  if (state.focusedCellIndex >= 0) {
+    const row = Math.floor(state.focusedCellIndex / oldCols);
+    const col = state.focusedCellIndex % oldCols;
+    if (col === colIndex) {
+      state.focusedCellIndex = -1;
+    } else {
+      const newCol = col > colIndex ? col - 1 : col;
+      state.focusedCellIndex = row * newCols + newCol;
+    }
+  }
+
   state.gridCols--;
   document.getElementById("grid-cols").value = state.gridCols;
 
@@ -1544,6 +1637,18 @@ const deleteColumnAt = (colIndex) => {
   }
 
   buildRowControls();
+
+  // Re-apply selection CSS classes to the rebuilt DOM
+  const rebuiltCells = state.getCells();
+  state.selectedCells.forEach((idx) => {
+    if (idx >= 0 && idx < rebuiltCells.length) {
+      rebuiltCells[idx].classList.add("keyboard-selected");
+    }
+  });
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < rebuiltCells.length) {
+    rebuiltCells[state.focusedCellIndex].classList.add("keyboard-focused");
+  }
+  updateCopySelectedBtn();
 };
 
 export {
