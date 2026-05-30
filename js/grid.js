@@ -777,6 +777,7 @@ const buildGrid = () => {
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
   const existingDataMap = toDataMap(existingData);
+  const canvasesToRedraw = [];
 
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
@@ -802,19 +803,26 @@ const buildGrid = () => {
           textarea.value = existing.text;
         }
         updateFilenameLabel(cell);
-        // Restore drawing paths
+        // Restore drawing paths (defer redraw until after grid is fully built)
         if (existing.drawingPaths && existing.drawingPaths.length > 0) {
           const canvas = cell.querySelector(".drawing-canvas");
           if (canvas) {
             const data = state.canvasDataMap.get(canvas);
             if (data) {
               data.paths = existing.drawingPaths;
-              const dpr = window.devicePixelRatio || 1;
-              redrawCanvas(canvas, dpr);
+              canvasesToRedraw.push(canvas);
             }
           }
         }
       }
+    }
+  }
+
+  // Batch redraw all canvases once after the grid is fully rebuilt
+  if (canvasesToRedraw.length > 0) {
+    const dpr = window.devicePixelRatio || 1;
+    for (const canvas of canvasesToRedraw) {
+      redrawCanvas(canvas, dpr);
     }
   }
 
