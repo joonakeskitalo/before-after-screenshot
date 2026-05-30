@@ -25,6 +25,7 @@ const waitForImagesDecode = async (container) => {
 const hideForExport = () => {
   const container = document.querySelector(".content-container");
   const rect = container.getBoundingClientRect();
+
   const overlay = document.createElement("div");
   overlay.style.cssText = `
     position: fixed;
@@ -339,15 +340,29 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
 };
 
 const copyWithScale = () => {
+  const container = document.querySelector(".content-container");
+  const savedScrollTop = container.scrollTop;
+  const savedScrollLeft = container.scrollLeft;
+
   const select = document.getElementById("copy-scale");
   const value = select.value;
+  let doExport;
   if (value.startsWith("output-")) {
     const outputScale = parseFloat(value.replace("output-", ""));
-    copyAsImageWithOutputScale(outputScale);
+    doExport = copyAsImageWithOutputScale(outputScale);
   } else {
     const scale = parseFloat(value);
-    copyAsImage(true, scale);
+    doExport = copyAsImage(true, scale);
   }
+
+  Promise.resolve(doExport).finally(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        container.scrollTop = savedScrollTop;
+        container.scrollLeft = savedScrollLeft;
+      });
+    });
+  });
 };
 
 // Export at full native resolution, then scale the entire output image down
@@ -557,6 +572,11 @@ const copySelectedRows = () => {
     return;
   }
 
+  // Save scroll position before any DOM changes
+  const container = document.querySelector(".content-container");
+  const savedScrollTop = container.scrollTop;
+  const savedScrollLeft = container.scrollLeft;
+
   const allCells = state.gridEl.querySelectorAll(".grid-cell");
   const hiddenCells = [];
 
@@ -603,6 +623,13 @@ const copySelectedRows = () => {
   Promise.resolve(doExport).finally(() => {
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
+    });
+    // Restore scroll after cells are visible again
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        container.scrollTop = savedScrollTop;
+        container.scrollLeft = savedScrollLeft;
+      });
     });
   });
 };
@@ -996,6 +1023,10 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
 };
 
 const downloadWithScale = () => {
+  const container = document.querySelector(".content-container");
+  const savedScrollTop = container.scrollTop;
+  const savedScrollLeft = container.scrollLeft;
+
   const select = document.getElementById("copy-scale");
   const value = select.value;
 
@@ -1040,6 +1071,12 @@ const downloadWithScale = () => {
   Promise.resolve(doExport).finally(() => {
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
+    });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        container.scrollTop = savedScrollTop;
+        container.scrollLeft = savedScrollLeft;
+      });
     });
   });
 };
