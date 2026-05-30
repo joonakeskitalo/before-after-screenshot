@@ -425,20 +425,6 @@ const attachDragTo = (img) => {
   });
 };
 
-const clearOrCopyImage = async (event, img, drop, span) => {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-
-  if (event.metaKey) {
-    img.src = "";
-    img.style.display = "none";
-    drop.style.border = "var(--border)";
-    span.style.display = "block";
-    const cell = drop.closest(".grid-cell");
-    if (cell) state.updateFilenameLabel(cell);
-  }
-};
-
 // --- Bulk download ---
 
 const bulkDownloadImages = async () => {
@@ -733,5 +719,4 @@ export {
   closeFilterPreview,
   updateCopySelectedBtn,
   attachDragTo,
-  clearOrCopyImage,
 };
