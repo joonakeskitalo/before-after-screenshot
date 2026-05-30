@@ -1022,6 +1022,10 @@ const insertRowAt = (insertIndex) => {
   const cols = state.gridCols;
   const oldRows = state.gridRows;
 
+  // Clamp insertIndex to valid range to prevent accessing non-existent cells
+  if (insertIndex < 0) insertIndex = 0;
+  if (insertIndex > oldRows) insertIndex = oldRows;
+
   // Collect data for rows that need to shift (from insertIndex onward) BEFORE modifying DOM
   const shiftData = [];
   const cells = state.getCells();
