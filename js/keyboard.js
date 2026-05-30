@@ -8,7 +8,7 @@ import {
   textModeBtn, drawColorInput,
 } from './drawing.js';
 import { toggleStagingArea } from './toolbar.js';
-import { updateCopySelectedBtn, copySelectedRows, copySelectedRawImages, copyWithScale } from './copy-export.js';
+import { updateCopySelectedBtn, copySelectedRows, copySelectedRawImages, copyWithScale, previewAllFilters, copyWithAllFilters } from './copy-export.js';
 import { cycleColorFilter } from './color-filter.js';
 
 // --- Keyboard Navigation for Grid Cells ---
@@ -562,14 +562,18 @@ document.addEventListener("keydown", (e) => {
       toggleStagingArea();
       break;
     case "f":
-      // Toggle filename labels
-      toggleFilenames();
+      // Preview all color filters
+      previewAllFilters();
       break;
     case "v":
       // Cycle color vision filter (skip if Cmd/Ctrl held — that's paste)
       if (!e.metaKey && !e.ctrlKey) {
         cycleColorFilter();
       }
+      break;
+    case "C":
+      // Copy with all color filters applied
+      copyWithAllFilters();
       break;
     case "A":
       // Shift+A: Insert all images from staging area
