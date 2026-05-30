@@ -1630,6 +1630,7 @@ const applyFilterToCanvas = (sourceCanvas, filter) => {
 let filterPreviewOverlay = null;
 let filterPreviewGrid = null;
 let filterPreviewBuildFn = null;
+let filterPreviewEscHandler = null;
 
 const closeFilterPreview = () => {
   if (filterPreviewOverlay) {
@@ -1638,6 +1639,10 @@ const closeFilterPreview = () => {
     filterPreviewGrid = null;
     filterPreviewBuildFn = null;
     state.onFocusedCellChange = null;
+  }
+  if (filterPreviewEscHandler) {
+    document.removeEventListener("keydown", filterPreviewEscHandler);
+    filterPreviewEscHandler = null;
   }
 };
 
@@ -2113,9 +2118,9 @@ const previewAllFilters = () => {
   const handleEsc = (e) => {
     if (e.key === "Escape") {
       closeFilterPreview();
-      document.removeEventListener("keydown", handleEsc);
     }
   };
+  filterPreviewEscHandler = handleEsc;
   document.addEventListener("keydown", handleEsc);
 
   document.body.appendChild(overlay);
