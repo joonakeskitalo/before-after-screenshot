@@ -52,3 +52,14 @@ export const triggerDownload = (blob, filename) => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+// Convert an <img> element to a PNG Blob via canvas.
+// This avoids fetch() which fails on file: protocol for blob: URLs.
+export const imgToBlob = async (img) => {
+  const bitmap = await createImageBitmap(img);
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return canvas.convertToBlob({ type: "image/png" });
+};

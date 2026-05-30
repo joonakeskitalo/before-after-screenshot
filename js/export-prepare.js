@@ -22,6 +22,58 @@ export const waitForImagesDecode = async (container) => {
   await Promise.all(promises);
 };
 
+// Convert all blob: image sources within a container to data: URLs.
+// This is required for file: protocol where the SVG foreignObject approach
+// used by modern-screenshot triggers cross-origin errors on blob: URLs
+// (browsers treat each file: URL as a unique opaque origin).
+// Returns a restore function that reverts images back to their blob: URLs.
+export const inlineBlobImages = async (container) => {
+  const images = container.querySelectorAll("img");
+  const originals = [];
+  const promises = [];
+
+  for (const img of images) {
+    if (img.src && img.src.startsWith("blob:") && img.style.display !== "none") {
+      const originalSrc = img.src;
+      // Use canvas to convert to data URL instead of fetch(), because
+      // fetch() on blob: URLs fails on file: protocol in WebKit/Safari.
+      promises.push(
+        (async () => {
+          try {
+            await img.decode();
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL("image/png");
+            return { img, originalSrc, dataUrl };
+          } catch {
+            return null;
+          }
+        })()
+      );
+    }
+  }
+
+  const results = await Promise.all(promises);
+  for (const result of results) {
+    if (result) {
+      originals.push({ img: result.img, src: result.originalSrc });
+      result.img.src = result.dataUrl;
+    }
+  }
+
+  // Wait for re-decode after src change
+  await Promise.all(originals.map(({ img }) => img.decode().catch(() => {})));
+
+  return () => {
+    for (const { img, src } of originals) {
+      img.src = src;
+    }
+  };
+};
+
 // Hide the cards container during export to prevent the UI from flashing
 // while styles are temporarily modified for capture.
 export const hideForExport = () => {
@@ -264,6 +316,7 @@ export const finalizeLayoutForCapture = (effectiveCols, padding) => {
 // Capture the cards element to a blob, cropped to the given height.
 export const captureToBlob = async (captureHeight, exportScale) => {
   await redrawAllCanvasesForExport(exportScale);
+  const restoreBlobs = await inlineBlobImages(state.cardsEl);
   await waitForImagesDecode(state.cardsEl);
 
   let blob = await domToBlob(state.cardsEl, {
@@ -271,6 +324,7 @@ export const captureToBlob = async (captureHeight, exportScale) => {
     filter: exportNodeFilter,
   });
 
+  restoreBlobs();
   return cropBlobToHeight(blob, captureHeight);
 };
 

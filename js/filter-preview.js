@@ -4,6 +4,7 @@ import { renderPaths } from './drawing-render.js';
 import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
 import { showToast } from './toast.js';
 import { COLOR_MATRICES, applyFilterToImageData, generateWorkerSource } from './filter-kernels.js';
+import { imgToBlob } from './export-utils.js';
 
 export { COLOR_MATRICES };
 
@@ -112,8 +113,7 @@ const bakePreviewCellToBlob = async (cell) => {
 
   const data = canvas ? state.canvasDataMap.get(canvas) : null;
   if (!data || data.paths.length === 0) {
-    const resp = await fetch(img.src);
-    return resp.blob();
+    return imgToBlob(img);
   }
 
   // Has drawings — composite onto a temp canvas and convert to blob

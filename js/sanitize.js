@@ -48,6 +48,13 @@ export const isAllowedImageSrc = (src) => {
     // Only accept blobs created by the current origin to prevent external blob references.
     const blobContent = src.slice(5); // strip "blob:"
     const origin = globalThis.location?.origin;
+    const protocol = globalThis.location?.protocol;
+    // For file: protocol, the origin is opaque ("null") and blob URL formats vary
+    // by browser (e.g. "blob:null/<uuid>" or "blob:<uuid>"). Just validate the UUID.
+    if (protocol === "file:" || origin === "null") {
+      const uuid = blobContent.replace(/^(null|file:\/\/\/?)?\/?/, "");
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    }
     if (!origin || !blobContent.startsWith(origin + "/")) return false;
     const uuid = blobContent.slice(origin.length + 1);
     // RFC 4122 UUID format (hex with hyphens, 36 chars)

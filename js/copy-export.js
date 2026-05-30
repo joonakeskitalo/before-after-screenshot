@@ -11,9 +11,10 @@ import {
   waitForImagesDecode, prepareForExport, restoreAfterExport,
   finalizeLayoutForCapture, captureToBlob, exportNodeFilter,
   prepareOutputScaleExport, restoreOutputScaleExport,
+  inlineBlobImages,
 } from './export-prepare.js';
 import {
-  scaleBlob, cropAndScaleBlob, generateFilename, triggerDownload,
+  scaleBlob, cropAndScaleBlob, generateFilename, triggerDownload, imgToBlob,
 } from './export-utils.js';
 import { applyFilterToImageData } from './filter-kernels.js';
 import { closeFilterPreview, previewAllFilters } from './filter-preview.js';
@@ -117,6 +118,7 @@ const exportToBlobWithOutputScale = async (outputScale) => {
     const { cappedMultiplier, filenameLabels, captureHeight } = prepareOutputScaleExport(ctx, outputScale);
 
     await redrawAllCanvasesForExport(cappedMultiplier);
+    const restoreBlobs = await inlineBlobImages(state.cardsEl);
     await waitForImagesDecode(state.cardsEl);
 
     let blob = await domToBlob(state.cardsEl, {
@@ -124,6 +126,7 @@ const exportToBlobWithOutputScale = async (outputScale) => {
       filter: exportNodeFilter,
     });
 
+    restoreBlobs();
     const scaledBlob = await cropAndScaleBlob(blob, captureHeight, outputScale);
 
     restoreOutputScaleExport(filenameLabels);
@@ -374,7 +377,7 @@ const bulkDownloadImages = async () => {
   if (bottomToolbarInner) {
     bottomToolbarInner.querySelectorAll(".bottom-toolbar-item img").forEach((img) => {
       if (isImageSrc(img.src)) {
-        images.push({ src: img.src, name: img.alt || "" });
+        images.push({ img, name: img.alt || "" });
       }
     });
   }
@@ -387,7 +390,7 @@ const bulkDownloadImages = async () => {
     if (!cell) continue;
     const img = cell.querySelector("img");
     if (img && isImageSrc(img.src) && img.style.display !== "none") {
-      images.push({ src: img.src, name: img.alt || "" });
+      images.push({ img, name: img.alt || "" });
     }
   }
 
@@ -396,13 +399,12 @@ const bulkDownloadImages = async () => {
   for (let index = 0; index < images.length; index++) {
     const image = images[index];
     let filename = image.name || `image-${index + 1}`;
-    const ext = image.src.startsWith("data:image/png") ? ".png" :
-                image.src.startsWith("data:image/jpeg") ? ".jpg" :
-                image.src.startsWith("data:image/webp") ? ".webp" : ".png";
+    const ext = image.img.src.startsWith("data:image/png") ? ".png" :
+                image.img.src.startsWith("data:image/jpeg") ? ".jpg" :
+                image.img.src.startsWith("data:image/webp") ? ".webp" : ".png";
     filename = filename.replace(/\.[^.]+$/, "") + ext;
 
-    const response = await fetch(image.src);
-    const blob = await response.blob();
+    const blob = await imgToBlob(image.img);
     triggerDownload(blob, filename);
 
     if (index < images.length - 1) {
@@ -433,8 +435,7 @@ const copySelectedRawImages = async () => {
     if (images.length === 0) return;
 
     if (images.length === 1) {
-      const response = await fetch(images[0].src);
-      const blob = await response.blob();
+      const blob = await imgToBlob(images[0]);
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       showToast("Copied to clipboard");
       return;
