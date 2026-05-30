@@ -778,6 +778,11 @@ const buildGrid = () => {
       visObserver.disconnect();
       state.canvasVisibilityObservers.delete(canvas);
     }
+    const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
+    if (mouseUpHandler) {
+      document.removeEventListener("mouseup", mouseUpHandler);
+      state.canvasMouseUpHandlers.delete(canvas);
+    }
   });
 
   // Save existing cell data
@@ -1208,6 +1213,11 @@ const deleteRowAt = (rowIndex) => {
       if (visObserver) {
         visObserver.disconnect();
         state.canvasVisibilityObservers.delete(canvas);
+      }
+      const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
+      if (mouseUpHandler) {
+        document.removeEventListener("mouseup", mouseUpHandler);
+        state.canvasMouseUpHandlers.delete(canvas);
       }
       state.canvasDataMap.delete(canvas);
     }

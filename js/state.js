@@ -38,6 +38,7 @@ const state = {
   canvasDataMap: new Map(),
   canvasObservers: new WeakMap(),
   canvasVisibilityObservers: new WeakMap(),
+  canvasMouseUpHandlers: new WeakMap(),
 
   // Row drag
   rowDragState: null,

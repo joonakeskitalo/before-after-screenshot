@@ -340,10 +340,12 @@ export const initDrawingCanvas = (drop) => {
 
   canvas.addEventListener("mouseup", endDraw);
 
-  document.addEventListener("mouseup", (e) => {
+  const docMouseUp = (e) => {
     if (!isDrawing) return;
     endDraw(e);
-  });
+  };
+  document.addEventListener("mouseup", docMouseUp);
+  state.canvasMouseUpHandlers.set(canvas, docMouseUp);
 
   return canvas;
 };
