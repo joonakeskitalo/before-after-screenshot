@@ -15,7 +15,8 @@ import {
 import {
   scaleBlob, cropAndScaleBlob, generateFilename, triggerDownload,
 } from './export-utils.js';
-import { COLOR_MATRICES, applyFilterToCanvas, closeFilterPreview, previewAllFilters } from './filter-preview.js';
+import { COLOR_MATRICES, applyFilterToImageData } from './filter-kernels.js';
+import { applyFilterToCanvas, closeFilterPreview, previewAllFilters } from './filter-preview.js';
 import { showToast } from './toast.js';
 
 // Guard against concurrent exports
@@ -635,34 +636,6 @@ const copyWithAllFilters = async () => {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, totalW, totalH);
 
-    const applyMatrix = (imageData, matrix) => {
-      const d = imageData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-        d[i]     = Math.min(255, Math.max(0, matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4] * 255));
-        d[i + 1] = Math.min(255, Math.max(0, matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * a + matrix[9] * 255));
-        d[i + 2] = Math.min(255, Math.max(0, matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * a + matrix[14] * 255));
-      }
-    };
-
-    const applyGrayscale = (imageData) => {
-      const d = imageData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-        d[i] = d[i + 1] = d[i + 2] = gray;
-      }
-    };
-
-    const applyContrast = (imageData, factor) => {
-      const d = imageData.data;
-      const intercept = 128 * (1 - factor);
-      for (let i = 0; i < d.length; i += 4) {
-        d[i]     = Math.min(255, Math.max(0, d[i] * factor + intercept));
-        d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
-        d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
-      }
-    };
-
     for (let row = 0; row < rows; row++) {
       const bm = bitmaps[row];
 
@@ -685,15 +658,7 @@ const copyWithAllFilters = async () => {
           tmpCtx.drawImage(bm, 0, 0, drawW, drawH);
           const imageData = tmpCtx.getImageData(0, 0, drawW, drawH);
 
-          if (filter === "grayscale") {
-            applyGrayscale(imageData);
-          } else if (filter === "low-contrast") {
-            applyContrast(imageData, 0.85);
-          } else if (filter === "high-contrast") {
-            applyContrast(imageData, 1.5);
-          } else if (COLOR_MATRICES[filter]) {
-            applyMatrix(imageData, COLOR_MATRICES[filter]);
-          }
+          applyFilterToImageData(imageData, filter);
 
           tmpCtx.putImageData(imageData, 0, 0);
           ctx.drawImage(tmpCanvas, imgX, imgY);
