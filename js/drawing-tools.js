@@ -1,5 +1,6 @@
 import state from './state.js';
 import { redrawCanvas } from './drawing-render.js';
+import { TOOL_NAMES } from './constants.js';
 
 // --- Drawing Tool State & Toolbar Wiring ---
 
@@ -7,10 +8,10 @@ import { redrawCanvas } from './drawing-render.js';
 export const updateDrawingCursor = () => {
   if (!state.drawingMode) return;
   // Don't override cursor for text or eraser tools
-  if (state.drawTool === "text" || state.drawTool === "eraser" || state.drawTool === "object-eraser" || state.drawTool === "move") return;
+  if (state.drawTool === TOOL_NAMES.TEXT || state.drawTool === TOOL_NAMES.ERASER || state.drawTool === TOOL_NAMES.OBJECT_ERASER || state.drawTool === TOOL_NAMES.MOVE) return;
 
   const zoomScale = state.gridZoom / 100;
-  const radius = state.drawTool === "dot"
+  const radius = state.drawTool === TOOL_NAMES.DOT
     ? (state.drawLineWidth + 4) * zoomScale
     : (state.drawLineWidth / 2) * zoomScale;
   const size = Math.max(Math.ceil(radius * 2 + 2), 8);
@@ -24,7 +25,7 @@ export const updateDrawingCursor = () => {
 export const enableDrawingMode = () => {
   state.drawingMode = true;
   document.body.classList.add("drawing-mode");
-  if (state.drawTool === "text") document.body.classList.add("text-tool");
+  if (state.drawTool === TOOL_NAMES.TEXT) document.body.classList.add("text-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
   updateDrawingCursor();
 };
@@ -67,9 +68,9 @@ const toolBodyClasses = ["text-tool", "eraser-tool", "move-tool"];
 
 // Map of tool names to their corresponding body class (if any)
 const toolBodyClassMap = {
-  eraser: "eraser-tool",
-  "object-eraser": "eraser-tool",
-  move: "move-tool",
+  [TOOL_NAMES.ERASER]: "eraser-tool",
+  [TOOL_NAMES.OBJECT_ERASER]: "eraser-tool",
+  [TOOL_NAMES.MOVE]: "move-tool",
 };
 
 /**
@@ -199,18 +200,18 @@ document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn").forEach
 updatePresetColorSelection();
 
 // Tool mode toggles
-penModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("freehand", penModeBtn); });
-arrowModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("arrow", arrowModeBtn); });
-lineModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("line", lineModeBtn); });
-rectModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("rect", rectModeBtn); });
-rectstrokeModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("rectstroke", rectstrokeModeBtn); });
-ovalModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("oval", ovalModeBtn); });
-ovalfillModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("ovalfill", ovalfillModeBtn); });
-dotModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("dot", dotModeBtn); });
-eraserModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("eraser", eraserModeBtn); });
-objectEraserModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("object-eraser", objectEraserModeBtn); });
-moveModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("move", moveModeBtn); });
-textModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("text", textModeBtn); });
+penModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.FREEHAND, penModeBtn); });
+arrowModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.ARROW, arrowModeBtn); });
+lineModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.LINE, lineModeBtn); });
+rectModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.RECT, rectModeBtn); });
+rectstrokeModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.RECTSTROKE, rectstrokeModeBtn); });
+ovalModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.OVAL, ovalModeBtn); });
+ovalfillModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.OVALFILL, ovalfillModeBtn); });
+dotModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.DOT, dotModeBtn); });
+eraserModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.ERASER, eraserModeBtn); });
+objectEraserModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.OBJECT_ERASER, objectEraserModeBtn); });
+moveModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.MOVE, moveModeBtn); });
+textModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool(TOOL_NAMES.TEXT, textModeBtn); });
 
 drawFontSizeInput.addEventListener("input", (e) => {
   state.drawFontSize = parseInt(e.target.value, 10) || 13;

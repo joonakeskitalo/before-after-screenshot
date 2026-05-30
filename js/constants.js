@@ -55,6 +55,22 @@ export const DRAW_DOT_OPACITY = 0.7;          // opacity for dot markers
 export const DRAW_ERASER_EXTRA_WIDTH = 8;     // px – extra width added to eraser stroke
 export const DRAW_MIN_DRAG_DISTANCE = 0.005;  // normalized – minimum drag to commit a shape
 
+// --- Tool Names ---
+export const TOOL_NAMES = Object.freeze({
+  FREEHAND: "freehand",
+  ARROW: "arrow",
+  LINE: "line",
+  RECT: "rect",
+  RECTSTROKE: "rectstroke",
+  OVAL: "oval",
+  OVALFILL: "ovalfill",
+  DOT: "dot",
+  ERASER: "eraser",
+  OBJECT_ERASER: "object-eraser",
+  TEXT: "text",
+  MOVE: "move",
+});
+
 // --- Grid Interaction ---
 export const EDGE_EXPANSION_THRESHOLD = 40;   // px – distance beyond grid edge to trigger expansion
 export const EDGE_EXPANSION_MAX_COLS = 10;    // maximum columns allowed via drag expansion

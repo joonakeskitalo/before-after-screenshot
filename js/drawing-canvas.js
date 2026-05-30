@@ -2,6 +2,7 @@ import state from './state.js';
 import { getObjectFitRect, getCanvasContentMetrics, redrawCanvas } from './drawing-render.js';
 import { setLastActiveDrawingCanvas } from './drawing-tools.js';
 import { getToolStrategy } from './drawing-strategies.js';
+import { TOOL_NAMES } from './constants.js';
 
 // Re-export hit-test utilities so the public API of this module is unchanged.
 export { hitTestPath, distToSegment, offsetPath } from './drawing-hit-test.js';
@@ -74,7 +75,7 @@ export const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
       const data = state.canvasDataMap.get(canvas);
       if (data) {
         data.paths.push({
-          type: "text",
+          type: TOOL_NAMES.TEXT,
           color: state.drawColor,
           fontSize: state.drawFontSize,
           position: { x: normX, y: normY },

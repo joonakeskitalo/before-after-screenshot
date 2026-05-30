@@ -4,6 +4,7 @@ import {
   DRAW_TEXT_BG_OPACITY, DRAW_TEXT_RADIUS_FACTOR,
   DRAW_ARROWHEAD_MIN_LENGTH, DRAW_ARROWHEAD_SCALE,
   DRAW_DOT_RADIUS_EXTRA, DRAW_DOT_OPACITY, DRAW_ERASER_EXTRA_WIDTH,
+  TOOL_NAMES,
 } from './constants.js';
 
 // --- Rendering Logic ---
@@ -106,7 +107,7 @@ export const drawArrow = (ctx, x1, y1, x2, y2, lineWidth) => {
 // Render a single drawing path onto a canvas context.
 // Assumes strokeStyle, lineWidth, lineCap, lineJoin are already set on ctx.
 export const renderPath = (ctx, path, toX, toY, scale) => {
-  if (path.type === "text") {
+  if (path.type === TOOL_NAMES.TEXT) {
     const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) * scale;
     const lineHeight = fontSize * DRAW_TEXT_LINE_HEIGHT;
     ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
@@ -126,13 +127,13 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
     lines.forEach((line, i) => {
       ctx.fillText(line, x, y + i * lineHeight);
     });
-  } else if (path.type === "arrow") {
+  } else if (path.type === TOOL_NAMES.ARROW) {
     const fromX = toX(path.from.x);
     const fromY = toY(path.from.y);
     const tX = toX(path.to.x);
     const tY = toY(path.to.y);
     drawArrow(ctx, fromX, fromY, tX, tY, path.lineWidth * scale);
-  } else if (path.type === "line") {
+  } else if (path.type === TOOL_NAMES.LINE) {
     const fromX = toX(path.from.x);
     const fromY = toY(path.from.y);
     const tX = toX(path.to.x);
@@ -141,20 +142,20 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
     ctx.moveTo(fromX, fromY);
     ctx.lineTo(tX, tY);
     ctx.stroke();
-  } else if (path.type === "rect") {
+  } else if (path.type === TOOL_NAMES.RECT) {
     const x = toX(Math.min(path.from.x, path.to.x));
     const y = toY(Math.min(path.from.y, path.to.y));
     const w = toX(Math.max(path.from.x, path.to.x)) - x;
     const h = toY(Math.max(path.from.y, path.to.y)) - y;
     ctx.fillStyle = path.color;
     ctx.fillRect(x, y, w, h);
-  } else if (path.type === "rectstroke") {
+  } else if (path.type === TOOL_NAMES.RECTSTROKE) {
     const x = toX(Math.min(path.from.x, path.to.x));
     const y = toY(Math.min(path.from.y, path.to.y));
     const w = toX(Math.max(path.from.x, path.to.x)) - x;
     const h = toY(Math.max(path.from.y, path.to.y)) - y;
     ctx.strokeRect(x, y, w, h);
-  } else if (path.type === "oval") {
+  } else if (path.type === TOOL_NAMES.OVAL) {
     const x = toX(Math.min(path.from.x, path.to.x));
     const y = toY(Math.min(path.from.y, path.to.y));
     const w = toX(Math.max(path.from.x, path.to.x)) - x;
@@ -162,7 +163,7 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
     ctx.beginPath();
     ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
     ctx.stroke();
-  } else if (path.type === "ovalfill") {
+  } else if (path.type === TOOL_NAMES.OVALFILL) {
     const x = toX(Math.min(path.from.x, path.to.x));
     const y = toY(Math.min(path.from.y, path.to.y));
     const w = toX(Math.max(path.from.x, path.to.x)) - x;
@@ -171,7 +172,7 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
     ctx.beginPath();
     ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
     ctx.fill();
-  } else if (path.type === "dot") {
+  } else if (path.type === TOOL_NAMES.DOT) {
     const cx = toX(path.position.x);
     const cy = toY(path.position.y);
     const radius = (path.lineWidth + DRAW_DOT_RADIUS_EXTRA) * scale;
@@ -181,7 +182,7 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1.0;
-  } else if (path.type === "eraser") {
+  } else if (path.type === TOOL_NAMES.ERASER) {
     if (path.points.length < 2) return;
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
@@ -196,7 +197,7 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
     }
     ctx.stroke();
     ctx.restore();
-  } else if (path.type === "freehand") {
+  } else if (path.type === TOOL_NAMES.FREEHAND) {
     if (path.points.length < 2) return;
     ctx.beginPath();
     ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));
@@ -244,12 +245,12 @@ export const renderPaths = (ctx, paths, toX, toY, scale) => {
   let currentSegment = [];
 
   for (const path of paths) {
-    if (path.type === "eraser") {
+    if (path.type === TOOL_NAMES.ERASER) {
       if (currentSegment.length) {
         segments.push({ type: "batch", paths: currentSegment });
         currentSegment = [];
       }
-      segments.push({ type: "eraser", path });
+      segments.push({ type: TOOL_NAMES.ERASER, path });
     } else {
       currentSegment.push(path);
     }
@@ -259,7 +260,7 @@ export const renderPaths = (ctx, paths, toX, toY, scale) => {
   }
 
   for (const segment of segments) {
-    if (segment.type === "eraser") {
+    if (segment.type === TOOL_NAMES.ERASER) {
       // Erasers set their own state internally via save/restore
       renderPath(ctx, segment.path, toX, toY, scale);
       continue;

@@ -1,7 +1,7 @@
 import state from './state.js';
 import { renderPaths, renderPath, redrawCanvas } from './drawing-render.js';
 import { hitTestPath, offsetPath } from './drawing-hit-test.js';
-import { DRAW_ERASER_EXTRA_WIDTH, DRAW_MIN_DRAG_DISTANCE } from './constants.js';
+import { DRAW_ERASER_EXTRA_WIDTH, DRAW_MIN_DRAG_DISTANCE, TOOL_NAMES } from './constants.js';
 
 // --- Tool Strategy Interface ---
 // Each strategy implements:
@@ -12,7 +12,7 @@ import { DRAW_ERASER_EXTRA_WIDTH, DRAW_MIN_DRAG_DISTANCE } from './constants.js'
 // Shared helper: apply shift-constraint to a point relative to an origin
 export const shiftConstrain = (x, y, origin, tool, cachedImg, cachedFitRect, cachedCanvasRect) => {
   if (!origin) return { x, y };
-  const isShape = tool === 'rect' || tool === 'rectstroke' || tool === 'oval' || tool === 'ovalfill';
+  const isShape = tool === TOOL_NAMES.RECT || tool === TOOL_NAMES.RECTSTROKE || tool === TOOL_NAMES.OVAL || tool === TOOL_NAMES.OVALFILL;
   if (isShape) {
     let contentWidth, contentHeight;
     if (cachedImg && cachedFitRect) {
@@ -53,7 +53,7 @@ export const textStrategy = {
 export const dotStrategy = {
   onMouseDown({ canvas, normX, normY, commitPath }) {
     commitPath({
-      type: 'dot',
+      type: TOOL_NAMES.DOT,
       color: state.drawColor,
       lineWidth: state.drawLineWidth,
       position: { x: normX, y: normY },
@@ -220,7 +220,7 @@ export const freehandStrategy = {
 
   onMouseDown({ normX, normY }) {
     this._currentPath = {
-      type: state.drawTool === 'eraser' ? 'eraser' : 'freehand',
+      type: state.drawTool === TOOL_NAMES.ERASER ? TOOL_NAMES.ERASER : TOOL_NAMES.FREEHAND,
       color: state.drawColor,
       lineWidth: state.drawLineWidth,
       points: [{ x: normX, y: normY }],
@@ -248,7 +248,7 @@ export const freehandStrategy = {
       const to = points[points.length - 1];
       const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
-      if (this._currentPath.type === 'eraser') {
+      if (this._currentPath.type === TOOL_NAMES.ERASER) {
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
         ctx.strokeStyle = 'rgba(0,0,0,1)';
@@ -263,7 +263,7 @@ export const freehandStrategy = {
       ctx.moveTo(toCanvasX(from.x), toCanvasY(from.y));
       ctx.lineTo(toCanvasX(to.x), toCanvasY(to.y));
       ctx.stroke();
-      if (this._currentPath.type === 'eraser') {
+      if (this._currentPath.type === TOOL_NAMES.ERASER) {
         ctx.restore();
       }
     }
@@ -279,13 +279,13 @@ export const freehandStrategy = {
 };
 
 // --- Strategy Resolver ---
-const SHAPE_TOOLS = new Set(['arrow', 'line', 'rect', 'rectstroke', 'oval', 'ovalfill']);
+const SHAPE_TOOLS = new Set([TOOL_NAMES.ARROW, TOOL_NAMES.LINE, TOOL_NAMES.RECT, TOOL_NAMES.RECTSTROKE, TOOL_NAMES.OVAL, TOOL_NAMES.OVALFILL]);
 
 export const getToolStrategy = (tool) => {
-  if (tool === 'text') return textStrategy;
-  if (tool === 'dot') return dotStrategy;
-  if (tool === 'object-eraser') return objectEraserStrategy;
-  if (tool === 'move') return moveStrategy;
+  if (tool === TOOL_NAMES.TEXT) return textStrategy;
+  if (tool === TOOL_NAMES.DOT) return dotStrategy;
+  if (tool === TOOL_NAMES.OBJECT_ERASER) return objectEraserStrategy;
+  if (tool === TOOL_NAMES.MOVE) return moveStrategy;
   if (SHAPE_TOOLS.has(tool)) return shapeStrategy;
   // freehand and eraser
   return freehandStrategy;

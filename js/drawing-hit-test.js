@@ -1,6 +1,6 @@
 import {
   DRAW_DEFAULT_FONT_SIZE, DRAW_HIT_TEST_THRESHOLD, DRAW_TEXT_HIT_DIVISOR,
-  DRAW_TEXT_LINE_HEIGHT, DRAW_TEXT_WIDTH_FACTOR,
+  DRAW_TEXT_LINE_HEIGHT, DRAW_TEXT_WIDTH_FACTOR, TOOL_NAMES,
 } from './constants.js';
 
 // --- Hit Testing & Path Offset Utilities ---
@@ -21,7 +21,7 @@ export const distToSegment = (px, py, x1, y1, x2, y2) => {
 
 // Hit-test a normalized point (x, y) against a path to determine if the click is "on" it.
 export const hitTestPath = (path, x, y, threshold = DRAW_HIT_TEST_THRESHOLD) => {
-  if (path.type === "text") {
+  if (path.type === TOOL_NAMES.TEXT) {
     const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) / DRAW_TEXT_HIT_DIVISOR;
     const lines = path.text.split("\n");
     const width = Math.max(0.05, lines.reduce((max, l) => Math.max(max, l.length * fontSize * DRAW_TEXT_WIDTH_FACTOR), 0));
@@ -34,23 +34,23 @@ export const hitTestPath = (path, x, y, threshold = DRAW_HIT_TEST_THRESHOLD) => 
     );
   }
 
-  if (path.type === "dot") {
+  if (path.type === TOOL_NAMES.DOT) {
     const dx = x - path.position.x;
     const dy = y - path.position.y;
     return Math.sqrt(dx * dx + dy * dy) < threshold * 2;
   }
 
-  if (path.type === "arrow" || path.type === "line") {
+  if (path.type === TOOL_NAMES.ARROW || path.type === TOOL_NAMES.LINE) {
     return distToSegment(x, y, path.from.x, path.from.y, path.to.x, path.to.y) < threshold;
   }
 
-  if (path.type === "rect" || path.type === "rectstroke" || path.type === "oval" || path.type === "ovalfill") {
+  if (path.type === TOOL_NAMES.RECT || path.type === TOOL_NAMES.RECTSTROKE || path.type === TOOL_NAMES.OVAL || path.type === TOOL_NAMES.OVALFILL) {
     const minX = Math.min(path.from.x, path.to.x);
     const maxX = Math.max(path.from.x, path.to.x);
     const minY = Math.min(path.from.y, path.to.y);
     const maxY = Math.max(path.from.y, path.to.y);
 
-    if (path.type === "rect" || path.type === "ovalfill") {
+    if (path.type === TOOL_NAMES.RECT || path.type === TOOL_NAMES.OVALFILL) {
       return x >= minX - threshold && x <= maxX + threshold && y >= minY - threshold && y <= maxY + threshold;
     }
     const inside = x >= minX - threshold && x <= maxX + threshold && y >= minY - threshold && y <= maxY + threshold;
@@ -58,7 +58,7 @@ export const hitTestPath = (path, x, y, threshold = DRAW_HIT_TEST_THRESHOLD) => 
     return inside && !deepInside;
   }
 
-  if (path.type === "eraser" || path.type === "freehand") {
+  if (path.type === TOOL_NAMES.ERASER || path.type === TOOL_NAMES.FREEHAND) {
     if (!path.points || path.points.length < 2) {
       if (path.points && path.points.length === 1) {
         const dx = x - path.points[0].x;
@@ -80,10 +80,10 @@ export const hitTestPath = (path, x, y, threshold = DRAW_HIT_TEST_THRESHOLD) => 
 
 // Offset all coordinates of a path by (dx, dy) in normalized space
 export const offsetPath = (path, dx, dy) => {
-  if (path.type === "text" || path.type === "dot") {
+  if (path.type === TOOL_NAMES.TEXT || path.type === TOOL_NAMES.DOT) {
     path.position.x += dx;
     path.position.y += dy;
-  } else if (path.type === "arrow" || path.type === "line" || path.type === "rect" || path.type === "rectstroke" || path.type === "oval" || path.type === "ovalfill") {
+  } else if (path.type === TOOL_NAMES.ARROW || path.type === TOOL_NAMES.LINE || path.type === TOOL_NAMES.RECT || path.type === TOOL_NAMES.RECTSTROKE || path.type === TOOL_NAMES.OVAL || path.type === TOOL_NAMES.OVALFILL) {
     path.from.x += dx;
     path.from.y += dy;
     path.to.x += dx;

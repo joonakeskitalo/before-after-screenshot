@@ -1,5 +1,6 @@
 import {
   DRAW_DEFAULT_FONT_SIZE, DRAW_DEFAULT_LINE_WIDTH, ZOOM_DEFAULT,
+  TOOL_NAMES,
 } from './constants.js';
 
 // Shared mutable application state.
@@ -21,7 +22,7 @@ const state = {
   drawingMode: false,
   drawColor: "#ff0000",
   drawLineWidth: DRAW_DEFAULT_LINE_WIDTH,
-  drawTool: "freehand",
+  drawTool: TOOL_NAMES.FREEHAND,
   drawFontSize: DRAW_DEFAULT_FONT_SIZE,
 
   // Zoom
