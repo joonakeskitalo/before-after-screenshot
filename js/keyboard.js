@@ -317,17 +317,17 @@ const miscActions = {
   },
 };
 
-// Thickness hotkeys (Shift+1/2/3)
+// Thickness hotkeys (Shift+1/2/3) — use physical key codes to be locale-independent
 const thicknessActions = {
-  '!': () => {
+  'Digit1': () => {
     const btns = document.querySelectorAll(".thickness-presets .thickness-btn");
     if (btns[0]) btns[0].click();
   },
-  '"': () => {
+  'Digit2': () => {
     const btns = document.querySelectorAll(".thickness-presets .thickness-btn");
     if (btns[1]) btns[1].click();
   },
-  '#': () => {
+  'Digit3': () => {
     const btns = document.querySelectorAll(".thickness-presets .thickness-btn");
     if (btns[2]) btns[2].click();
   },
@@ -503,9 +503,15 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
+  // Thickness hotkeys: Shift + physical 1/2/3 (locale-independent)
+  if (e.shiftKey && thicknessActions[e.code]) {
+    thicknessActions[e.code](e);
+    return;
+  }
+
   // Skip remaining hotkeys when Shift is used as a drawing modifier,
-  // except for thickness (!, ", #) and tool switching (R, E, O, A)
-  if (e.shiftKey && state.drawingMode && !["!", "\"", "#", "R", "E", "O", "A"].includes(e.key)) return;
+  // except for tool switching (R, E, O, A)
+  if (e.shiftKey && state.drawingMode && !["R", "E", "O", "A"].includes(e.key)) return;
 
   // Number keys: select preset color by index
   if (/^[1-9]$/.test(e.key)) {
@@ -513,13 +519,12 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  // Look up the key in action maps (order: tools, grid, zoom, export, thickness, misc)
+  // Look up the key in action maps (order: tools, grid, zoom, export, misc)
   const action =
     toolActions[e.key] ||
     gridActions[e.key] ||
     zoomActions[e.key] ||
     exportActions[e.key] ||
-    thicknessActions[e.key] ||
     miscActions[e.key];
 
   if (action) {
