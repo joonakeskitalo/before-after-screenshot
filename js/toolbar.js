@@ -222,11 +222,35 @@ bottomToolbar.addEventListener("drop", (e) => {
   }
 });
 
-// Override paste to also add to toolbar when no grid cell is focused
+// Handle paste: if a grid cell is focused, paste into it; otherwise add to toolbar
 const originalOnPaste = document.onpaste;
 document.onpaste = function (event) {
   const items = (event.clipboardData || event.originalEvent.clipboardData).items;
 
+  if (state.focusedCellIndex >= 0) {
+    // Paste the first image directly into the focused grid cell
+    const cells = state.getCells();
+    const cell = cells[state.focusedCellIndex];
+    if (cell) {
+      for (const index in items) {
+        const item = items[index];
+        if (item.kind === "file") {
+          const blob = item.getAsFile();
+          const img = cell.querySelector("img");
+          const span = cell.querySelector("span");
+          img.style.display = "flex";
+          img.src = URL.createObjectURL(blob);
+          img.alt = blob.name || "";
+          if (span) span.style.display = "none";
+          updateFilenameLabel(cell);
+          break; // Only paste the first image into the cell
+        }
+      }
+    }
+    return;
+  }
+
+  // No grid cell focused — add all pasted images to the toolbar staging area
   for (const index in items) {
     const item = items[index];
     if (item.kind === "file") {
