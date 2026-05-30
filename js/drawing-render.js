@@ -17,6 +17,10 @@ export const getObjectFitRect = (img) => {
   const elemRatio = elemWidth / elemHeight;
   const natRatio = natWidth / natHeight;
 
+  if (!isFinite(elemRatio) || !isFinite(natRatio)) {
+    return null;
+  }
+
   let renderWidth, renderHeight;
   if (natRatio > elemRatio) {
     // Image is wider than container — width fills, height is letterboxed
