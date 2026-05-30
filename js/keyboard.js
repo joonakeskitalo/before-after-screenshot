@@ -304,11 +304,11 @@ document.addEventListener("keydown", (e) => {
       const cells = state.getCells();
       const focusedCell = state.focusedCellIndex >= 0 ? cells[state.focusedCellIndex] : null;
       if (direction === "up" || direction === "down") {
-        const row = focusedCell ? parseInt(focusedCell.dataset.row) : 0;
+        const row = focusedCell ? parseInt(focusedCell.dataset.row, 10) : 0;
         const insertIndex = direction === "up" ? row : row + 1;
         insertRowAt(insertIndex);
       } else {
-        const col = focusedCell ? parseInt(focusedCell.dataset.col) : 0;
+        const col = focusedCell ? parseInt(focusedCell.dataset.col, 10) : 0;
         const insertIndex = direction === "left" ? col : col + 1;
         insertColumnAt(insertIndex);
       }
@@ -369,7 +369,7 @@ document.addEventListener("keydown", (e) => {
       const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
-        const row = parseInt(focusedCell.dataset.row);
+        const row = parseInt(focusedCell.dataset.row, 10);
         clearSelection();
         clearFocusedCell();
         deleteRowAt(row);
@@ -382,7 +382,7 @@ document.addEventListener("keydown", (e) => {
       const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
-        const col = parseInt(focusedCell.dataset.col);
+        const col = parseInt(focusedCell.dataset.col, 10);
         clearSelection();
         clearFocusedCell();
         deleteColumnAt(col);
@@ -417,7 +417,7 @@ document.addEventListener("keydown", (e) => {
       const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
-        const row = parseInt(focusedCell.dataset.row);
+        const row = parseInt(focusedCell.dataset.row, 10);
         clearFocusedCell();
         deleteRowAt(row);
       }
@@ -428,7 +428,7 @@ document.addEventListener("keydown", (e) => {
       const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
-        const col = parseInt(focusedCell.dataset.col);
+        const col = parseInt(focusedCell.dataset.col, 10);
         clearFocusedCell();
         deleteColumnAt(col);
       }
@@ -636,7 +636,7 @@ document.addEventListener("keydown", (e) => {
     case "9": {
       // Select preset color by number key
       const presetBtns = document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn");
-      const index = parseInt(e.key) - 1;
+      const index = parseInt(e.key, 10) - 1;
       if (index < presetBtns.length) {
         presetBtns[index].click();
       }

@@ -176,7 +176,7 @@ drawColorInput.addEventListener("input", (e) => {
 document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
-    state.drawLineWidth = parseInt(btn.dataset.width);
+    state.drawLineWidth = parseInt(btn.dataset.width, 10);
     document.querySelectorAll(".thickness-presets .thickness-btn").forEach((b) => {
       b.classList.remove("active");
     });
@@ -213,5 +213,5 @@ moveModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveToo
 textModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("text", textModeBtn); });
 
 drawFontSizeInput.addEventListener("input", (e) => {
-  state.drawFontSize = parseInt(e.target.value) || 13;
+  state.drawFontSize = parseInt(e.target.value, 10) || 13;
 });

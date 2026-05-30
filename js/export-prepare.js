@@ -84,14 +84,14 @@ export const hideEmptyRowsForExport = () => {
 
   for (const cell of allCells) {
     if (cellHasVisibleContent(cell)) {
-      occupiedRows.add(parseInt(cell.dataset.row));
-      occupiedCols.add(parseInt(cell.dataset.col));
+      occupiedRows.add(parseInt(cell.dataset.row, 10));
+      occupiedCols.add(parseInt(cell.dataset.col, 10));
     }
   }
 
   for (let row = 0; row < rows; row++) {
     if (occupiedRows.has(row)) continue;
-    const rowCells = allCells.filter((cell) => parseInt(cell.dataset.row) === row);
+    const rowCells = allCells.filter((cell) => parseInt(cell.dataset.row, 10) === row);
     rowCells.forEach((cell) => {
       removedCells.push({ cell, nextSibling: cell.nextSibling });
       cell.remove();
@@ -101,7 +101,7 @@ export const hideEmptyRowsForExport = () => {
   for (let col = 0; col < cols; col++) {
     if (occupiedCols.has(col)) continue;
     const colCells = allCells.filter(
-      (cell) => parseInt(cell.dataset.col) === col && occupiedRows.has(parseInt(cell.dataset.row))
+      (cell) => parseInt(cell.dataset.col, 10) === col && occupiedRows.has(parseInt(cell.dataset.row, 10))
     );
     colCells.forEach((cell) => {
       if (cell.parentElement) {
@@ -172,7 +172,7 @@ export const prepareForExport = () => {
 
   const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
   const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-  const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
+  const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1], 10), contentCols) : contentCols;
 
   const allCells = state.getCells();
   allCells.forEach((cell) => {

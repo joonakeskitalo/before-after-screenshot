@@ -464,7 +464,7 @@ export const previewAllFilters = async () => {
     ? [...state.selectedCells].sort((a, b) => a - b)
     : state.selectedRows.size > 0
       ? allCells.reduce((acc, cell, i) => {
-          if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
+          if (state.selectedRows.has(parseInt(cell.dataset.row, 10))) acc.push(i);
           return acc;
         }, [])
       : state.focusedCellIndex >= 0

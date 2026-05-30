@@ -36,7 +36,7 @@ const applyGridZoom = (zoom) => {
 };
 
 gridZoomInput.addEventListener("input", (e) => {
-  applyGridZoom(parseInt(e.target.value));
+  applyGridZoom(parseInt(e.target.value, 10));
 });
 
 gridZoomInput.addEventListener("change", () => {

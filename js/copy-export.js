@@ -180,7 +180,7 @@ const copySelectedRows = () => {
 
     if (state.selectedRows.size > 0) {
       allCells.forEach((cell) => {
-        const row = parseInt(cell.dataset.row);
+        const row = parseInt(cell.dataset.row, 10);
         if (!state.selectedRows.has(row)) {
           cell.style.display = "none";
           hiddenCells.push(cell);
@@ -413,7 +413,7 @@ const downloadWithScale = () => {
 
     if (state.selectedRows.size > 0) {
       allCells.forEach((cell) => {
-        const row = parseInt(cell.dataset.row);
+        const row = parseInt(cell.dataset.row, 10);
         if (!state.selectedRows.has(row)) {
           cell.style.display = "none";
           hiddenCells.push(cell);
@@ -511,7 +511,7 @@ const bulkDownloadImages = async () => {
 
   if (state.selectedRows.size > 0) {
     allCells.forEach((cell) => {
-      const row = parseInt(cell.dataset.row);
+      const row = parseInt(cell.dataset.row, 10);
       if (!state.selectedRows.has(row)) return;
       const img = cell.querySelector("img");
       if (img && isImageSrc(img.src) && img.style.display !== "none") {
@@ -573,7 +573,7 @@ const copySelectedRawImages = async () => {
       ? [...state.selectedCells].sort((a, b) => a - b)
       : state.selectedRows.size > 0
         ? allCells.reduce((acc, cell, i) => {
-            if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
+            if (state.selectedRows.has(parseInt(cell.dataset.row, 10))) acc.push(i);
             return acc;
           }, [])
         : state.focusedCellIndex >= 0
@@ -633,7 +633,7 @@ const copyWithAllFilters = async () => {
       ? [...state.selectedCells].sort((a, b) => a - b)
       : state.selectedRows.size > 0
         ? allCells.reduce((acc, cell, i) => {
-            if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
+            if (state.selectedRows.has(parseInt(cell.dataset.row, 10))) acc.push(i);
             return acc;
           }, [])
         : state.focusedCellIndex >= 0

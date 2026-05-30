@@ -467,7 +467,7 @@ const setupCell = (cell) => {
 
     // Show row drop target indicator when dragging a row
     if (state.rowDragState) {
-      const targetRow = parseInt(cell.dataset.row);
+      const targetRow = parseInt(cell.dataset.row, 10);
       if (targetRow !== state.rowDragState.sourceRow) {
         setRowDropTarget(targetRow);
       }
@@ -488,7 +488,7 @@ const setupCell = (cell) => {
     // Handle row-drag drops onto grid cells
     if (state.rowDragState) {
       const sourceRow = state.rowDragState.sourceRow;
-      const targetRow = parseInt(cell.dataset.row);
+      const targetRow = parseInt(cell.dataset.row, 10);
       if (sourceRow !== targetRow) {
         swapRows(sourceRow, targetRow);
       }
@@ -558,7 +558,7 @@ const setupCell = (cell) => {
     if (!state.rowDragState) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    const targetRow = parseInt(cell.dataset.row);
+    const targetRow = parseInt(cell.dataset.row, 10);
     if (targetRow !== state.rowDragState.sourceRow) {
       setRowDropTarget(targetRow);
     }
@@ -575,7 +575,7 @@ const setupCell = (cell) => {
     if (!state.rowDragState) return;
     e.preventDefault();
     const sourceRow = state.rowDragState.sourceRow;
-    const targetRow = parseInt(cell.dataset.row);
+    const targetRow = parseInt(cell.dataset.row, 10);
     if (sourceRow !== targetRow) {
       swapRows(sourceRow, targetRow);
     }
@@ -778,8 +778,8 @@ const buildGrid = () => {
     const canvas = cell.querySelector(".drawing-canvas");
     const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? [...state.canvasDataMap.get(canvas).paths] : [];
     existingData.push({
-      row: parseInt(cell.dataset.row),
-      col: parseInt(cell.dataset.col),
+      row: parseInt(cell.dataset.row, 10),
+      col: parseInt(cell.dataset.col, 10),
       imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
       imgAlt: img ? img.alt : "",
       text: textarea ? textarea.value : "",
@@ -903,7 +903,7 @@ const buildRowControls = () => {
     handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="4" cy="3" r="1.2" fill="currentColor"/><circle cx="8" cy="3" r="1.2" fill="currentColor"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="8" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="9" r="1.2" fill="currentColor"/><circle cx="8" cy="9" r="1.2" fill="currentColor"/></svg>`;
 
     handle.addEventListener("dragstart", (e) => {
-      const row = parseInt(handle.dataset.row);
+      const row = parseInt(handle.dataset.row, 10);
       state.rowDragState = { sourceRow: row };
       e.dataTransfer.setData("row-drag", String(row));
       e.dataTransfer.effectAllowed = "move";
@@ -919,7 +919,7 @@ const buildRowControls = () => {
     deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9" y1="3" x2="3" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      deleteRowAt(parseInt(deleteBtn.dataset.row));
+      deleteRowAt(parseInt(deleteBtn.dataset.row, 10));
     });
 
     // Row selection checkbox
@@ -930,7 +930,7 @@ const buildRowControls = () => {
     selectCb.title = `Select row ${r + 1} for export`;
     selectCb.checked = state.selectedRows.has(r);
     selectCb.addEventListener("change", (e) => {
-      const rowIdx = parseInt(selectCb.dataset.row);
+      const rowIdx = parseInt(selectCb.dataset.row, 10);
       if (selectCb.checked) {
         state.selectedRows.add(rowIdx);
       } else {
@@ -960,7 +960,7 @@ const buildRowControls = () => {
       if (!state.rowDragState) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
-      const targetRow = parseInt(handle.dataset.row);
+      const targetRow = parseInt(handle.dataset.row, 10);
       if (targetRow !== state.rowDragState.sourceRow) {
         setRowDropTarget(targetRow);
       }
@@ -974,7 +974,7 @@ const buildRowControls = () => {
       e.preventDefault();
       if (!state.rowDragState) return;
       const sourceRow = state.rowDragState.sourceRow;
-      const targetRow = parseInt(handle.dataset.row);
+      const targetRow = parseInt(handle.dataset.row, 10);
       if (sourceRow !== targetRow) {
         swapRows(sourceRow, targetRow);
       }
@@ -1024,7 +1024,7 @@ const createAddRowButton = (insertIndex) => {
     btn.classList.remove("drop-target");
     if (!state.rowDragState) return;
     const sourceRow = state.rowDragState.sourceRow;
-    const targetIndex = parseInt(btn.dataset.insertIndex);
+    const targetIndex = parseInt(btn.dataset.insertIndex, 10);
     moveRow(sourceRow, targetIndex);
     state.rowDragState = null;
   });
@@ -1111,8 +1111,8 @@ const insertColumnAt = (insertIndex) => {
   const cells = state.getCells();
   const dataByPos = new Map();
   for (const cell of cells) {
-    const r = parseInt(cell.dataset.row);
-    const c = parseInt(cell.dataset.col);
+    const r = parseInt(cell.dataset.row, 10);
+    const c = parseInt(cell.dataset.col, 10);
     dataByPos.set(`${r},${c}`, getCellData(cell));
   }
 
@@ -1322,8 +1322,8 @@ const collectGridData = () => {
     const canvas = cell.querySelector(".drawing-canvas");
     const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? [...state.canvasDataMap.get(canvas).paths] : [];
     data.push({
-      row: parseInt(cell.dataset.row),
-      col: parseInt(cell.dataset.col),
+      row: parseInt(cell.dataset.row, 10),
+      col: parseInt(cell.dataset.col, 10),
       imgSrc: img && img.src && img.style.display !== "none" ? img.src : null,
       imgAlt: img ? img.alt : "",
       text: textarea ? textarea.value : "",
@@ -1365,7 +1365,7 @@ const restoreCellData = (cell, data) => {
 
 const highlightRow = (row, active) => {
   state.getCells().forEach((cell) => {
-    if (parseInt(cell.dataset.row) === row) {
+    if (parseInt(cell.dataset.row) === row, 10) {
       cell.classList.toggle("row-dragging", active);
     }
   });
@@ -1390,7 +1390,7 @@ const setRowDropTarget = (row) => {
   });
   // Highlight all cells in the target row
   state.getCells().forEach((cell) => {
-    if (parseInt(cell.dataset.row) === row) {
+    if (parseInt(cell.dataset.row) === row, 10) {
       cell.classList.add("row-drop-target");
     }
   });
@@ -1456,8 +1456,8 @@ const relayoutGrid = () => {
 document.getElementById("relayout-btn").addEventListener("click", relayoutGrid);
 
 const updateGrid = () => {
-  state.gridCols = parseInt(document.getElementById("grid-cols").value) || 3;
-  state.gridRows = parseInt(document.getElementById("grid-rows").value) || 1;
+  state.gridCols = parseInt(document.getElementById("grid-cols").value, 10) || 3;
+  state.gridRows = parseInt(document.getElementById("grid-rows").value, 10) || 1;
   state.selectedRows.clear();
   updateCopySelectedBtn();
   buildGrid();
@@ -1480,8 +1480,8 @@ const deleteColumnAt = (colIndex) => {
   // Collect data keyed by (row, col), skipping the deleted column
   const dataByPos = new Map();
   for (const cell of cells) {
-    const r = parseInt(cell.dataset.row);
-    const c = parseInt(cell.dataset.col);
+    const r = parseInt(cell.dataset.row, 10);
+    const c = parseInt(cell.dataset.col, 10);
     if (c === colIndex) {
       // Revoke blob URL for deleted cells
       const img = cell.querySelector("img");
