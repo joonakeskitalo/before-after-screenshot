@@ -94,6 +94,7 @@ const sortStagingArea = () => {
 };
 
 state.addImageToToolbar = (srcUrl, fileName = "") => {
+  if (!isAllowedImageSrc(srcUrl)) return;
   const item = document.createElement("div");
   item.className = "bottom-toolbar-item";
   item.draggable = true;
