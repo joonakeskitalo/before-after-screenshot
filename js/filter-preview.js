@@ -351,6 +351,15 @@ const renderPreviewGrid = async (overlay) => {
   return canvas;
 };
 
+// Clone an ImageBitmap by drawing it onto an OffscreenCanvas and creating a new bitmap.
+// This avoids re-decoding the source image for each filter variant.
+const cloneBitmap = (sourceBitmap) => {
+  const canvas = new OffscreenCanvas(sourceBitmap.width, sourceBitmap.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(sourceBitmap, 0, 0);
+  return createImageBitmap(canvas);
+};
+
 // Helper: populate the grid element with filter previews for given images.
 // Uses a Web Worker pool to offload pixel manipulation off the main thread.
 const buildGridContent = async (targetGrid, images) => {
@@ -373,14 +382,18 @@ const buildGridContent = async (targetGrid, images) => {
     const row = document.createElement("div");
     row.className = "filter-preview-row";
 
+    // Decode the source image once, then clone for each filter
+    const sourceBitmap = await createImageBitmap(img);
     const filterResults = await Promise.all(filters.map(async (filter) => {
-      // Each worker call needs its own bitmap since it gets transferred
-      const bitmap = await createImageBitmap(img);
+      // Clone the already-decoded bitmap instead of re-decoding the source
+      const bitmap = await cloneBitmap(sourceBitmap);
       const blob = await applyFilterViaWorker(bitmap, filter);
       const url = URL.createObjectURL(blob);
       filterPreviewBlobUrls.push(url);
       return { filter, blobUrl: url };
     }));
+    // Release the source bitmap now that all clones have been made
+    sourceBitmap.close();
 
     for (const { filter, blobUrl } of filterResults) {
       const cell = document.createElement("div");
