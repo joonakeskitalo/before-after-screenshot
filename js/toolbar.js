@@ -1,6 +1,5 @@
 import state from './state.js';
 import { updateFilenameLabel, buildGrid, toggleFilenames } from './grid.js';
-import { redrawCanvas } from './drawing.js';
 
 // --- Bottom Toolbar Logic ---
 const bottomToolbar = document.getElementById("bottom-toolbar");
@@ -495,6 +494,7 @@ const clearGridBtn = document.getElementById("clear-grid-btn");
 clearGridBtn.addEventListener("click", (e) => {
   e.stopPropagation();
 
+  // Clear all cell content first
   const cells = state.gridEl.querySelectorAll(".grid-cell");
   cells.forEach((cell) => {
     const img = cell.querySelector("img");
@@ -515,12 +515,19 @@ clearGridBtn.addEventListener("click", (e) => {
       const canvasData = state.canvasDataMap.get(canvas);
       if (canvasData) {
         canvasData.paths = [];
-        const dpr = window.devicePixelRatio || 1;
-        redrawCanvas(canvas, dpr);
       }
     }
     updateFilenameLabel(cell);
   });
+
+  // Compact to a single row since all content is now empty
+  state.gridRows = 1;
+  document.getElementById("grid-rows").value = state.gridRows;
+  state.selectedRows.clear();
+  state.selectedCells.clear();
+  state.focusedCellIndex = -1;
+
+  buildGrid();
 });
 
 // --- Clear Staging Area ---
