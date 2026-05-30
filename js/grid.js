@@ -1382,7 +1382,7 @@ const restoreCellData = (cell, data) => {
 
 const highlightRow = (row, active) => {
   state.getCells().forEach((cell) => {
-    if (parseInt(cell.dataset.row) === row, 10) {
+    if (parseInt(cell.dataset.row, 10) === row) {
       cell.classList.toggle("row-dragging", active);
     }
   });
@@ -1408,7 +1408,7 @@ const setRowDropTarget = (row) => {
   });
   // Highlight all cells in the target row
   cells.forEach((cell) => {
-    if (parseInt(cell.dataset.row) === row, 10) {
+    if (parseInt(cell.dataset.row,10) === row) {
       cell.classList.add("row-drop-target");
     }
   });
