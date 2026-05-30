@@ -11,8 +11,7 @@
  *  2. Inlines all <link rel="stylesheet"> as <style> blocks
  *  3. Bundles ES modules (js/main.js + its imports) into a single <script>
  *     using esbuild (zero-config, ships with Node 24+)
- *  4. Inlines the vendored dom-to-image.min.js as a <script> block
- *  5. Writes the result to dist/index.html
+ *  4. Writes the result to dist/index.html
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -50,10 +49,7 @@ console.log("Inlining CSS...");
 const normalizeCSS = read("normalize.css");
 const styleCSS = read("style.css");
 
-// --- 3. Read vendored script ---
-const domToImageJS = read("dom-to-image.min.js");
-
-// --- 4. Process HTML ---
+// --- 3. Process HTML ---
 console.log("Processing HTML...");
 let html = read("index.html");
 
@@ -67,19 +63,13 @@ html = html.replace(
   `\n    <style>\n${normalizeCSS}\n${styleCSS}\n    </style>\n`
 );
 
-// Replace dom-to-image script tag with inline version
-html = html.replace(
-  /\s*<script\s+src="dom-to-image\.min\.js"\s*><\/script>\s*/,
-  `\n    <script>${domToImageJS}</script>\n`
-);
-
 // Replace module script tag with bundled inline version
 html = html.replace(
   /\s*<script\s+type="module"\s+src="js\/main\.js"\s*><\/script>\s*/,
   `\n    <script>${bundledJS}</script>\n`
 );
 
-// --- 5. Write output ---
+// --- 4. Write output ---
 const outDir = resolve(root, "dist");
 mkdirSync(outDir, { recursive: true });
 const outPath = resolve(outDir, "index.html");

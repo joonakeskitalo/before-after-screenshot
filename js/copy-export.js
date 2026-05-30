@@ -2,12 +2,13 @@ import state from './state.js';
 import { redrawAllCanvasesForExport, restoreAllCanvases, initDrawingCanvas } from './drawing.js';
 import { applyGridZoom } from './zoom.js';
 import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
+import { domToBlob } from '../lib/modern-screenshot.mjs';
 
 // Guard against concurrent exports — prevents DOM corruption from double-clicks.
 let isExporting = false;
 
 // Ensure all visible images within a container are fully decoded before capture.
-// dom-to-image serializes the DOM to SVG foreignObject and renders it — if images
+// modern-screenshot serializes the DOM to SVG foreignObject and renders it — if images
 // haven't finished decoding (common with large data URLs), they appear blank.
 const waitForImagesDecode = async (container) => {
   const images = container.querySelectorAll("img");
@@ -47,8 +48,8 @@ const hideForExport = () => {
   };
 };
 
-// Shared filter function for dom-to-image — avoids creating a new closure per export call.
-// Checks are ordered by frequency: text nodes (no nodeType check needed since dom-to-image
+// Shared filter function for capture — avoids creating a new closure per export call.
+// Checks are ordered by frequency: text nodes (no nodeType check needed since the library
 // only passes Element nodes), then tagName checks (cheapest), then classList checks.
 const exportNodeFilter = (node) => {
   const tag = node.tagName;
@@ -123,7 +124,7 @@ const hideEmptyRowsForExport = () => {
   }
 
   // Also hide the row-controls element so it doesn't force extra height
-  // on the grid-wrapper (it's already filtered from dom-to-image output)
+  // on the grid-wrapper (it's already filtered from modern-screenshot output)
   const rowControls = state.gridEl.parentElement.querySelector(".row-controls");
   const rowControlsDisplay = rowControls ? rowControls.style.display : null;
   if (rowControls) {
@@ -262,7 +263,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     state.cardsEl.style.flex = "none";
     state.cardsEl.style.minHeight = "0";
 
-    // Force the grid width after layout settles so dom-to-image doesn't reflow columns
+    // Force the grid width after layout settles so modern-screenshot doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
     state.gridEl.style.width = `${gridRenderedWidth}px`;
 
@@ -278,12 +279,12 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     // Ensure all images are fully decoded before capture to prevent blank images
     await waitForImagesDecode(state.cardsEl);
 
-    let blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domToBlob(state.cardsEl, {
       height: captureHeight,
       filter: exportNodeFilter,
     });
 
-    // Crop the blob to the actual content height if dom-to-image produced a taller image
+    // Crop the blob to the actual content height if modern-screenshot produced a taller image
     blob = await cropBlobToHeight(blob, captureHeight);
 
     navigator.clipboard.write([
@@ -453,7 +454,7 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     state.cardsEl.style.flex = "none";
     state.cardsEl.style.minHeight = "0";
 
-    // Force the grid width after layout settles so dom-to-image doesn't reflow columns
+    // Force the grid width after layout settles so modern-screenshot doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
     state.gridEl.style.width = `${gridRenderedWidth}px`;
 
@@ -465,7 +466,7 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     // Ensure all images are fully decoded before capture to prevent blank images
     await waitForImagesDecode(state.cardsEl);
 
-    let blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domToBlob(state.cardsEl, {
       height: captureHeight,
       filter: exportNodeFilter,
     });
@@ -713,7 +714,7 @@ const copyAsGridSize = async () => {
     state.cardsEl.style.flex = "none";
     state.cardsEl.style.minHeight = "0";
 
-    // Force the grid width after layout settles so dom-to-image doesn't reflow columns
+    // Force the grid width after layout settles so modern-screenshot doesn't reflow columns
     const gridRenderedWidth = state.gridEl.offsetWidth;
     state.gridEl.style.width = `${gridRenderedWidth}px`;
 
@@ -726,7 +727,7 @@ const copyAsGridSize = async () => {
     // Ensure all images are fully decoded before capture to prevent blank images
     await waitForImagesDecode(state.cardsEl);
 
-    let blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domToBlob(state.cardsEl, {
       height: captureHeight,
       filter: exportNodeFilter,
     });
@@ -828,7 +829,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
   //   setElementWidths(elementsToAdjustWidth, "unset");
   //   state.root.style.setProperty("--image-max-width", "unset");
 
-  //   const blob = await domtoimage.toBlob(img);
+  //   const blob = await domToBlob(img);
 
   //   navigator.clipboard.write([
   //     new ClipboardItem({
@@ -847,7 +848,7 @@ const clearOrCopyImage = async (event, img, drop, span) => {
   //   const width = Math.floor(img.naturalWidth * 0.5) + "px";
   //   img.style.width = width;
 
-  //   const blob = await domtoimage.toBlob(img);
+  //   const blob = await domToBlob(img);
 
   //   navigator.clipboard.write([
   //     new ClipboardItem({
@@ -990,7 +991,7 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
     // Ensure all images are fully decoded before capture to prevent blank images
     await waitForImagesDecode(state.cardsEl);
 
-    let blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domToBlob(state.cardsEl, {
       height: captureHeight,
       filter: exportNodeFilter,
     });
@@ -1198,7 +1199,7 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
     // Ensure all images are fully decoded before capture to prevent blank images
     await waitForImagesDecode(state.cardsEl);
 
-    let blob = await domtoimage.toBlob(state.cardsEl, {
+    let blob = await domToBlob(state.cardsEl, {
       height: captureHeight,
       filter: exportNodeFilter,
     });

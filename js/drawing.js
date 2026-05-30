@@ -1689,12 +1689,12 @@ const redrawAllCanvasesForExport = async (scale) => {
     img.style.width = fitRect.width + "px";
     img.style.height = fitRect.height + "px";
     img.style.objectFit = "fill";
-    // Wait for the image to load the new blob URL before dom-to-image captures it
+    // Wait for the image to load the new blob URL before modern-screenshot captures it
     await new Promise((resolve) => {
       img.onload = resolve;
       img.src = blobUrl;
     });
-    // Hide the canvas so dom-to-image doesn't double-render the drawing
+    // Hide the canvas so modern-screenshot doesn't double-render the drawing
     canvas.style.display = "none";
   }
 };
