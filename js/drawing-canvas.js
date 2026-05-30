@@ -301,6 +301,9 @@ export const initDrawingCanvas = (drop) => {
   let moveStartX = 0;
   let moveStartY = 0;
 
+  // rAF throttle for preview redraws
+  let previewRAF = null;
+
   // Cached bounding rects
   let cachedImgRect = null;
   let cachedCanvasRect = null;
@@ -442,12 +445,17 @@ export const initDrawingCanvas = (drop) => {
       moveStartX = x;
       moveStartY = y;
 
-      const dpr = window.devicePixelRatio || 1;
-      clearPreview();
-      const ctx = previewCanvas.getContext("2d");
-      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      const zoomScale = state.gridZoom / 100;
-      renderPaths(ctx, [movingPath], toCanvasX, toCanvasY, zoomScale * dpr);
+      if (!previewRAF) {
+        previewRAF = requestAnimationFrame(() => {
+          previewRAF = null;
+          const dpr = window.devicePixelRatio || 1;
+          clearPreview();
+          const ctx = previewCanvas.getContext("2d");
+          const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
+          const zoomScale = state.gridZoom / 100;
+          renderPaths(ctx, [movingPath], toCanvasX, toCanvasY, zoomScale * dpr);
+        });
+      }
       return;
     }
 
@@ -482,23 +490,29 @@ export const initDrawingCanvas = (drop) => {
     }
 
     if ((state.drawTool === "arrow" || state.drawTool === "line" || state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") && arrowStart) {
-      const dpr = window.devicePixelRatio || 1;
-      clearPreview();
-      const ctx = previewCanvas.getContext("2d");
-      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      const zoomScale = state.gridZoom / 100;
-      const previewPath = {
-        type: state.drawTool,
-        color: state.drawColor,
-        lineWidth: state.drawLineWidth,
-        from: arrowStart,
-        to: { x, y },
-      };
-      ctx.strokeStyle = previewPath.color;
-      ctx.lineWidth = previewPath.lineWidth * zoomScale * dpr;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      renderPath(ctx, previewPath, toCanvasX, toCanvasY, zoomScale * dpr);
+      if (!previewRAF) {
+        const previewTo = { x, y };
+        previewRAF = requestAnimationFrame(() => {
+          previewRAF = null;
+          const dpr = window.devicePixelRatio || 1;
+          clearPreview();
+          const ctx = previewCanvas.getContext("2d");
+          const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
+          const zoomScale = state.gridZoom / 100;
+          const previewPath = {
+            type: state.drawTool,
+            color: state.drawColor,
+            lineWidth: state.drawLineWidth,
+            from: arrowStart,
+            to: previewTo,
+          };
+          ctx.strokeStyle = previewPath.color;
+          ctx.lineWidth = previewPath.lineWidth * zoomScale * dpr;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          renderPath(ctx, previewPath, toCanvasX, toCanvasY, zoomScale * dpr);
+        });
+      }
     } else if (currentPath) {
       currentPath.points.push({ x, y });
 
@@ -535,6 +549,11 @@ export const initDrawingCanvas = (drop) => {
   const endDraw = (e) => {
     if (!isDrawing) return;
     isDrawing = false;
+
+    if (previewRAF) {
+      cancelAnimationFrame(previewRAF);
+      previewRAF = null;
+    }
 
     clearPreview();
 
