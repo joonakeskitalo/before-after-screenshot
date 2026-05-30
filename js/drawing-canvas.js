@@ -1,104 +1,10 @@
 import state from './state.js';
-import { getObjectFitRect, getCanvasContentMetrics, renderPaths, renderPath, redrawCanvas } from './drawing-render.js';
+import { getObjectFitRect, getCanvasContentMetrics, redrawCanvas } from './drawing-render.js';
 import { setLastActiveDrawingCanvas } from './drawing-tools.js';
-import {
-  DRAW_DEFAULT_FONT_SIZE, DRAW_HIT_TEST_THRESHOLD, DRAW_TEXT_HIT_DIVISOR,
-  DRAW_TEXT_LINE_HEIGHT, DRAW_TEXT_WIDTH_FACTOR, DRAW_ERASER_EXTRA_WIDTH,
-  DRAW_MIN_DRAG_DISTANCE,
-} from './constants.js';
+import { getToolStrategy } from './drawing-strategies.js';
 
-// --- Canvas Initialization, Input Handling & Hit Testing ---
-
-// Hit-test a normalized point (x, y) against a path to determine if the click is "on" it.
-// Returns true if the point is close enough to the path to count as a hit.
-export const hitTestPath = (path, x, y, threshold = DRAW_HIT_TEST_THRESHOLD) => {
-  if (path.type === "text") {
-    const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) / DRAW_TEXT_HIT_DIVISOR;
-    const lines = path.text.split("\n");
-    const width = Math.max(0.05, lines.reduce((max, l) => Math.max(max, l.length * fontSize * DRAW_TEXT_WIDTH_FACTOR), 0));
-    const height = lines.length * fontSize * DRAW_TEXT_LINE_HEIGHT;
-    return (
-      x >= path.position.x - threshold &&
-      x <= path.position.x + width + threshold &&
-      y >= path.position.y - threshold &&
-      y <= path.position.y + height + threshold
-    );
-  }
-
-  if (path.type === "dot") {
-    const dx = x - path.position.x;
-    const dy = y - path.position.y;
-    return Math.sqrt(dx * dx + dy * dy) < threshold * 2;
-  }
-
-  if (path.type === "arrow" || path.type === "line") {
-    return distToSegment(x, y, path.from.x, path.from.y, path.to.x, path.to.y) < threshold;
-  }
-
-  if (path.type === "rect" || path.type === "rectstroke" || path.type === "oval" || path.type === "ovalfill") {
-    const minX = Math.min(path.from.x, path.to.x);
-    const maxX = Math.max(path.from.x, path.to.x);
-    const minY = Math.min(path.from.y, path.to.y);
-    const maxY = Math.max(path.from.y, path.to.y);
-
-    if (path.type === "rect" || path.type === "ovalfill") {
-      return x >= minX - threshold && x <= maxX + threshold && y >= minY - threshold && y <= maxY + threshold;
-    }
-    const inside = x >= minX - threshold && x <= maxX + threshold && y >= minY - threshold && y <= maxY + threshold;
-    const deepInside = x >= minX + threshold && x <= maxX - threshold && y >= minY + threshold && y <= maxY - threshold;
-    return inside && !deepInside;
-  }
-
-  if (path.type === "eraser" || path.type === "freehand") {
-    if (!path.points || path.points.length < 2) {
-      if (path.points && path.points.length === 1) {
-        const dx = x - path.points[0].x;
-        const dy = y - path.points[0].y;
-        return Math.sqrt(dx * dx + dy * dy) < threshold;
-      }
-      return false;
-    }
-    for (let i = 1; i < path.points.length; i++) {
-      if (distToSegment(x, y, path.points[i - 1].x, path.points[i - 1].y, path.points[i].x, path.points[i].y) < threshold) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  return false;
-};
-
-// Distance from point (px, py) to line segment (x1,y1)-(x2,y2)
-export const distToSegment = (px, py, x1, y1, x2, y2) => {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
-  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  const projX = x1 + t * dx;
-  const projY = y1 + t * dy;
-  return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
-};
-
-// Offset all coordinates of a path by (dx, dy) in normalized space
-export const offsetPath = (path, dx, dy) => {
-  if (path.type === "text" || path.type === "dot") {
-    path.position.x += dx;
-    path.position.y += dy;
-  } else if (path.type === "arrow" || path.type === "line" || path.type === "rect" || path.type === "rectstroke" || path.type === "oval" || path.type === "ovalfill") {
-    path.from.x += dx;
-    path.from.y += dy;
-    path.to.x += dx;
-    path.to.y += dy;
-  } else if (path.points && path.points.length > 0) {
-    for (const pt of path.points) {
-      pt.x += dx;
-      pt.y += dy;
-    }
-  }
-};
+// Re-export hit-test utilities so the public API of this module is unchanged.
+export { hitTestPath, distToSegment, offsetPath } from './drawing-hit-test.js';
 
 // Show an inline text input overlay on the canvas for the text tool
 export const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
@@ -204,7 +110,8 @@ export const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
   });
 };
 
-// Initialize a drawing canvas for a drop zone
+// --- Canvas Initialization ---
+
 export const initDrawingCanvas = (drop) => {
   const canvas = document.createElement("canvas");
   canvas.className = "drawing-canvas";
@@ -237,13 +144,11 @@ export const initDrawingCanvas = (drop) => {
   // Initialize data store
   state.canvasDataMap.set(canvas, { paths: [], redoStack: [] });
 
-  // Resize canvas to match drop zone
+  // --- Resize handling ---
   const resizeCanvas = () => {
     const dpr = window.devicePixelRatio || 1;
     const w = drop.clientWidth;
     const h = drop.clientHeight;
-    // Skip resize when the drop zone is hidden or has zero dimensions.
-    // The IntersectionObserver below will trigger a resize when it becomes visible.
     if (w === 0 || h === 0) return;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
@@ -260,9 +165,6 @@ export const initDrawingCanvas = (drop) => {
   resizeObserver.observe(drop);
   state.canvasObservers.set(canvas, resizeObserver);
 
-  // Re-trigger resize when the drop zone becomes visible after being hidden/collapsed.
-  // ResizeObserver may not fire if the element transitions from display:none to visible
-  // without a size change, so we use IntersectionObserver as a fallback.
   const visibilityObserver = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting && (canvas.width === 0 || canvas.height === 0)) {
@@ -273,54 +175,21 @@ export const initDrawingCanvas = (drop) => {
   visibilityObserver.observe(drop);
   state.canvasVisibilityObservers.set(canvas, visibilityObserver);
 
-  // Listen for devicePixelRatio changes (e.g., moving window between Retina and non-Retina displays)
   let dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
   const handleDprChange = () => {
     resizeCanvas();
-    // Re-register with the new DPR value since the media query is resolution-specific
     dprMediaQuery.removeEventListener("change", handleDprChange);
     dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
     dprMediaQuery.addEventListener("change", handleDprChange);
   };
   dprMediaQuery.addEventListener("change", handleDprChange);
 
-  // Helper: clear the preview canvas
-  const clearPreview = () => {
-    const ctx = previewCanvas.getContext("2d");
-    ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-  };
-
-  // Helper: compute content metrics using cached rects
-  const getContentMetrics = (dpr) => {
-    return getCanvasContentMetrics(canvas, dpr, {
-      img: cachedImg,
-      imgRect: cachedImgRect,
-      canvasRect: cachedCanvasRect,
-      fitRect: cachedFitRect,
-    });
-  };
-
-  // Helper: commit a new path and clear the redo stack
-  const commitPath = (path) => {
-    const data = state.canvasDataMap.get(canvas);
-    if (!data) return;
-    data.paths.push(path);
-    data.redoStack.length = 0;
-  };
-
-  // Drawing state
+  // --- Shared drawing infrastructure ---
   let isDrawing = false;
-  let currentPath = null;
-  let arrowStart = null;
-  // Move tool state
-  let movingPath = null;
-  let moveStartX = 0;
-  let moveStartY = 0;
-
-  // rAF throttle for preview redraws
+  let activeStrategy = null;
   let previewRAF = null;
 
-  // Cached bounding rects
+  // Cached bounding rects (populated on mousedown, cleared on mouseup)
   let cachedImgRect = null;
   let cachedCanvasRect = null;
   let cachedFitRect = null;
@@ -346,7 +215,6 @@ export const initDrawingCanvas = (drop) => {
     cachedFitRect = null;
   };
 
-  // Convert clientX/clientY to normalized image-content-relative coords
   const clientToNormalized = (clientX, clientY) => {
     if (cachedImg && cachedFitRect) {
       const contentLeft = cachedImgRect.left + cachedFitRect.x;
@@ -362,6 +230,60 @@ export const initDrawingCanvas = (drop) => {
     };
   };
 
+  const clearPreview = () => {
+    const ctx = previewCanvas.getContext("2d");
+    ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  };
+
+  const getContentMetrics = (dpr) => {
+    return getCanvasContentMetrics(canvas, dpr, {
+      img: cachedImg,
+      imgRect: cachedImgRect,
+      canvasRect: cachedCanvasRect,
+      fitRect: cachedFitRect,
+    });
+  };
+
+  const commitPath = (path) => {
+    const data = state.canvasDataMap.get(canvas);
+    if (!data) return;
+    data.paths.push(path);
+    data.redoStack.length = 0;
+  };
+
+  // Schedule a rAF-throttled preview redraw
+  const schedulePreviewRAF = (fn) => {
+    if (!previewRAF) {
+      previewRAF = requestAnimationFrame(() => {
+        previewRAF = null;
+        fn();
+      });
+    }
+  };
+
+  // Context object passed to strategies — provides access to shared infrastructure
+  const makeContext = (e) => ({
+    drop,
+    canvas,
+    previewCanvas,
+    normX: 0,
+    normY: 0,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    shiftKey: e.shiftKey,
+    clientToNormalized,
+    getContentMetrics,
+    clearPreview,
+    clearCachedRects,
+    commitPath,
+    schedulePreviewRAF,
+    showTextInput,
+    cachedImg,
+    cachedFitRect,
+    cachedCanvasRect,
+  });
+
+  // --- Event Handlers ---
   canvas.addEventListener("mousedown", (e) => {
     if (!state.drawingMode) return;
     e.preventDefault();
@@ -371,199 +293,34 @@ export const initDrawingCanvas = (drop) => {
     cacheRects();
 
     const { x, y } = clientToNormalized(e.clientX, e.clientY);
+    const strategy = getToolStrategy(state.drawTool);
 
-    if (state.drawTool === "text") {
-      showTextInput(drop, canvas, x, y, e.clientX, e.clientY);
-      return;
-    }
+    const ctx = makeContext(e);
+    ctx.normX = x;
+    ctx.normY = y;
 
-    if (state.drawTool === "dot") {
-      commitPath({
-        type: "dot",
-        color: state.drawColor,
-        lineWidth: state.drawLineWidth,
-        position: { x, y },
-      });
-      const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-      return;
-    }
-
-    if (state.drawTool === "object-eraser") {
-      const data = state.canvasDataMap.get(canvas);
-      if (data && data.paths.length > 0) {
-        for (let i = data.paths.length - 1; i >= 0; i--) {
-          if (hitTestPath(data.paths[i], x, y)) {
-            data.paths.splice(i, 1);
-            data.redoStack.length = 0;
-            const dpr = window.devicePixelRatio || 1;
-            redrawCanvas(canvas, dpr);
-            break;
-          }
-        }
-      }
-      return;
-    }
-
-    if (state.drawTool === "move") {
-      const data = state.canvasDataMap.get(canvas);
-      if (data && data.paths.length > 0) {
-        for (let i = data.paths.length - 1; i >= 0; i--) {
-          if (hitTestPath(data.paths[i], x, y)) {
-            movingPath = data.paths[i];
-            moveStartX = x;
-            moveStartY = y;
-            isDrawing = true;
-
-            const dpr = window.devicePixelRatio || 1;
-            const ctx = canvas.getContext("2d");
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-            const zoomScale = state.gridZoom / 100;
-            const staticPaths = data.paths.filter((p) => p !== movingPath);
-            renderPaths(ctx, staticPaths, toCanvasX, toCanvasY, zoomScale * dpr);
-
-            clearPreview();
-            const pCtx = previewCanvas.getContext("2d");
-            renderPaths(pCtx, [movingPath], toCanvasX, toCanvasY, zoomScale * dpr);
-            break;
-          }
-        }
-      }
-      return;
-    }
-
-    isDrawing = true;
-
-    if (state.drawTool === "arrow" || state.drawTool === "line" || state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") {
-      arrowStart = { x, y };
-    } else {
-      currentPath = {
-        type: state.drawTool === "eraser" ? "eraser" : "freehand",
-        color: state.drawColor,
-        lineWidth: state.drawLineWidth,
-        points: [{ x, y }],
-      };
+    const shouldTrack = strategy.onMouseDown(ctx);
+    if (shouldTrack) {
+      isDrawing = true;
+      activeStrategy = strategy;
     }
   });
 
   canvas.addEventListener("mousemove", (e) => {
-    if (!isDrawing) return;
+    if (!isDrawing || !activeStrategy) return;
     e.preventDefault();
     e.stopPropagation();
 
-    let { x, y } = clientToNormalized(e.clientX, e.clientY);
+    const { x, y } = clientToNormalized(e.clientX, e.clientY);
+    const ctx = makeContext(e);
+    ctx.normX = x;
+    ctx.normY = y;
 
-    if (state.drawTool === "move" && movingPath) {
-      const dx = x - moveStartX;
-      const dy = y - moveStartY;
-      offsetPath(movingPath, dx, dy);
-      moveStartX = x;
-      moveStartY = y;
-
-      if (!previewRAF) {
-        previewRAF = requestAnimationFrame(() => {
-          previewRAF = null;
-          const dpr = window.devicePixelRatio || 1;
-          clearPreview();
-          const ctx = previewCanvas.getContext("2d");
-          const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-          const zoomScale = state.gridZoom / 100;
-          renderPaths(ctx, [movingPath], toCanvasX, toCanvasY, zoomScale * dpr);
-        });
-      }
-      return;
-    }
-
-    // Shift-constrain
-    if (e.shiftKey) {
-      if ((state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") && arrowStart) {
-        let contentWidth, contentHeight;
-        if (cachedImg && cachedFitRect) {
-          contentWidth = cachedFitRect.width;
-          contentHeight = cachedFitRect.height;
-        } else {
-          contentWidth = cachedCanvasRect.width;
-          contentHeight = cachedCanvasRect.height;
-        }
-        const dxPx = (x - arrowStart.x) * contentWidth;
-        const dyPx = (y - arrowStart.y) * contentHeight;
-        const maxSidePx = Math.max(Math.abs(dxPx), Math.abs(dyPx));
-        x = arrowStart.x + (maxSidePx * Math.sign(dxPx || 1)) / contentWidth;
-        y = arrowStart.y + (maxSidePx * Math.sign(dyPx || 1)) / contentHeight;
-      } else {
-        const origin = arrowStart || (currentPath && currentPath.points[0]);
-        if (origin) {
-          const dx = Math.abs(x - origin.x);
-          const dy = Math.abs(y - origin.y);
-          if (dx >= dy) {
-            y = origin.y;
-          } else {
-            x = origin.x;
-          }
-        }
-      }
-    }
-
-    if ((state.drawTool === "arrow" || state.drawTool === "line" || state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") && arrowStart) {
-      if (!previewRAF) {
-        const previewTo = { x, y };
-        previewRAF = requestAnimationFrame(() => {
-          previewRAF = null;
-          const dpr = window.devicePixelRatio || 1;
-          clearPreview();
-          const ctx = previewCanvas.getContext("2d");
-          const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-          const zoomScale = state.gridZoom / 100;
-          const previewPath = {
-            type: state.drawTool,
-            color: state.drawColor,
-            lineWidth: state.drawLineWidth,
-            from: arrowStart,
-            to: previewTo,
-          };
-          ctx.strokeStyle = previewPath.color;
-          ctx.lineWidth = previewPath.lineWidth * zoomScale * dpr;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          renderPath(ctx, previewPath, toCanvasX, toCanvasY, zoomScale * dpr);
-        });
-      }
-    } else if (currentPath) {
-      currentPath.points.push({ x, y });
-
-      const ctx = canvas.getContext("2d");
-      const dpr = window.devicePixelRatio || 1;
-      const points = currentPath.points;
-      if (points.length >= 2) {
-        const from = points[points.length - 2];
-        const to = points[points.length - 1];
-        const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-
-        if (currentPath.type === "eraser") {
-          ctx.save();
-          ctx.globalCompositeOperation = "destination-out";
-          ctx.strokeStyle = "rgba(0,0,0,1)";
-          ctx.lineWidth = (currentPath.lineWidth + DRAW_ERASER_EXTRA_WIDTH) * (state.gridZoom / 100) * dpr;
-        } else {
-          ctx.strokeStyle = currentPath.color;
-          ctx.lineWidth = currentPath.lineWidth * (state.gridZoom / 100) * dpr;
-        }
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(toCanvasX(from.x), toCanvasY(from.y));
-        ctx.lineTo(toCanvasX(to.x), toCanvasY(to.y));
-        ctx.stroke();
-        if (currentPath.type === "eraser") {
-          ctx.restore();
-        }
-      }
-    }
+    activeStrategy.onMouseMove(ctx);
   });
 
   const endDraw = (e) => {
-    if (!isDrawing) return;
+    if (!isDrawing || !activeStrategy) return;
     isDrawing = false;
 
     if (previewRAF) {
@@ -571,76 +328,17 @@ export const initDrawingCanvas = (drop) => {
       previewRAF = null;
     }
 
-    clearPreview();
+    const ctx = makeContext(e);
+    const { x, y } = clientToNormalized(e.clientX, e.clientY);
+    ctx.normX = x;
+    ctx.normY = y;
 
-    if (state.drawTool === "move" && movingPath) {
-      movingPath = null;
-      moveStartX = 0;
-      moveStartY = 0;
-      clearPreview();
-      const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-      clearCachedRects();
-      return;
-    }
-
-    if ((state.drawTool === "arrow" || state.drawTool === "line" || state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") && arrowStart) {
-      let { x, y } = clientToNormalized(e.clientX, e.clientY);
-
-      // Shift-constrain on commit
-      if (e.shiftKey && arrowStart) {
-        if (state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") {
-          let contentWidth, contentHeight;
-          if (cachedImg && cachedFitRect) {
-            contentWidth = cachedFitRect.width;
-            contentHeight = cachedFitRect.height;
-          } else {
-            contentWidth = cachedCanvasRect.width;
-            contentHeight = cachedCanvasRect.height;
-          }
-          const dxPx = (x - arrowStart.x) * contentWidth;
-          const dyPx = (y - arrowStart.y) * contentHeight;
-          const maxSidePx = Math.max(Math.abs(dxPx), Math.abs(dyPx));
-          x = arrowStart.x + (maxSidePx * Math.sign(dxPx || 1)) / contentWidth;
-          y = arrowStart.y + (maxSidePx * Math.sign(dyPx || 1)) / contentHeight;
-        } else {
-          const dx = Math.abs(x - arrowStart.x);
-          const dy = Math.abs(y - arrowStart.y);
-          if (dx >= dy) {
-            y = arrowStart.y;
-          } else {
-            x = arrowStart.x;
-          }
-        }
-      }
-
-      const dx = x - arrowStart.x;
-      const dy = y - arrowStart.y;
-      if (Math.sqrt(dx * dx + dy * dy) > DRAW_MIN_DRAG_DISTANCE) {
-        commitPath({
-          type: state.drawTool,
-          color: state.drawColor,
-          lineWidth: state.drawLineWidth,
-          from: arrowStart,
-          to: { x, y },
-        });
-      }
-      arrowStart = null;
-      const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-    } else {
-      if (currentPath && currentPath.points.length > 1) {
-        commitPath(currentPath);
-      }
-      currentPath = null;
-    }
-    clearCachedRects();
+    activeStrategy.onMouseUp(ctx);
+    activeStrategy = null;
   };
 
   canvas.addEventListener("mouseup", endDraw);
 
-  // Use a document-level mouseup so drawing completes even if the cursor
-  // leaves the canvas mid-stroke (instead of committing on mouseleave).
   document.addEventListener("mouseup", (e) => {
     if (!isDrawing) return;
     endDraw(e);
