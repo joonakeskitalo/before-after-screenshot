@@ -39,6 +39,8 @@ const attachDragTo = (img) => {
 
     e.dataTransfer.setData("text/plain", img.src);
     e.dataTransfer.setData("id", img.id);
+    e.dataTransfer.setData("source", "grid");
+    e.dataTransfer.setData("filename", img.alt || "");
     e.dataTransfer.setData("note", textArea ? textArea.value : "");
     e.dataTransfer.setData("drawings", JSON.stringify(drawingData));
     e.dataTransfer.effectAllowed = "move";

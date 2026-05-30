@@ -1,13 +1,38 @@
 import state from './state.js';
 import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt, pushUndo } from './grid.js';
 import { withoutUndo } from './undo.js';
-import { isAllowedImageSrc, isAllowedImageFile } from './sanitize.js';
+import { isAllowedImageSrc, isAllowedImageFile, isValidElementId } from './sanitize.js';
 import {
   TOOLBAR_MIN_HEIGHT, TOOLBAR_COMPACT_THRESHOLD, TOOLBAR_PADDING_OFFSET, TOOLBAR_BODY_PADDING,
 } from './constants.js';
 
 // --- Bottom Toolbar (Staging Area) Logic ---
 const bottomToolbar = document.getElementById("bottom-toolbar");
+
+// Helper: clear a grid cell's image (used when moving image to staging)
+const clearGridCellByImgId = (imgId) => {
+  if (!imgId || !isValidElementId(imgId)) return;
+  const srcImg = document.getElementById(imgId);
+  if (!srcImg) return;
+  const cell = srcImg.closest(".grid-cell");
+  if (!cell) return;
+  const drop = cell.querySelector(".drop");
+  const span = cell.querySelector("span");
+  const textarea = cell.querySelector("textarea");
+  const canvas = cell.querySelector(".drawing-canvas");
+
+  srcImg.src = "";
+  srcImg.alt = "";
+  srcImg.style.display = "none";
+  if (drop) drop.style.border = "var(--border)";
+  if (span) span.style.display = "block";
+  if (textarea) textarea.value = "";
+  if (canvas) {
+    const canvasData = state.canvasDataMap.get(canvas);
+    if (canvasData) canvasData.paths = [];
+  }
+  updateFilenameLabel(cell);
+};
 const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
 const bottomToolbarDrop = document.getElementById("bottom-toolbar-drop");
 
@@ -179,7 +204,7 @@ state.removeToolbarItemById = (id) => {
 // Handle drops onto the toolbar drop zone
 bottomToolbarDrop.addEventListener("dragover", (e) => {
   e.preventDefault();
-  e.dataTransfer.dropEffect = "copy";
+  e.dataTransfer.dropEffect = "move";
 });
 
 bottomToolbarDrop.addEventListener("drop", (e) => {
@@ -197,14 +222,22 @@ bottomToolbarDrop.addEventListener("drop", (e) => {
   // Handle blob or data URL drops (from grid cells back to toolbar)
   const src = e.dataTransfer.getData("text/plain");
   if (src && isAllowedImageSrc(src)) {
-    state.addImageToToolbar(src);
+    const source = e.dataTransfer.getData("source");
+    const draggedId = e.dataTransfer.getData("id");
+    const filename = e.dataTransfer.getData("filename") || "";
+    state.addImageToToolbar(src, filename);
+    // If dragged from grid, clear the source cell
+    if (source === "grid" && draggedId) {
+      pushUndo();
+      clearGridCellByImgId(draggedId);
+    }
   }
 });
 
 // Also allow dropping files anywhere on the toolbar
 bottomToolbar.addEventListener("dragover", (e) => {
   e.preventDefault();
-  e.dataTransfer.dropEffect = "copy";
+  e.dataTransfer.dropEffect = "move";
 });
 
 bottomToolbar.addEventListener("drop", (e) => {
@@ -219,6 +252,21 @@ bottomToolbar.addEventListener("drop", (e) => {
     files.forEach((file) => {
       state.addImageToToolbar(URL.createObjectURL(file), file.name);
     });
+    return;
+  }
+
+  // Handle blob or data URL drops (from grid cells to toolbar)
+  const src = e.dataTransfer.getData("text/plain");
+  if (src && isAllowedImageSrc(src)) {
+    const source = e.dataTransfer.getData("source");
+    const draggedId = e.dataTransfer.getData("id");
+    const filename = e.dataTransfer.getData("filename") || "";
+    state.addImageToToolbar(src, filename);
+    // If dragged from grid, clear the source cell
+    if (source === "grid" && draggedId) {
+      pushUndo();
+      clearGridCellByImgId(draggedId);
+    }
   }
 });
 
