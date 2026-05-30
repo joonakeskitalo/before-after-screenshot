@@ -12,6 +12,28 @@ const toDataMap = (dataArray) => {
   return map;
 };
 
+// Collect all blob URLs currently used in grid cells.
+const collectBlobUrls = () => {
+  const urls = new Set();
+  state.getCells().forEach((cell) => {
+    const img = cell.querySelector("img");
+    if (img && img.src && img.src.startsWith("blob:")) {
+      urls.add(img.src);
+    }
+  });
+  return urls;
+};
+
+// Revoke blob URLs that are no longer present in the rebuilt grid.
+const revokeOrphanedBlobUrls = (previousUrls) => {
+  const currentUrls = collectBlobUrls();
+  for (const url of previousUrls) {
+    if (!currentUrls.has(url)) {
+      URL.revokeObjectURL(url);
+    }
+  }
+};
+
 // --- Mouse drag-to-move for selected cells ---
 
 let cellDragState = null; // { startIndex, startX, startY, active }
@@ -724,6 +746,7 @@ const buildGrid = () => {
   // Save existing cell data
   const existingData = [];
   const existingCells = state.getCells();
+  const previousBlobUrls = collectBlobUrls();
   existingCells.forEach((cell) => {
     const img = cell.querySelector("img");
     const textarea = cell.querySelector("textarea");
@@ -786,6 +809,7 @@ const buildGrid = () => {
   }
 
   // Build row controls (drag handles + add-row buttons)
+  revokeOrphanedBlobUrls(previousBlobUrls);
   buildRowControls();
 };
 
@@ -1054,6 +1078,7 @@ const insertColumnAt = (insertIndex) => {
 const deleteRowAt = (rowIndex) => {
   if (state.gridRows <= 1) return; // Don't delete the last row
 
+  const previousBlobUrls = collectBlobUrls();
   const allData = collectGridData();
 
   // Remove data for the deleted row and shift rows above it down
@@ -1097,6 +1122,7 @@ const deleteRowAt = (rowIndex) => {
     }
   }
 
+  revokeOrphanedBlobUrls(previousBlobUrls);
   buildRowControls();
 };
 
@@ -1378,6 +1404,7 @@ state.updateFilenameLabel = updateFilenameLabel;
 const deleteColumnAt = (colIndex) => {
   if (state.gridCols <= 1) return; // Don't delete the last column
 
+  const previousBlobUrls = collectBlobUrls();
   const allData = collectGridData();
 
   // Remove data for the deleted column and shift columns after it left
@@ -1410,6 +1437,7 @@ const deleteColumnAt = (colIndex) => {
     }
   }
 
+  revokeOrphanedBlobUrls(previousBlobUrls);
   buildRowControls();
 };
 
