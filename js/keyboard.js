@@ -1,6 +1,6 @@
 import state from './state.js';
 import { applyGridZoom } from './zoom.js';
-import { toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt } from './grid.js';
+import { toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt, updateFilenameLabel } from './grid.js';
 import {
   updatePresetColorSelection, penModeBtn, arrowModeBtn, lineModeBtn,
   rectModeBtn, rectstrokeModeBtn, ovalModeBtn, ovalfillModeBtn,
@@ -9,7 +9,8 @@ import {
 } from './drawing.js';
 import { toggleStagingArea } from './toolbar.js';
 import { ZOOM_STEP, ZOOM_TOGGLE_LOW, ZOOM_TOGGLE_HIGH, SCROLL_AFTER_MOVE_DELAY_MS } from './constants.js';
-import { updateCopySelectedBtn, copySelectedRows, copySelectedRawImages, copyWithScale, previewAllFilters, copyWithAllFilters } from './copy-export.js';
+import { updateCopySelectedBtn } from './grid-ui.js';
+import { copySelectedRows, copySelectedRawImages, copyWithScale, previewAllFilters, copyWithAllFilters } from './copy-export.js';
 import { cycleColorFilter } from './color-filter.js';
 
 // --- Keyboard Navigation for Grid Cells ---
@@ -408,7 +409,7 @@ document.addEventListener("keydown", (e) => {
       if (drop) drop.style.border = "var(--border)";
       if (span) span.style.display = "block";
       if (textarea) textarea.value = "";
-      if (state.updateFilenameLabel) state.updateFilenameLabel(cell);
+      updateFilenameLabel(cell);
     });
     return;
   }
@@ -552,7 +553,7 @@ document.addEventListener("keydown", (e) => {
         if (span) span.style.display = "block";
         const textarea = cell.querySelector("textarea");
         if (textarea) textarea.value = "";
-        if (state.updateFilenameLabel) state.updateFilenameLabel(cell);
+        updateFilenameLabel(cell);
         moved = true;
       }
       break;

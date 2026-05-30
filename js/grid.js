@@ -1,6 +1,6 @@
 import state from './state.js';
 import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js';
-import { attachDragTo, updateCopySelectedBtn } from './copy-export.js';
+import { attachDragTo, updateCopySelectedBtn } from './grid-ui.js';
 import { applyGridZoom } from './zoom.js';
 import {
   GRID_MIN_COL_WIDTH, EDGE_EXPANSION_THRESHOLD, EDGE_EXPANSION_MAX_COLS,
@@ -1575,9 +1575,6 @@ const updateGrid = () => {
 // Wire up grid size inputs (replacing inline onchange handlers)
 document.getElementById("grid-cols").addEventListener("change", updateGrid);
 document.getElementById("grid-rows").addEventListener("change", updateGrid);
-
-// Register updateFilenameLabel on state so copy-export can use it without circular deps
-state.updateFilenameLabel = updateFilenameLabel;
 
 const deleteColumnAt = (colIndex) => {
   if (state.gridCols <= 1) return; // Don't delete the last column
