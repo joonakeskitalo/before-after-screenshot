@@ -57,5 +57,7 @@ export const DRAW_MIN_DRAG_DISTANCE = 0.005;  // normalized – minimum drag to 
 
 // --- Grid Interaction ---
 export const EDGE_EXPANSION_THRESHOLD = 40;   // px – distance beyond grid edge to trigger expansion
+export const EDGE_EXPANSION_MAX_COLS = 10;    // maximum columns allowed via drag expansion
+export const EDGE_EXPANSION_MAX_ROWS = 10;    // maximum rows allowed via drag expansion
 export const SWAP_ANIMATION_FALLBACK_MS = 250; // ms – fallback timeout if transitionend doesn't fire
 export const SCROLL_AFTER_MOVE_DELAY_MS = 250; // ms – delay before scrolling after cell move

@@ -3,7 +3,8 @@ import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js'
 import { attachDragTo, updateCopySelectedBtn } from './copy-export.js';
 import { applyGridZoom } from './zoom.js';
 import {
-  GRID_MIN_COL_WIDTH, EDGE_EXPANSION_THRESHOLD, SWAP_ANIMATION_FALLBACK_MS,
+  GRID_MIN_COL_WIDTH, EDGE_EXPANSION_THRESHOLD, EDGE_EXPANSION_MAX_COLS,
+  EDGE_EXPANSION_MAX_ROWS, SWAP_ANIMATION_FALLBACK_MS,
 } from './constants.js';
 
 // Convert an array of {row, col, ...} objects to a Map keyed by "row,col" for O(1) lookup.
@@ -209,6 +210,11 @@ const EDGE_EXPANSION_COOLDOWN = 400; // ms
 const expandGridForDrag = (direction) => {
   const now = Date.now();
   if (now - lastEdgeExpansionTime < EDGE_EXPANSION_COOLDOWN) return false;
+
+  // Prevent infinite expansion — enforce maximum grid dimensions
+  if ((direction === "left" || direction === "right") && state.gridCols >= EDGE_EXPANSION_MAX_COLS) return false;
+  if ((direction === "up" || direction === "down") && state.gridRows >= EDGE_EXPANSION_MAX_ROWS) return false;
+
   lastEdgeExpansionTime = now;
 
   const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
