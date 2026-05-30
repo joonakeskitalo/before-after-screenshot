@@ -5,6 +5,7 @@ import './drawing.js';
 import './zoom.js';
 import './copy-export.js';
 import './grid.js';
+import './grid-pan.js';
 import './drop-handler.js';
 import './toolbar.js';
 import './color-filter.js';

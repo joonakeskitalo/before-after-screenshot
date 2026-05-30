@@ -38,6 +38,11 @@ const state = {
   canvasDataMap: new Map(),
   canvasMouseUpHandlers: new WeakMap(),
 
+  // Grid pan (right-click drag)
+  panX: 0,
+  panY: 0,
+  isPanning: false,
+
   // Row drag
   rowDragState: null,
 
