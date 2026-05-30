@@ -681,7 +681,7 @@ const redrawCanvas = (canvas, dpr) => {
       ctx.save();
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
-      ctx.lineWidth = (path.lineWidth + 10) * zoomScale * dpr;
+      ctx.lineWidth = (path.lineWidth + 8) * zoomScale * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
