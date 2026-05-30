@@ -12,6 +12,7 @@
 // Import everything from the sub-modules
 // grid-selection.js is loaded transitively via grid-drag.js
 import { initDragDeps } from './grid-drag.js';
+import { initUndoDeps, pushUndo, performUndo, canUndo, withoutUndo } from './undo.js';
 
 import {
   initRowControlsDeps,
@@ -50,6 +51,7 @@ import {
 // grid-row-controls.js needs getCellData/setCellData/createCell/updateFilenameLabel (from grid-core).
 initDragDeps({ getCellData, setCellData, insertRowAt, insertColumnAt });
 initRowControlsDeps({ getCellData, setCellData, createCell, updateFilenameLabel });
+initUndoDeps({ buildGrid, setCellData, buildRowControls });
 
 // Re-export the full public API so existing imports from './grid.js' keep working.
 export {
@@ -78,4 +80,8 @@ export {
   setRowDropTarget,
   clearRowDropTarget,
   updateGrid,
+  pushUndo,
+  performUndo,
+  canUndo,
+  withoutUndo,
 };

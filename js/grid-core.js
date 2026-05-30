@@ -3,6 +3,7 @@ import { initDrawingCanvas, redrawCanvas } from './drawing.js';
 import { attachDragTo, updateCopySelectedBtn } from './grid-ui.js';
 import { isAllowedImageSrc, isAllowedImageFile, sanitizeFilename, isValidElementId } from './sanitize.js';
 import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS, GRID_MAX_ROWS, GRID_MAX_COLS } from './constants.js';
+import { pushUndo } from './undo.js';
 import { handleCellClick } from './grid-selection.js';
 import { handleCellDragStart } from './grid-drag.js';
 import { unobserveDrop } from './shared-observers.js';
@@ -104,6 +105,7 @@ const setCellData = (cell, data) => {
 
 const swapCells = (cellA, cellB) => {
   if (!cellA || !cellB || cellA === cellB) return;
+  pushUndo();
 
   // FLIP animation: record initial positions
   const rectA = cellA.getBoundingClientRect();
@@ -488,7 +490,9 @@ const buildGrid = () => {
     }
   }
 
-  revokeOrphanedBlobUrls(previousBlobUrls);
+  if (!state._undoingInProgress) {
+    revokeOrphanedBlobUrls(previousBlobUrls);
+  }
   buildRowControls();
 };
 

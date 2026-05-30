@@ -1,5 +1,6 @@
 import state from './state.js';
-import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt } from './grid.js';
+import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt, pushUndo } from './grid.js';
+import { withoutUndo } from './undo.js';
 import { isAllowedImageSrc, isAllowedImageFile } from './sanitize.js';
 import {
   TOOLBAR_MIN_HEIGHT, TOOLBAR_COMPACT_THRESHOLD, TOOLBAR_PADDING_OFFSET, TOOLBAR_BODY_PADDING,
@@ -320,6 +321,8 @@ insertAllBtn.addEventListener("click", (e) => {
   const items = [...bottomToolbarInner.querySelectorAll(".bottom-toolbar-item")];
   if (items.length === 0) return;
 
+  pushUndo();
+
   // Count how many empty cells are currently available
   const cells = state.getCells();
   let emptyCells = cells.filter((cell) => {
@@ -332,7 +335,7 @@ insertAllBtn.addEventListener("click", (e) => {
   if (needed > 0) {
     const extraRows = Math.ceil(needed / state.gridCols);
     for (let i = 0; i < extraRows; i++) {
-      insertRowAt(state.gridRows);
+      withoutUndo(() => insertRowAt(state.gridRows));
     }
     // Re-query empty cells after adding rows
     emptyCells = state.getCells().filter((cell) => {
@@ -368,6 +371,7 @@ const clearGridBtn = document.getElementById("clear-grid-btn");
 
 clearGridBtn.addEventListener("click", (e) => {
   e.stopPropagation();
+  pushUndo();
 
   // Clear all cell content first
   const cells = state.getCells();

@@ -1,6 +1,7 @@
 import state from './state.js';
 import { redrawCanvas } from './drawing-render.js';
 import { TOOL_NAMES } from './constants.js';
+import { clearUndoStack } from './undo.js';
 
 // --- Drawing Tool State & Toolbar Wiring ---
 
@@ -24,6 +25,7 @@ export const updateDrawingCursor = () => {
 
 export const enableDrawingMode = () => {
   state.drawingMode = true;
+  clearUndoStack();
   document.body.classList.add("drawing-mode");
   if (state.drawTool === TOOL_NAMES.TEXT) document.body.classList.add("text-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));

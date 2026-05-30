@@ -2,6 +2,7 @@ import state from './state.js';
 import { GRID_MIN_COL_WIDTH, GRID_MAX_ROWS, GRID_MAX_COLS } from './constants.js';
 import { updateCopySelectedBtn } from './grid-ui.js';
 import { unobserveDrop } from './shared-observers.js';
+import { pushUndo } from './undo.js';
 
 // These are resolved lazily to avoid circular imports with grid-core.js
 let _getCellData = null;
@@ -110,6 +111,7 @@ const clearRowDropTarget = () => {
 const swapRows = (rowA, rowB) => {
   assertRowControlsDepsInitialized();
   if (rowA === rowB) return;
+  pushUndo();
 
   const cols = state.gridCols;
   const cells = state.getCells();
@@ -143,6 +145,7 @@ const moveRow = (sourceRow, targetIndex) => {
   assertRowControlsDepsInitialized();
   // If dropping in the same position or adjacent (no-op)
   if (targetIndex === sourceRow || targetIndex === sourceRow + 1) return;
+  pushUndo();
 
   const cols = state.gridCols;
   const cells = state.getCells();
@@ -202,6 +205,7 @@ const insertRowAt = (insertIndex) => {
   assertRowControlsDepsInitialized();
   // Enforce maximum grid size
   if (state.gridRows >= GRID_MAX_ROWS) return;
+  pushUndo();
 
   const cols = state.gridCols;
   const oldRows = state.gridRows;
@@ -277,6 +281,7 @@ const insertColumnAt = (insertIndex) => {
   assertRowControlsDepsInitialized();
   // Enforce maximum grid size
   if (state.gridCols >= GRID_MAX_COLS) return;
+  pushUndo();
 
   const oldCols = state.gridCols;
   const rows = state.gridRows;
@@ -361,6 +366,7 @@ const insertColumnAt = (insertIndex) => {
 const deleteRowAt = (rowIndex) => {
   assertRowControlsDepsInitialized();
   if (state.gridRows <= 1) return; // Don't delete the last row
+  pushUndo();
 
   const cols = state.gridCols;
   const cells = state.getCells();
@@ -472,6 +478,7 @@ const deleteRowAt = (rowIndex) => {
 const deleteColumnAt = (colIndex) => {
   assertRowControlsDepsInitialized();
   if (state.gridCols <= 1) return; // Don't delete the last column
+  pushUndo();
 
   const rows = state.gridRows;
   const oldCols = state.gridCols;

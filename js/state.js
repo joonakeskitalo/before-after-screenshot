@@ -46,6 +46,9 @@ const state = {
   // Row drag
   rowDragState: null,
 
+  // Undo: flag to suppress blob URL revocation during undo restore
+  _undoingInProgress: false,
+
   // Forward references (set by toolbar module)
   removeToolbarItemById: () => {},
   addImageToToolbar: () => {},

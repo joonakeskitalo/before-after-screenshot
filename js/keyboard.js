@@ -1,6 +1,8 @@
 import state from './state.js';
 import { applyGridZoom } from './zoom.js';
-import { getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt, updateFilenameLabel } from './grid.js';
+import { getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt, updateFilenameLabel, pushUndo, performUndo } from './grid.js';
+import { withoutUndo } from './undo.js';
+import { lastActiveDrawingCanvas } from './drawing-tools.js';
 import {
   updatePresetColorSelection, penModeBtn, arrowModeBtn, lineModeBtn,
   rectModeBtn, rectstrokeModeBtn, ovalModeBtn, ovalfillModeBtn,
@@ -118,6 +120,7 @@ const moveGridItem = (direction, _depth = 0) => {
   const cells = state.getCells();
   if (cells.length === 0 || state.focusedCellIndex < 0) return;
   if (_depth > MOVE_MAX_RECURSION) return;
+  if (_depth === 0) pushUndo();
 
   const selectedIndices = state.selectedCells.size > 0
     ? [...state.selectedCells].sort((a, b) => a - b)
@@ -141,7 +144,7 @@ const moveGridItem = (direction, _depth = 0) => {
   if (needsExpand) {
     if (direction === "right") {
       const oldCols = state.gridCols;
-      insertColumnAt(state.gridCols);
+      withoutUndo(() => insertColumnAt(state.gridCols));
       const shiftedIndices = selectedIndices.map((idx) => {
         const row = Math.floor(idx / oldCols);
         const col = idx % oldCols;
@@ -157,7 +160,7 @@ const moveGridItem = (direction, _depth = 0) => {
       return;
     } else if (direction === "left") {
       const oldCols = state.gridCols;
-      insertColumnAt(0);
+      withoutUndo(() => insertColumnAt(0));
       const shiftedIndices = selectedIndices.map((idx) => {
         const row = Math.floor(idx / oldCols);
         const col = idx % oldCols;
@@ -172,14 +175,14 @@ const moveGridItem = (direction, _depth = 0) => {
       moveGridItem(direction, _depth + 1);
       return;
     } else if (direction === "down") {
-      insertRowAt(state.gridRows);
+      withoutUndo(() => insertRowAt(state.gridRows));
       clearSelection();
       for (const idx of selectedIndices) addCellToSelection(idx);
       setFocusedCell(state.focusedCellIndex);
       moveGridItem(direction, _depth + 1);
       return;
     } else if (direction === "up") {
-      insertRowAt(0);
+      withoutUndo(() => insertRowAt(0));
       const shiftedIndices = selectedIndices.map((idx) => idx + state.gridCols);
       const newFocusIndex = state.focusedCellIndex + state.gridCols;
       clearSelection();
@@ -286,6 +289,8 @@ const miscActions = {
     const indices = state.selectedCells.size > 0
       ? [...state.selectedCells]
       : (state.focusedCellIndex >= 0 ? [state.focusedCellIndex] : []);
+    if (indices.length === 0) return;
+    pushUndo();
     for (const idx of indices) {
       const cell = cells[idx];
       if (!cell) continue;
@@ -405,6 +410,7 @@ const handleBackspace = (e) => {
       return;
     }
     e.preventDefault();
+    pushUndo();
     const cells = state.getCells();
     state.selectedCells.forEach((index) => {
       const cell = cells[index];
@@ -460,6 +466,17 @@ document.addEventListener("keydown", (e) => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
     const direction = e.key.replace("Arrow", "").toLowerCase();
     handleArrowKey(e, direction);
+    return;
+  }
+
+  // Cmd+Z / Ctrl+Z: undo last grid operation (defer to drawing undo when in drawing mode)
+  if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+    if (state.drawingMode && lastActiveDrawingCanvas) {
+      // Let the drawing-tools handler handle it
+      return;
+    }
+    e.preventDefault();
+    performUndo();
     return;
   }
 
