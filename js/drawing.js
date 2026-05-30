@@ -61,24 +61,59 @@ const moveModeBtn = document.getElementById("move-mode-btn");
 const textModeBtn = document.getElementById("text-mode-btn");
 const drawFontSizeInput = document.getElementById("draw-font-size");
 
+// All tool buttons for easy iteration
+const allToolButtons = [
+  penModeBtn, arrowModeBtn, lineModeBtn, rectModeBtn, rectstrokeModeBtn,
+  ovalModeBtn, ovalfillModeBtn, dotModeBtn, eraserModeBtn, objectEraserModeBtn,
+  moveModeBtn, textModeBtn,
+];
+
+// Body classes that tools may add
+const toolBodyClasses = ["text-tool", "eraser-tool", "move-tool"];
+
+// Map of tool names to their corresponding body class (if any)
+const toolBodyClassMap = {
+  eraser: "eraser-tool",
+  "object-eraser": "eraser-tool",
+  move: "move-tool",
+  // text-tool is added by enableDrawingMode() when drawTool === "text"
+};
+
+/**
+ * Activate a drawing tool, deactivating all others.
+ * If the tool is already active, it toggles off (disables drawing mode).
+ */
+const setActiveTool = (toolName, buttonEl) => {
+  // Toggle off if already active
+  if (state.drawTool === toolName && state.drawingMode) {
+    disableDrawingMode();
+    buttonEl.classList.remove("active");
+    // Also remove any body class this tool may have added
+    const bodyClass = toolBodyClassMap[toolName];
+    if (bodyClass) document.body.classList.remove(bodyClass);
+    return;
+  }
+
+  // Set the new tool
+  state.drawTool = toolName;
+
+  // Update button active states
+  allToolButtons.forEach((btn) => btn.classList.remove("active"));
+  buttonEl.classList.add("active");
+
+  // Remove all tool body classes, then add the one for this tool (if any)
+  toolBodyClasses.forEach((cls) => document.body.classList.remove(cls));
+  const bodyClass = toolBodyClassMap[toolName];
+  if (bodyClass) document.body.classList.add(bodyClass);
+
+  enableDrawingMode();
+};
+
 // Exit drawing mode with Escape
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && state.drawingMode) {
     disableDrawingMode();
-    // Deactivate all tool buttons
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
+    allToolButtons.forEach((btn) => btn.classList.remove("active"));
   }
 });
 
@@ -172,333 +207,19 @@ document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn").forEach
 // Apply initial selection state
 updatePresetColorSelection();
 
-// Pen mode toggle
-penModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "freehand" && state.drawingMode) {
-    disableDrawingMode();
-    penModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "freehand";
-    penModeBtn.classList.add("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Arrow mode toggle
-arrowModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "arrow" && state.drawingMode) {
-    disableDrawingMode();
-    arrowModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "arrow";
-    arrowModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Line mode toggle
-lineModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "line" && state.drawingMode) {
-    disableDrawingMode();
-    lineModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "line";
-    lineModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Solid rectangle mode toggle
-rectModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "rect" && state.drawingMode) {
-    disableDrawingMode();
-    rectModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "rect";
-    rectModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Bordered rectangle mode toggle
-rectstrokeModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "rectstroke" && state.drawingMode) {
-    disableDrawingMode();
-    rectstrokeModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "rectstroke";
-    rectstrokeModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Oval mode toggle
-ovalModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "oval" && state.drawingMode) {
-    disableDrawingMode();
-    ovalModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "oval";
-    ovalModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Solid oval mode toggle
-ovalfillModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "ovalfill" && state.drawingMode) {
-    disableDrawingMode();
-    ovalfillModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "ovalfill";
-    ovalfillModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Dot mode toggle
-dotModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "dot" && state.drawingMode) {
-    disableDrawingMode();
-    dotModeBtn.classList.remove("active");
-  } else {
-    state.drawTool = "dot";
-    dotModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Eraser mode toggle
-eraserModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "eraser" && state.drawingMode) {
-    disableDrawingMode();
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    document.body.classList.remove("eraser-tool");
-  } else {
-    state.drawTool = "eraser";
-    eraserModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("move-tool");
-    document.body.classList.add("eraser-tool");
-    enableDrawingMode();
-  }
-});
-
-// Object eraser mode toggle — removes whole shapes on click
-objectEraserModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "object-eraser" && state.drawingMode) {
-    disableDrawingMode();
-    objectEraserModeBtn.classList.remove("active");
-    document.body.classList.remove("eraser-tool");
-  } else {
-    state.drawTool = "object-eraser";
-    objectEraserModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("move-tool");
-    document.body.classList.add("eraser-tool");
-    enableDrawingMode();
-  }
-});
-
-// Move mode toggle
-moveModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "move" && state.drawingMode) {
-    disableDrawingMode();
-    moveModeBtn.classList.remove("active");
-    document.body.classList.remove("move-tool");
-  } else {
-    state.drawTool = "move";
-    moveModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.add("move-tool");
-    enableDrawingMode();
-  }
-});
-
-// Text mode toggle
-textModeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (state.drawTool === "text" && state.drawingMode) {
-    disableDrawingMode();
-    textModeBtn.classList.remove("active");
-    document.body.classList.remove("text-tool");
-  } else {
-    state.drawTool = "text";
-    textModeBtn.classList.add("active");
-    penModeBtn.classList.remove("active");
-    arrowModeBtn.classList.remove("active");
-    lineModeBtn.classList.remove("active");
-    rectModeBtn.classList.remove("active");
-    rectstrokeModeBtn.classList.remove("active");
-    ovalModeBtn.classList.remove("active");
-    ovalfillModeBtn.classList.remove("active");
-    dotModeBtn.classList.remove("active");
-    eraserModeBtn.classList.remove("active");
-    objectEraserModeBtn.classList.remove("active");
-    moveModeBtn.classList.remove("active");
-    document.body.classList.remove("eraser-tool");
-    document.body.classList.remove("move-tool");
-    enableDrawingMode();
-  }
-});
+// Tool mode toggles
+penModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("freehand", penModeBtn); });
+arrowModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("arrow", arrowModeBtn); });
+lineModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("line", lineModeBtn); });
+rectModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("rect", rectModeBtn); });
+rectstrokeModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("rectstroke", rectstrokeModeBtn); });
+ovalModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("oval", ovalModeBtn); });
+ovalfillModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("ovalfill", ovalfillModeBtn); });
+dotModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("dot", dotModeBtn); });
+eraserModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("eraser", eraserModeBtn); });
+objectEraserModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("object-eraser", objectEraserModeBtn); });
+moveModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("move", moveModeBtn); });
+textModeBtn.addEventListener("click", (e) => { e.stopPropagation(); setActiveTool("text", textModeBtn); });
 
 drawFontSizeInput.addEventListener("input", (e) => {
   state.drawFontSize = parseInt(e.target.value) || 13;
