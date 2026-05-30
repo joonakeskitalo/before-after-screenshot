@@ -120,9 +120,12 @@ const navigateGrid = (direction) => {
   }
 };
 
-const moveGridItem = (direction) => {
+const MOVE_MAX_RECURSION = 1; // expansion should only recurse once per move
+
+const moveGridItem = (direction, _depth = 0) => {
   const cells = state.getCells();
   if (cells.length === 0 || state.focusedCellIndex < 0) return;
+  if (_depth > MOVE_MAX_RECURSION) return; // guard against infinite recursion
 
   // Determine which cells to move: selection if active, otherwise just the focused cell
   const selectedIndices = state.selectedCells.size > 0
@@ -178,7 +181,7 @@ const moveGridItem = (direction) => {
         addCellToSelection(idx);
       }
       setFocusedCell(newFocusIndex);
-      moveGridItem(direction);
+      moveGridItem(direction, _depth + 1);
       return;
     } else if (direction === "left") {
       const oldCols = state.gridCols;
@@ -201,7 +204,7 @@ const moveGridItem = (direction) => {
       }
       setFocusedCell(newFocusIndex);
       // Now the cells are at the correct positions; re-run the move
-      moveGridItem(direction);
+      moveGridItem(direction, _depth + 1);
       return;
     } else if (direction === "down") {
       insertRowAt(state.gridRows);
@@ -211,7 +214,7 @@ const moveGridItem = (direction) => {
         addCellToSelection(idx);
       }
       setFocusedCell(state.focusedCellIndex);
-      moveGridItem(direction);
+      moveGridItem(direction, _depth + 1);
       return;
     } else if (direction === "up") {
       insertRowAt(0);
@@ -226,7 +229,7 @@ const moveGridItem = (direction) => {
       }
       setFocusedCell(newFocusIndex);
       // Now the cells are at the correct positions; re-run the move
-      moveGridItem(direction);
+      moveGridItem(direction, _depth + 1);
       return;
     }
   }
