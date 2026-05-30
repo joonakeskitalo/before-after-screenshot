@@ -224,8 +224,7 @@ bottomToolbar.addEventListener("drop", (e) => {
 });
 
 // Handle paste: if a grid cell is focused, paste into it; otherwise add to toolbar
-const originalOnPaste = document.onpaste;
-document.onpaste = function (event) {
+document.addEventListener("paste", function (event) {
   const items = (event.clipboardData || event.originalEvent.clipboardData).items;
 
   if (state.focusedCellIndex >= 0) {
@@ -283,7 +282,7 @@ document.onpaste = function (event) {
       state.addImageToToolbar(URL.createObjectURL(blob), blob.name || "");
     }
   }
-};
+});
 
 // ctrl-key zoom for toolbar previews
 let zoomOverlay = null;
