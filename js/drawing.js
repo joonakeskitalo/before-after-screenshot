@@ -521,7 +521,7 @@ const getObjectFitRect = (img) => {
   const natHeight = img.naturalHeight;
 
   if (!natWidth || !natHeight || !elemWidth || !elemHeight) {
-    return { x: 0, y: 0, width: elemWidth, height: elemHeight };
+    return null;
   }
 
   const elemRatio = elemWidth / elemHeight;
@@ -560,17 +560,19 @@ const redrawCanvas = (canvas, dpr) => {
   let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
   if (drop && img && img.src && img.style.display !== "none" && img.naturalWidth) {
     const fitRect = getObjectFitRect(img);
-    // getObjectFitRect returns offsets relative to the img element's box.
-    // The canvas covers the drop's content area (inside border), so we need
-    // the img element's offset relative to the canvas to correctly position drawings.
-    const canvasRect = canvas.getBoundingClientRect();
-    const imgRect = img.getBoundingClientRect();
-    const imgOffsetX = imgRect.left - canvasRect.left;
-    const imgOffsetY = imgRect.top - canvasRect.top;
-    contentOffsetX = imgOffsetX + fitRect.x;
-    contentOffsetY = imgOffsetY + fitRect.y;
-    contentWidth = fitRect.width;
-    contentHeight = fitRect.height;
+    if (fitRect) {
+      // getObjectFitRect returns offsets relative to the img element's box.
+      // The canvas covers the drop's content area (inside border), so we need
+      // the img element's offset relative to the canvas to correctly position drawings.
+      const canvasRect = canvas.getBoundingClientRect();
+      const imgRect = img.getBoundingClientRect();
+      const imgOffsetX = imgRect.left - canvasRect.left;
+      const imgOffsetY = imgRect.top - canvasRect.top;
+      contentOffsetX = imgOffsetX + fitRect.x;
+      contentOffsetY = imgOffsetY + fitRect.y;
+      contentWidth = fitRect.width;
+      contentHeight = fitRect.height;
+    }
   }
 
   // Scale line widths proportionally to zoom so drawings maintain their
@@ -998,12 +1000,14 @@ const initDrawingCanvas = (drop) => {
     let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
     if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
       const fitRect = getObjectFitRect(img);
-      const canvasRect = canvas.getBoundingClientRect();
-      const imgRect = img.getBoundingClientRect();
-      contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-      contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-      contentWidth = fitRect.width;
-      contentHeight = fitRect.height;
+      if (fitRect) {
+        const canvasRect = canvas.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
+        contentWidth = fitRect.width;
+        contentHeight = fitRect.height;
+      }
     }
     const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
     const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
@@ -1041,11 +1045,17 @@ const initDrawingCanvas = (drop) => {
     if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
       const imgElemRect = img.getBoundingClientRect();
       const fitRect = getObjectFitRect(img);
-      // The visible content's position in page coords
-      const contentLeft = imgElemRect.left + fitRect.x;
-      const contentTop = imgElemRect.top + fitRect.y;
-      x = (e.clientX - contentLeft) / fitRect.width;
-      y = (e.clientY - contentTop) / fitRect.height;
+      if (fitRect) {
+        // The visible content's position in page coords
+        const contentLeft = imgElemRect.left + fitRect.x;
+        const contentTop = imgElemRect.top + fitRect.y;
+        x = (e.clientX - contentLeft) / fitRect.width;
+        y = (e.clientY - contentTop) / fitRect.height;
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        x = (e.clientX - rect.left) / rect.width;
+        y = (e.clientY - rect.top) / rect.height;
+      }
     } else {
       const rect = canvas.getBoundingClientRect();
       x = (e.clientX - rect.left) / rect.width;
@@ -1131,10 +1141,16 @@ const initDrawingCanvas = (drop) => {
     if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
       const imgElemRect = img.getBoundingClientRect();
       const fitRect = getObjectFitRect(img);
-      const contentLeft = imgElemRect.left + fitRect.x;
-      const contentTop = imgElemRect.top + fitRect.y;
-      x = (e.clientX - contentLeft) / fitRect.width;
-      y = (e.clientY - contentTop) / fitRect.height;
+      if (fitRect) {
+        const contentLeft = imgElemRect.left + fitRect.x;
+        const contentTop = imgElemRect.top + fitRect.y;
+        x = (e.clientX - contentLeft) / fitRect.width;
+        y = (e.clientY - contentTop) / fitRect.height;
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        x = (e.clientX - rect.left) / rect.width;
+        y = (e.clientY - rect.top) / rect.height;
+      }
     } else {
       const rect = canvas.getBoundingClientRect();
       x = (e.clientX - rect.left) / rect.width;
@@ -1161,8 +1177,14 @@ const initDrawingCanvas = (drop) => {
         let contentWidth, contentHeight;
         if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
           const fitRect = getObjectFitRect(img);
-          contentWidth = fitRect.width;
-          contentHeight = fitRect.height;
+          if (fitRect) {
+            contentWidth = fitRect.width;
+            contentHeight = fitRect.height;
+          } else {
+            const r = canvas.getBoundingClientRect();
+            contentWidth = r.width;
+            contentHeight = r.height;
+          }
         } else {
           const r = canvas.getBoundingClientRect();
           contentWidth = r.width;
@@ -1290,12 +1312,14 @@ const initDrawingCanvas = (drop) => {
         let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
         if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
           const fitRect = getObjectFitRect(img);
-          const canvasRect = canvas.getBoundingClientRect();
-          const imgRect = img.getBoundingClientRect();
-          contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-          contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-          contentWidth = fitRect.width;
-          contentHeight = fitRect.height;
+          if (fitRect) {
+            const canvasRect = canvas.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+            contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
+            contentWidth = fitRect.width;
+            contentHeight = fitRect.height;
+          }
         }
         const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
         const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
@@ -1344,10 +1368,16 @@ const initDrawingCanvas = (drop) => {
       if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
         const imgElemRect = img.getBoundingClientRect();
         const fitRect = getObjectFitRect(img);
-        const contentLeft = imgElemRect.left + fitRect.x;
-        const contentTop = imgElemRect.top + fitRect.y;
-        x = (e.clientX - contentLeft) / fitRect.width;
-        y = (e.clientY - contentTop) / fitRect.height;
+        if (fitRect) {
+          const contentLeft = imgElemRect.left + fitRect.x;
+          const contentTop = imgElemRect.top + fitRect.y;
+          x = (e.clientX - contentLeft) / fitRect.width;
+          y = (e.clientY - contentTop) / fitRect.height;
+        } else {
+          const rect = canvas.getBoundingClientRect();
+          x = (e.clientX - rect.left) / rect.width;
+          y = (e.clientY - rect.top) / rect.height;
+        }
       } else {
         const rect = canvas.getBoundingClientRect();
         x = (e.clientX - rect.left) / rect.width;
@@ -1362,8 +1392,14 @@ const initDrawingCanvas = (drop) => {
           let contentWidth, contentHeight;
           if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
             const fitRect = getObjectFitRect(img);
-            contentWidth = fitRect.width;
-            contentHeight = fitRect.height;
+            if (fitRect) {
+              contentWidth = fitRect.width;
+              contentHeight = fitRect.height;
+            } else {
+              const r = canvas.getBoundingClientRect();
+              contentWidth = r.width;
+              contentHeight = r.height;
+            }
           } else {
             const r = canvas.getBoundingClientRect();
             contentWidth = r.width;
@@ -1564,6 +1600,8 @@ const redrawAllCanvasesForExport = async (scale) => {
     const imgRect = img.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const fitRect = getObjectFitRect(img);
+
+    if (!fitRect) return; // Image not yet laid out, cannot bake
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = fitRect.width * dpr;
