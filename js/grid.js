@@ -349,6 +349,8 @@ const expandGridForDrag = (direction) => {
   return false;
 };
 
+let cellDragRafId = null;
+
 const handleCellDragMove = (e) => {
   if (!cellDragState) return;
 
@@ -363,33 +365,50 @@ const handleCellDragMove = (e) => {
     document.body.classList.add("cell-dragging");
   }
 
-  // Check if cursor is beyond grid edges — auto-expand
-  const edgeDir = getEdgeExpansionDirection(e.clientX, e.clientY);
-  if (edgeDir) {
-    expandGridForDrag(edgeDir);
-  }
+  // Throttle the expensive work (showCellDropTargets) to one update per frame
+  if (cellDragRafId) cancelAnimationFrame(cellDragRafId);
 
-  // Grab cells once for the entire operation
-  const cells = state.getCells();
+  const clientX = e.clientX;
+  const clientY = e.clientY;
 
-  const targetIndex = getCellIndexAtPoint(e.clientX, e.clientY, cells);
-  if (targetIndex === -1) {
-    clearCellDropTarget(cells);
-    return;
-  }
+  cellDragRafId = requestAnimationFrame(() => {
+    cellDragRafId = null;
+    if (!cellDragState) return;
 
-  const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
-  const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex, cells);
+    // Check if cursor is beyond grid edges — auto-expand
+    const edgeDir = getEdgeExpansionDirection(clientX, clientY);
+    if (edgeDir) {
+      expandGridForDrag(edgeDir);
+    }
 
-  if (targets) {
-    showCellDropTargets(targets, cells);
-  } else {
-    clearCellDropTarget(cells);
-  }
+    // Grab cells once for the entire operation
+    const cells = state.getCells();
+
+    const targetIndex = getCellIndexAtPoint(clientX, clientY, cells);
+    if (targetIndex === -1) {
+      clearCellDropTarget(cells);
+      return;
+    }
+
+    const selectedIndices = [...state.selectedCells].sort((a, b) => a - b);
+    const targets = computeMoveTargets(selectedIndices, cellDragState.startIndex, targetIndex, cells);
+
+    if (targets) {
+      showCellDropTargets(targets, cells);
+    } else {
+      clearCellDropTarget(cells);
+    }
+  });
 };
 
 const handleCellDragEnd = (e) => {
   if (!cellDragState) return;
+
+  // Cancel any pending RAF from drag move
+  if (cellDragRafId) {
+    cancelAnimationFrame(cellDragRafId);
+    cellDragRafId = null;
+  }
 
   const wasDragActive = cellDragState.active;
 
