@@ -743,6 +743,16 @@ const buildGrid = () => {
   // Clear keyboard focus
   state.focusedCellIndex = -1;
 
+  // Disconnect ResizeObservers from old canvases to prevent leaks
+  const oldCanvases = state.gridEl.querySelectorAll(".drawing-canvas");
+  oldCanvases.forEach((canvas) => {
+    const observer = state.canvasObservers.get(canvas);
+    if (observer) {
+      observer.disconnect();
+      state.canvasObservers.delete(canvas);
+    }
+  });
+
   // Save existing cell data
   const existingData = [];
   const existingCells = state.getCells();
