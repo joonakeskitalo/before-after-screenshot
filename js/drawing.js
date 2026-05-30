@@ -792,13 +792,17 @@ const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
     committed = true;
     const text = input.value.trim();
     if (text) {
-      commitPath({
-        type: "text",
-        color: state.drawColor,
-        fontSize: state.drawFontSize,
-        position: { x: normX, y: normY },
-        text: text,
-      });
+      const data = state.canvasDataMap.get(canvas);
+      if (data) {
+        data.paths.push({
+          type: "text",
+          color: state.drawColor,
+          fontSize: state.drawFontSize,
+          position: { x: normX, y: normY },
+          text: text,
+        });
+        data.redoStack.length = 0;
+      }
       const dpr = window.devicePixelRatio || 1;
       redrawCanvas(canvas, dpr);
     }
