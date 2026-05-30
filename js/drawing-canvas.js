@@ -150,10 +150,14 @@ export const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
 
   input.addEventListener("input", resizeInput);
 
-  let committed = false;
+  const cleanup = () => {
+    input.removeEventListener("blur", onBlur);
+    input.remove();
+    measurer.remove();
+  };
+
   const commitText = () => {
-    if (committed || !input.parentNode) return;
-    committed = true;
+    if (!input.parentNode) return;
     const text = input.value.trim();
     if (text) {
       const data = state.canvasDataMap.get(canvas);
@@ -170,8 +174,11 @@ export const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
       const dpr = window.devicePixelRatio || 1;
       redrawCanvas(canvas, dpr);
     }
-    input.remove();
-    measurer.remove();
+    cleanup();
+  };
+
+  const onBlur = () => {
+    commitText();
   };
 
   input.addEventListener("keydown", (e) => {
@@ -180,17 +187,12 @@ export const showTextInput = (drop, canvas, normX, normY, clientX, clientY) => {
       commitText();
     } else if (e.key === "Escape") {
       e.preventDefault();
-      if (input.parentNode) {
-        input.remove();
-        measurer.remove();
-      }
+      cleanup();
     }
     e.stopPropagation();
   });
 
-  input.addEventListener("blur", () => {
-    commitText();
-  });
+  input.addEventListener("blur", onBlur);
 
   input.addEventListener("mousedown", (e) => {
     e.stopPropagation();
