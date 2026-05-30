@@ -1325,7 +1325,9 @@ const copyWithAllFilters = async () => {
           if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
           return acc;
         }, [])
-      : allCells.map((_, i) => i);
+      : state.focusedCellIndex >= 0
+        ? [state.focusedCellIndex]
+        : allCells.map((_, i) => i);
 
   // Collect visible images
   const sourceImages = [];
@@ -1572,10 +1574,31 @@ const applyFilterToCanvas = (sourceCanvas, filter) => {
   return outCanvas;
 };
 
+// Track the active filter preview overlay for toggle and update behavior
+let filterPreviewOverlay = null;
+let filterPreviewGrid = null;
+let filterPreviewBuildFn = null;
+
+const closeFilterPreview = () => {
+  if (filterPreviewOverlay) {
+    filterPreviewOverlay.remove();
+    filterPreviewOverlay = null;
+    filterPreviewGrid = null;
+    filterPreviewBuildFn = null;
+    state.onFocusedCellChange = null;
+  }
+};
+
 const previewAllFilters = () => {
+  // Toggle: close if already open
+  if (filterPreviewOverlay) {
+    closeFilterPreview();
+    return;
+  }
+
   const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
 
-  // Determine which images to include (selected only)
+  // Determine which images to include (selected, or focused via keyboard)
   const indices = state.selectedCells.size > 0
     ? [...state.selectedCells].sort((a, b) => a - b)
     : state.selectedRows.size > 0
@@ -1583,7 +1606,9 @@ const previewAllFilters = () => {
           if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
           return acc;
         }, [])
-      : [];
+      : state.focusedCellIndex >= 0
+        ? [state.focusedCellIndex]
+        : [];
 
   if (indices.length === 0) return;
 
@@ -1913,86 +1938,90 @@ const previewAllFilters = () => {
 
   const grid = document.createElement("div");
   grid.className = "filter-preview-grid";
+  filterPreviewGrid = grid;
 
   const filters = FILTER_OPTIONS;
 
-  for (const { img, name } of sourceImages) {
-    const rowContainer = document.createElement("div");
+  // Helper: populate the grid element with filter previews for given images
+  const buildGridContent = (targetGrid, images) => {
+    targetGrid.innerHTML = "";
+    for (const { img, name } of images) {
+      const rowContainer = document.createElement("div");
 
-    // Row label (filename)
-    if (name) {
-      const rowLabel = document.createElement("div");
-      rowLabel.className = "filter-preview-row-label";
-      rowLabel.textContent = name;
-      rowLabel.title = name;
-      rowContainer.appendChild(rowLabel);
-    }
+      // Row label (filename)
+      if (name) {
+        const rowLabel = document.createElement("div");
+        rowLabel.className = "filter-preview-row-label";
+        rowLabel.textContent = name;
+        rowLabel.title = name;
+        rowContainer.appendChild(rowLabel);
+      }
 
-    const row = document.createElement("div");
-    row.className = "filter-preview-row";
+      const row = document.createElement("div");
+      row.className = "filter-preview-row";
 
-    // Draw source image to a canvas for pixel manipulation
-    const srcCanvas = document.createElement("canvas");
-    srcCanvas.width = img.naturalWidth;
-    srcCanvas.height = img.naturalHeight;
-    const srcCtx = srcCanvas.getContext("2d");
-    srcCtx.drawImage(img, 0, 0);
+      // Draw source image to a canvas for pixel manipulation
+      const srcCanvas = document.createElement("canvas");
+      srcCanvas.width = img.naturalWidth;
+      srcCanvas.height = img.naturalHeight;
+      const srcCtx = srcCanvas.getContext("2d");
+      srcCtx.drawImage(img, 0, 0);
 
-    for (const filter of filters) {
-      const cell = document.createElement("div");
-      cell.className = "filter-preview-cell";
+      for (const filter of filters) {
+        const cell = document.createElement("div");
+        cell.className = "filter-preview-cell";
 
-      const filteredCanvas = applyFilterToCanvas(srcCanvas, filter);
-      const filteredImg = document.createElement("img");
-      filteredImg.src = filteredCanvas.toDataURL("image/png");
-      filteredImg.alt = `${name} - ${FILTER_LABELS[filter]}`;
+        const filteredCanvas = applyFilterToCanvas(srcCanvas, filter);
+        const filteredImg = document.createElement("img");
+        filteredImg.src = filteredCanvas.toDataURL("image/png");
+        filteredImg.alt = `${name} - ${FILTER_LABELS[filter]}`;
 
-      // Wrap image in a container that supports drawing
-      const imgContainer = document.createElement("div");
-      imgContainer.className = "filter-preview-img-container";
-      imgContainer.appendChild(filteredImg);
+        // Wrap image in a container that supports drawing
+        const imgContainer = document.createElement("div");
+        imgContainer.className = "filter-preview-img-container";
+        imgContainer.appendChild(filteredImg);
 
-      // Initialize drawing canvas on this container
-      initDrawingCanvas(imgContainer);
+        // Initialize drawing canvas on this container
+        initDrawingCanvas(imgContainer);
 
-      // Per-image action buttons
-      const actions = document.createElement("div");
-      actions.className = "filter-preview-cell-actions";
+        // Per-image action buttons
+        const actions = document.createElement("div");
+        actions.className = "filter-preview-cell-actions";
 
-      const copyClipBtn = document.createElement("button");
-      copyClipBtn.className = "filter-preview-action-btn";
-      copyClipBtn.title = "Copy to clipboard";
-      copyClipBtn.textContent = "📋";
-      copyClipBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const dataUrl = bakePreviewCell(cell);
-        if (!dataUrl) return;
-        try {
-          const resp = await fetch(dataUrl);
-          const blob = await resp.blob();
-          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-          copyClipBtn.textContent = "✓";
-          setTimeout(() => { copyClipBtn.textContent = "📋"; }, 1200);
-        } catch (err) {
-          console.error("Failed to copy to clipboard:", err);
-        }
-      });
+        const copyClipBtn = document.createElement("button");
+        copyClipBtn.className = "filter-preview-action-btn";
+        copyClipBtn.title = "Copy to clipboard";
+        copyClipBtn.textContent = "📋";
+        copyClipBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const dataUrl = bakePreviewCell(cell);
+          if (!dataUrl) return;
+          try {
+            const resp = await fetch(dataUrl);
+            const blob = await resp.blob();
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+            copyClipBtn.textContent = "✓";
+            setTimeout(() => { copyClipBtn.textContent = "📋"; }, 1200);
+          } catch (err) {
+            console.error("Failed to copy to clipboard:", err);
+          }
+        });
 
-      const addStagingBtn = document.createElement("button");
-      addStagingBtn.className = "filter-preview-action-btn";
-      addStagingBtn.title = "Add to staging";
-      addStagingBtn.textContent = "⬇";
-      addStagingBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const dataUrl = bakePreviewCell(cell);
-        if (!dataUrl) return;
-        state.addImageToToolbar(dataUrl, getPreviewCellName(cell));
-        addStagingBtn.textContent = "✓";
-        setTimeout(() => { addStagingBtn.textContent = "⬇"; }, 1200);
-      });
+        const addStagingBtn = document.createElement("button");
+        addStagingBtn.className = "filter-preview-action-btn";
+        addStagingBtn.title = "Add to staging";
+        addStagingBtn.textContent = "⬇";
+        addStagingBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const dataUrl = bakePreviewCell(cell);
+          if (!dataUrl) return;
+          state.addImageToToolbar(dataUrl, getPreviewCellName(cell));
+          addStagingBtn.textContent = "✓";
+          setTimeout(() => { addStagingBtn.textContent = "⬇"; }, 1200);
+        });
 
-      actions.appendChild(copyClipBtn);
-      actions.appendChild(addStagingBtn);
+        actions.appendChild(copyClipBtn);
+        actions.appendChild(addStagingBtn);
 
       const label = document.createElement("span");
       label.className = "filter-label";
@@ -2005,28 +2034,46 @@ const previewAllFilters = () => {
     }
 
     rowContainer.appendChild(row);
-    grid.appendChild(rowContainer);
-  }
+    targetGrid.appendChild(rowContainer);
+    }
+  };
+  filterPreviewBuildFn = buildGridContent;
+
+  // Build initial content
+  buildGridContent(grid, sourceImages);
 
   body.appendChild(grid);
   panel.appendChild(body);
   overlay.appendChild(panel);
+  filterPreviewOverlay = overlay;
 
   // Close on overlay background click
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) closeFilterPreview();
   });
 
   // Close on Escape
   const handleEsc = (e) => {
     if (e.key === "Escape") {
-      overlay.remove();
+      closeFilterPreview();
       document.removeEventListener("keydown", handleEsc);
     }
   };
   document.addEventListener("keydown", handleEsc);
 
   document.body.appendChild(overlay);
+
+  // Register focus change listener to update preview when navigating cells
+  state.onFocusedCellChange = (newIndex) => {
+    if (!filterPreviewOverlay || !filterPreviewGrid || !filterPreviewBuildFn) return;
+    const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+    if (newIndex < 0 || newIndex >= cells.length) return;
+    const cell = cells[newIndex];
+    const img = cell.querySelector("img");
+    if (!img || !img.src || img.style.display === "none") return;
+    // Update the grid with the newly focused image
+    filterPreviewBuildFn(filterPreviewGrid, [{ img, name: img.alt || "" }]);
+  };
 };
 
 document.getElementById("preview-all-filters-btn").addEventListener("click", previewAllFilters);
@@ -2046,6 +2093,7 @@ export {
   copyAsGridSize,
   copyWithAllFilters,
   previewAllFilters,
+  closeFilterPreview,
   updateCopySelectedBtn,
   attachDragTo,
   clearOrCopyImage,

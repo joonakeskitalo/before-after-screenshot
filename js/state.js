@@ -36,6 +36,9 @@ const state = {
   // Forward references (set by toolbar module)
   removeToolbarItemById: () => {},
   addImageToToolbar: () => {},
+
+  // Callback invoked when focusedCellIndex changes (used by filter preview)
+  onFocusedCellChange: null,
 };
 
 state.elementsToAdjustWidth = [state.cardsEl, state.content];

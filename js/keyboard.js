@@ -25,6 +25,10 @@ const setFocusedCell = (index) => {
     // Scroll the focused cell fully into view
     cells[state.focusedCellIndex].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }
+  // Notify listeners (e.g. filter preview)
+  if (state.onFocusedCellChange) {
+    state.onFocusedCellChange(index);
+  }
 };
 
 const clearFocusedCell = () => {
