@@ -708,18 +708,12 @@ const initDrawingCanvas = (drop) => {
 
   // Helper: compute content offset/size for coordinate mapping
   const getContentMetrics = (dpr) => {
-    const img = drop.querySelector("img");
     let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-    if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-      const fitRect = getObjectFitRect(img);
-      if (fitRect) {
-        const canvasRect = canvas.getBoundingClientRect();
-        const imgRect = img.getBoundingClientRect();
-        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-        contentWidth = fitRect.width;
-        contentHeight = fitRect.height;
-      }
+    if (cachedImg && cachedFitRect) {
+      contentOffsetX = (cachedImgRect.left - cachedCanvasRect.left) + cachedFitRect.x;
+      contentOffsetY = (cachedImgRect.top - cachedCanvasRect.top) + cachedFitRect.y;
+      contentWidth = cachedFitRect.width;
+      contentHeight = cachedFitRect.height;
     }
     const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
     const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
@@ -743,6 +737,49 @@ const initDrawingCanvas = (drop) => {
   let moveStartX = 0;
   let moveStartY = 0;
 
+  // Cached bounding rects — set at mousedown, cleared at mouseup/mouseleave.
+  // Avoids repeated getBoundingClientRect() calls on every mousemove.
+  let cachedImgRect = null;
+  let cachedCanvasRect = null;
+  let cachedFitRect = null;
+  let cachedImg = null;
+
+  const cacheRects = () => {
+    cachedImg = drop.querySelector("img");
+    if (cachedImg && cachedImg.src && cachedImg.style.display !== "none" && cachedImg.naturalWidth) {
+      cachedImgRect = cachedImg.getBoundingClientRect();
+      cachedFitRect = getObjectFitRect(cachedImg);
+    } else {
+      cachedImg = null;
+      cachedImgRect = null;
+      cachedFitRect = null;
+    }
+    cachedCanvasRect = canvas.getBoundingClientRect();
+  };
+
+  const clearCachedRects = () => {
+    cachedImg = null;
+    cachedImgRect = null;
+    cachedCanvasRect = null;
+    cachedFitRect = null;
+  };
+
+  // Convert clientX/clientY to normalized image-content-relative coords using cached rects
+  const clientToNormalized = (clientX, clientY) => {
+    if (cachedImg && cachedFitRect) {
+      const contentLeft = cachedImgRect.left + cachedFitRect.x;
+      const contentTop = cachedImgRect.top + cachedFitRect.y;
+      return {
+        x: (clientX - contentLeft) / cachedFitRect.width,
+        y: (clientY - contentTop) / cachedFitRect.height,
+      };
+    }
+    return {
+      x: (clientX - cachedCanvasRect.left) / cachedCanvasRect.width,
+      y: (clientY - cachedCanvasRect.top) / cachedCanvasRect.height,
+    };
+  };
+
   canvas.addEventListener("mousedown", (e) => {
     if (!state.drawingMode) return;
     e.preventDefault();
@@ -751,28 +788,11 @@ const initDrawingCanvas = (drop) => {
     // Track this as the last active canvas for undo/redo
     lastActiveDrawingCanvas = canvas;
 
+    // Cache bounding rects once at the start of the stroke
+    cacheRects();
+
     // Store coordinates relative to the visible image content (accounting for object-fit)
-    const img = drop.querySelector("img");
-    let x, y;
-    if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-      const imgElemRect = img.getBoundingClientRect();
-      const fitRect = getObjectFitRect(img);
-      if (fitRect) {
-        // The visible content's position in page coords
-        const contentLeft = imgElemRect.left + fitRect.x;
-        const contentTop = imgElemRect.top + fitRect.y;
-        x = (e.clientX - contentLeft) / fitRect.width;
-        y = (e.clientY - contentTop) / fitRect.height;
-      } else {
-        const rect = canvas.getBoundingClientRect();
-        x = (e.clientX - rect.left) / rect.width;
-        y = (e.clientY - rect.top) / rect.height;
-      }
-    } else {
-      const rect = canvas.getBoundingClientRect();
-      x = (e.clientX - rect.left) / rect.width;
-      y = (e.clientY - rect.top) / rect.height;
-    }
+    const { x, y } = clientToNormalized(e.clientX, e.clientY);
 
     if (state.drawTool === "text") {
       // Show an inline input to type text at the clicked position
@@ -847,27 +867,8 @@ const initDrawingCanvas = (drop) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Store coordinates relative to the visible image content
-    const img = drop.querySelector("img");
-    let x, y;
-    if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-      const imgElemRect = img.getBoundingClientRect();
-      const fitRect = getObjectFitRect(img);
-      if (fitRect) {
-        const contentLeft = imgElemRect.left + fitRect.x;
-        const contentTop = imgElemRect.top + fitRect.y;
-        x = (e.clientX - contentLeft) / fitRect.width;
-        y = (e.clientY - contentTop) / fitRect.height;
-      } else {
-        const rect = canvas.getBoundingClientRect();
-        x = (e.clientX - rect.left) / rect.width;
-        y = (e.clientY - rect.top) / rect.height;
-      }
-    } else {
-      const rect = canvas.getBoundingClientRect();
-      x = (e.clientX - rect.left) / rect.width;
-      y = (e.clientY - rect.top) / rect.height;
-    }
+    // Use cached rects from mousedown — no getBoundingClientRect() calls here
+    let { x, y } = clientToNormalized(e.clientX, e.clientY);
 
     // Shift-constrain behavior depends on tool:
     // - Rect/oval tools: force 1:1 aspect ratio (square/circle) in pixel space
@@ -887,20 +888,12 @@ const initDrawingCanvas = (drop) => {
       if ((state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") && arrowStart) {
         // Convert normalized deltas to pixel space to get a true square/circle
         let contentWidth, contentHeight;
-        if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-          const fitRect = getObjectFitRect(img);
-          if (fitRect) {
-            contentWidth = fitRect.width;
-            contentHeight = fitRect.height;
-          } else {
-            const r = canvas.getBoundingClientRect();
-            contentWidth = r.width;
-            contentHeight = r.height;
-          }
+        if (cachedImg && cachedFitRect) {
+          contentWidth = cachedFitRect.width;
+          contentHeight = cachedFitRect.height;
         } else {
-          const r = canvas.getBoundingClientRect();
-          contentWidth = r.width;
-          contentHeight = r.height;
+          contentWidth = cachedCanvasRect.width;
+          contentHeight = cachedCanvasRect.height;
         }
         const dxPx = (x - arrowStart.x) * contentWidth;
         const dyPx = (y - arrowStart.y) * contentHeight;
@@ -1022,16 +1015,11 @@ const initDrawingCanvas = (drop) => {
 
         // Map image-content-relative coords to canvas pixel coords for live drawing
         let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-        if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-          const fitRect = getObjectFitRect(img);
-          if (fitRect) {
-            const canvasRect = canvas.getBoundingClientRect();
-            const imgRect = img.getBoundingClientRect();
-            contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-            contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-            contentWidth = fitRect.width;
-            contentHeight = fitRect.height;
-          }
+        if (cachedImg && cachedFitRect) {
+          contentOffsetX = (cachedImgRect.left - cachedCanvasRect.left) + cachedFitRect.x;
+          contentOffsetY = (cachedImgRect.top - cachedCanvasRect.top) + cachedFitRect.y;
+          contentWidth = cachedFitRect.width;
+          contentHeight = cachedFitRect.height;
         }
         const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
         const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
@@ -1070,52 +1058,25 @@ const initDrawingCanvas = (drop) => {
       movingPath = null;
       moveStartX = 0;
       moveStartY = 0;
+      clearCachedRects();
       return;
     }
 
     if ((state.drawTool === "arrow" || state.drawTool === "line" || state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") && arrowStart) {
-      // Get final position
-      const img = drop.querySelector("img");
-      let x, y;
-      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-        const imgElemRect = img.getBoundingClientRect();
-        const fitRect = getObjectFitRect(img);
-        if (fitRect) {
-          const contentLeft = imgElemRect.left + fitRect.x;
-          const contentTop = imgElemRect.top + fitRect.y;
-          x = (e.clientX - contentLeft) / fitRect.width;
-          y = (e.clientY - contentTop) / fitRect.height;
-        } else {
-          const rect = canvas.getBoundingClientRect();
-          x = (e.clientX - rect.left) / rect.width;
-          y = (e.clientY - rect.top) / rect.height;
-        }
-      } else {
-        const rect = canvas.getBoundingClientRect();
-        x = (e.clientX - rect.left) / rect.width;
-        y = (e.clientY - rect.top) / rect.height;
-      }
+      // Get final position using cached rects
+      let { x, y } = clientToNormalized(e.clientX, e.clientY);
 
       // Shift-constrain on commit
       if (e.shiftKey && arrowStart) {
         if (state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") {
           // Convert normalized deltas to pixel space to get a true square/circle
-          const img = drop.querySelector("img");
           let contentWidth, contentHeight;
-          if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-            const fitRect = getObjectFitRect(img);
-            if (fitRect) {
-              contentWidth = fitRect.width;
-              contentHeight = fitRect.height;
-            } else {
-              const r = canvas.getBoundingClientRect();
-              contentWidth = r.width;
-              contentHeight = r.height;
-            }
+          if (cachedImg && cachedFitRect) {
+            contentWidth = cachedFitRect.width;
+            contentHeight = cachedFitRect.height;
           } else {
-            const r = canvas.getBoundingClientRect();
-            contentWidth = r.width;
-            contentHeight = r.height;
+            contentWidth = cachedCanvasRect.width;
+            contentHeight = cachedCanvasRect.height;
           }
           const dxPx = (x - arrowStart.x) * contentWidth;
           const dyPx = (y - arrowStart.y) * contentHeight;
@@ -1155,6 +1116,7 @@ const initDrawingCanvas = (drop) => {
       }
       currentPath = null;
     }
+    clearCachedRects();
   };
 
   canvas.addEventListener("mouseup", endDraw);
