@@ -134,7 +134,7 @@ state.addImageToToolbar = (dataUrl, fileName = "") => {
     e.stopPropagation();
 
     // Find the first empty grid cell
-    const cells = state.gridEl.querySelectorAll(".grid-cell");
+    const cells = state.getCells();
     for (const cell of cells) {
       const cellImg = cell.querySelector("img");
       if (!cellImg || !cellImg.src || cellImg.style.display === "none") {
@@ -445,7 +445,7 @@ insertAllBtn.addEventListener("click", (e) => {
   if (items.length === 0) return;
 
   // Count how many empty cells are currently available
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   let emptyCells = cells.filter((cell) => {
     const img = cell.querySelector("img");
     return !img || !img.src || img.style.display === "none";
@@ -459,7 +459,7 @@ insertAllBtn.addEventListener("click", (e) => {
     document.getElementById("grid-rows").value = state.gridRows;
     buildGrid();
     // Re-query empty cells after rebuilding
-    emptyCells = [...state.gridEl.querySelectorAll(".grid-cell")].filter((cell) => {
+    emptyCells = state.getCells().filter((cell) => {
       const img = cell.querySelector("img");
       return !img || !img.src || img.style.display === "none";
     });
@@ -495,7 +495,7 @@ clearGridBtn.addEventListener("click", (e) => {
   e.stopPropagation();
 
   // Clear all cell content first
-  const cells = state.gridEl.querySelectorAll(".grid-cell");
+  const cells = state.getCells();
   cells.forEach((cell) => {
     const img = cell.querySelector("img");
     const drop = cell.querySelector(".drop");

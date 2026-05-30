@@ -39,6 +39,22 @@ const state = {
 
   // Callback invoked when focusedCellIndex changes (used by filter preview)
   onFocusedCellChange: null,
+
+  // Cached array of grid cell elements — invalidated on grid rebuild
+  _cellsCache: null,
+};
+
+// Returns a cached array of .grid-cell elements. Invalidated by grid rebuilds.
+state.getCells = () => {
+  if (!state._cellsCache) {
+    state._cellsCache = [...state.gridEl.querySelectorAll(".grid-cell")];
+  }
+  return state._cellsCache;
+};
+
+// Call this whenever the grid DOM is rebuilt to invalidate the cache.
+state.invalidateCellsCache = () => {
+  state._cellsCache = null;
 };
 
 state.elementsToAdjustWidth = [state.cardsEl, state.content];

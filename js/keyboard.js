@@ -14,7 +14,7 @@ import { cycleColorFilter } from './color-filter.js';
 // --- Keyboard Navigation for Grid Cells ---
 
 const setFocusedCell = (index) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   // Remove previous focus
   if (state.focusedCellIndex >= 0 && state.focusedCellIndex < cells.length) {
     cells[state.focusedCellIndex].classList.remove("keyboard-focused");
@@ -34,7 +34,7 @@ const setFocusedCell = (index) => {
 };
 
 const clearFocusedCell = () => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (state.focusedCellIndex >= 0 && state.focusedCellIndex < cells.length) {
     cells[state.focusedCellIndex].classList.remove("keyboard-focused");
   }
@@ -45,7 +45,7 @@ const clearFocusedCell = () => {
 // --- Multi-selection ---
 
 const clearSelection = () => {
-  state.gridEl.querySelectorAll(".grid-cell.keyboard-selected").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     cell.classList.remove("keyboard-selected");
   });
   state.selectedCells.clear();
@@ -53,7 +53,7 @@ const clearSelection = () => {
 };
 
 const addCellToSelection = (index) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (index >= 0 && index < cells.length) {
     state.selectedCells.add(index);
     cells[index].classList.add("keyboard-selected");
@@ -62,7 +62,7 @@ const addCellToSelection = (index) => {
 };
 
 const removeCellFromSelection = (index) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (index >= 0 && index < cells.length) {
     state.selectedCells.delete(index);
     cells[index].classList.remove("keyboard-selected");
@@ -71,7 +71,7 @@ const removeCellFromSelection = (index) => {
 };
 
 const extendSelection = (direction) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (cells.length === 0) return;
 
   // If no cell is focused yet, start at the first cell
@@ -102,7 +102,7 @@ const extendSelection = (direction) => {
 };
 
 const navigateGrid = (direction) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (cells.length === 0) return;
 
   // If no cell is focused, start at the first cell
@@ -120,7 +120,7 @@ const navigateGrid = (direction) => {
 };
 
 const moveGridItem = (direction) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (cells.length === 0 || state.focusedCellIndex < 0) return;
 
   // Determine which cells to move: selection if active, otherwise just the focused cell
@@ -284,7 +284,7 @@ const moveGridItem = (direction) => {
 
   // Re-scroll after animation settles
   setTimeout(() => {
-    const cell = state.gridEl.querySelectorAll(".grid-cell")[newFocusIndex];
+    const cell = state.getCells()[newFocusIndex];
     if (cell) cell.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, 250);
 };
@@ -300,7 +300,7 @@ document.addEventListener("keydown", (e) => {
     const direction = e.key.replace("Arrow", "").toLowerCase(); // "up", "down", "left", "right"
     if (e.altKey) {
       // Alt+Arrow: insert empty row/column relative to focused cell
-      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const cells = state.getCells();
       const focusedCell = state.focusedCellIndex >= 0 ? cells[state.focusedCellIndex] : null;
       if (direction === "up" || direction === "down") {
         const row = focusedCell ? parseInt(focusedCell.dataset.row) : 0;
@@ -348,7 +348,7 @@ document.addEventListener("keydown", (e) => {
 
   // Enter: focus the label (textarea) of the currently focused cell
   if (e.key === "Enter" && state.focusedCellIndex >= 0) {
-    const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+    const cells = state.getCells();
     const cell = cells[state.focusedCellIndex];
     if (cell) {
       const textarea = cell.querySelector("textarea");
@@ -365,7 +365,7 @@ document.addEventListener("keydown", (e) => {
     // Shift+Backspace: delete the row of the focused cell
     if (e.shiftKey && state.focusedCellIndex >= 0) {
       e.preventDefault();
-      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
         const row = parseInt(focusedCell.dataset.row);
@@ -378,7 +378,7 @@ document.addEventListener("keydown", (e) => {
     // Alt+Backspace: delete the column of the focused cell
     if (e.altKey && state.focusedCellIndex >= 0) {
       e.preventDefault();
-      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
         const col = parseInt(focusedCell.dataset.col);
@@ -389,7 +389,7 @@ document.addEventListener("keydown", (e) => {
       return;
     }
     e.preventDefault();
-    const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+    const cells = state.getCells();
     state.selectedCells.forEach((index) => {
       const cell = cells[index];
       if (!cell) return;
@@ -413,7 +413,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Backspace" && state.focusedCellIndex >= 0) {
     if (e.shiftKey) {
       e.preventDefault();
-      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
         const row = parseInt(focusedCell.dataset.row);
@@ -424,7 +424,7 @@ document.addEventListener("keydown", (e) => {
     }
     if (e.altKey) {
       e.preventDefault();
-      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const cells = state.getCells();
       const focusedCell = cells[state.focusedCellIndex];
       if (focusedCell) {
         const col = parseInt(focusedCell.dataset.col);
@@ -538,7 +538,7 @@ document.addEventListener("keydown", (e) => {
       break;
     case "s": {
       // Move selected image(s) back to staging area
-      const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+      const cells = state.getCells();
       const indices = state.selectedCells.size > 0
         ? [...state.selectedCells]
         : (state.focusedCellIndex >= 0 ? [state.focusedCellIndex] : []);

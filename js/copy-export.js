@@ -79,7 +79,7 @@ const setElementWidths = (arr, size) => {
 
 // Hide entire rows/columns that contain no visible images, returns a restore function
 const hideEmptyRowsForExport = () => {
-  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const allCells = state.getCells();
   const rows = state.gridRows;
   const cols = state.gridCols;
   const removedCells = []; // { cell, nextSibling }
@@ -167,8 +167,8 @@ const cellHasVisibleContent = (cell) => {
 
 // Strip keyboard selection/focus classes before export and return a restore function
 const hideSelectionForExport = () => {
-  const selected = [...state.gridEl.querySelectorAll(".grid-cell.keyboard-selected")];
-  const focused = [...state.gridEl.querySelectorAll(".grid-cell.keyboard-focused")];
+  const selected = state.getCells().filter(c => c.classList.contains("keyboard-selected"));
+  const focused = state.getCells().filter(c => c.classList.contains("keyboard-focused"));
   selected.forEach((cell) => cell.classList.remove("keyboard-selected"));
   focused.forEach((cell) => cell.classList.remove("keyboard-focused"));
   return () => {
@@ -191,7 +191,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
 
     // Remove overflow and size constraints so nothing gets clipped
-    const allCells = state.gridEl.querySelectorAll(".grid-cell");
+    const allCells = state.getCells();
     allCells.forEach((cell) => {
       cell.style.overflow = "visible";
       cell.style.minHeight = "0";
@@ -391,7 +391,7 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     state.root.style.setProperty("--border", `unset`);
     state.gridEl.style.outline = "none";
 
-    const allCells = state.gridEl.querySelectorAll(".grid-cell");
+    const allCells = state.getCells();
     allCells.forEach((cell) => {
       cell.style.overflow = "visible";
     });
@@ -577,7 +577,7 @@ const copySelectedRows = () => {
   const savedScrollTop = container.scrollTop;
   const savedScrollLeft = container.scrollLeft;
 
-  const allCells = state.gridEl.querySelectorAll(".grid-cell");
+  const allCells = state.getCells();
   const hiddenCells = [];
 
   // Determine which rows and columns are involved in the selection.
@@ -669,7 +669,7 @@ const copyAsGridSize = async () => {
 
     // Keep the current grid zoom settings — don't reset them
     // Just remove overflow clipping so the capture is clean
-    const allCells = state.gridEl.querySelectorAll(".grid-cell");
+    const allCells = state.getCells();
     allCells.forEach((cell) => {
       cell.style.overflow = "visible";
     });
@@ -905,7 +905,7 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
     const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
 
-    const allCells = state.gridEl.querySelectorAll(".grid-cell");
+    const allCells = state.getCells();
     allCells.forEach((cell) => {
       cell.style.overflow = "visible";
       cell.style.minHeight = "0";
@@ -1042,7 +1042,7 @@ const downloadWithScale = () => {
   const value = select.value;
 
   // Apply the same selection rules as copySelectedRows
-  const allCells = state.gridEl.querySelectorAll(".grid-cell");
+  const allCells = state.getCells();
   const hiddenCells = [];
 
   if (state.selectedRows.size > 0 || state.selectedCells.size > 0 || state.focusedCellIndex >= 0) {
@@ -1123,7 +1123,7 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
     state.root.style.setProperty("--border", `unset`);
     state.gridEl.style.outline = "none";
 
-    const allCells = state.gridEl.querySelectorAll(".grid-cell");
+    const allCells = state.getCells();
     allCells.forEach((cell) => {
       cell.style.overflow = "visible";
     });
@@ -1255,7 +1255,7 @@ const bulkDownloadImages = () => {
   }
 
   // Collect from grid cells, respecting selection
-  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const allCells = state.getCells();
 
   if (state.selectedRows.size > 0) {
     // Only include images from selected rows
@@ -1317,7 +1317,7 @@ document.getElementById("bulk-download-btn").addEventListener("click", bulkDownl
 // Copy the raw image(s) from selected grid cells to clipboard without any scaling/rendering.
 // If multiple images are selected they are placed side-by-side at native resolution.
 const copySelectedRawImages = async () => {
-  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const allCells = state.getCells();
   const indices = state.selectedCells.size > 0
     ? [...state.selectedCells].sort((a, b) => a - b)
     : state.selectedRows.size > 0
@@ -1374,7 +1374,7 @@ const copySelectedRawImages = async () => {
 // Copy selected image(s) rendered with all color filters, each labeled below.
 // Produces a grid: columns = filters, rows = selected images.
 const copyWithAllFilters = async () => {
-  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const allCells = state.getCells();
 
   // Determine which images to include
   const indices = state.selectedCells.size > 0
@@ -1653,7 +1653,7 @@ const previewAllFilters = () => {
     return;
   }
 
-  const allCells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const allCells = state.getCells();
 
   // Determine which images to include (selected, or focused via keyboard)
   const indices = state.selectedCells.size > 0
@@ -2128,7 +2128,7 @@ const previewAllFilters = () => {
   // Register focus change listener to update preview when navigating cells
   state.onFocusedCellChange = (newIndex) => {
     if (!filterPreviewOverlay || !filterPreviewGrid || !filterPreviewBuildFn) return;
-    const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+    const cells = state.getCells();
     if (newIndex < 0 || newIndex >= cells.length) return;
     const cell = cells[newIndex];
     const img = cell.querySelector("img");

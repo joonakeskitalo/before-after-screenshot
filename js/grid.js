@@ -8,7 +8,7 @@ import { applyGridZoom } from './zoom.js';
 let cellDragState = null; // { startIndex, startX, startY, active }
 
 const getCellIndexAtPoint = (x, y) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   // Direct hit test
   for (let i = 0; i < cells.length; i++) {
     const rect = cells[i].getBoundingClientRect();
@@ -37,14 +37,14 @@ const getCellIndexAtPoint = (x, y) => {
 };
 
 const clearCellDropTarget = () => {
-  state.gridEl.querySelectorAll(".grid-cell.cell-drop-target").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     cell.classList.remove("cell-drop-target");
   });
 };
 
 const showCellDropTargets = (targetIndices) => {
   clearCellDropTarget();
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   for (const idx of targetIndices) {
     if (idx >= 0 && idx < cells.length) {
       cells[idx].classList.add("cell-drop-target");
@@ -57,7 +57,7 @@ const computeMoveTargets = (selectedIndices, fromIndex, toIndex) => {
 
   const offset = toIndex - fromIndex;
 
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   const totalCells = cells.length;
 
   // Check that ALL selected cells can move with this offset
@@ -70,7 +70,7 @@ const computeMoveTargets = (selectedIndices, fromIndex, toIndex) => {
 };
 
 const performCellMove = (selectedIndices, targetIndices) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   const offset = targetIndices[0] - selectedIndices[0];
 
   const selectedSet = new Set(selectedIndices);
@@ -121,7 +121,7 @@ const handleCellDragStart = (e, cell) => {
   // Don't interfere with modifier keys used for selection
   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
 
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   const index = cells.indexOf(cell);
   if (index === -1) return;
 
@@ -331,7 +331,7 @@ document.addEventListener("mouseup", handleCellDragEnd);
 // --- Click-based cell selection ---
 
 const setFocusedCellByIndex = (index) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (state.focusedCellIndex >= 0 && state.focusedCellIndex < cells.length) {
     cells[state.focusedCellIndex].classList.remove("keyboard-focused");
   }
@@ -342,7 +342,7 @@ const setFocusedCellByIndex = (index) => {
 };
 
 const clearCellSelection = () => {
-  state.gridEl.querySelectorAll(".grid-cell.keyboard-selected").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     cell.classList.remove("keyboard-selected");
   });
   state.selectedCells.clear();
@@ -350,7 +350,7 @@ const clearCellSelection = () => {
 };
 
 const addCellToSelectionByIndex = (index) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (index >= 0 && index < cells.length) {
     state.selectedCells.add(index);
     cells[index].classList.add("keyboard-selected");
@@ -359,7 +359,7 @@ const addCellToSelectionByIndex = (index) => {
 };
 
 const removeCellFromSelectionByIndex = (index) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   if (index >= 0 && index < cells.length) {
     state.selectedCells.delete(index);
     cells[index].classList.remove("keyboard-selected");
@@ -375,7 +375,7 @@ const handleCellClick = (e, cell) => {
   // Don't interfere with textarea clicks
   if (e.target.tagName === "TEXTAREA") return;
 
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   const index = cells.indexOf(cell);
   if (index === -1) return;
 
@@ -640,7 +640,7 @@ const swapCells = (cellA, cellB) => {
 };
 
 const getAdjacentCell = (cell, direction) => {
-  const cells = [...state.gridEl.querySelectorAll(".grid-cell")];
+  const cells = state.getCells();
   const index = cells.indexOf(cell);
   if (index === -1) return null;
 
@@ -718,7 +718,7 @@ const buildGrid = () => {
 
   // Save existing cell data
   const existingData = [];
-  const existingCells = state.gridEl.querySelectorAll(".grid-cell");
+  const existingCells = state.getCells();
   existingCells.forEach((cell) => {
     const img = cell.querySelector("img");
     const textarea = cell.querySelector("textarea");
@@ -787,6 +787,9 @@ const buildGrid = () => {
 state.rowDragState = null; // { sourceRow, placeholder }
 
 const buildRowControls = () => {
+  // Invalidate the cached cell list since the grid DOM was just rebuilt
+  state.invalidateCellsCache();
+
   // Remove existing row controls
   const existingControls = document.querySelector(".row-controls");
   if (existingControls) existingControls.remove();
@@ -1202,7 +1205,7 @@ const swapRows = (rowA, rowB) => {
 
 const collectGridData = () => {
   const data = [];
-  state.gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     const img = cell.querySelector("img");
     const textarea = cell.querySelector("textarea");
     const canvas = cell.querySelector(".drawing-canvas");
@@ -1250,7 +1253,7 @@ const restoreCellData = (cell, data) => {
 };
 
 const highlightRow = (row, active) => {
-  state.gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     if (parseInt(cell.dataset.row) === row) {
       cell.classList.toggle("row-dragging", active);
     }
@@ -1258,7 +1261,7 @@ const highlightRow = (row, active) => {
 };
 
 const clearRowHighlights = () => {
-  state.gridEl.querySelectorAll(".grid-cell.row-dragging").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     cell.classList.remove("row-dragging");
   });
 };
@@ -1271,11 +1274,11 @@ const clearRowDropIndicators = () => {
 
 const setRowDropTarget = (row) => {
   // Clear previous target
-  state.gridEl.querySelectorAll(".grid-cell.row-drop-target").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     cell.classList.remove("row-drop-target");
   });
   // Highlight all cells in the target row
-  state.gridEl.querySelectorAll(".grid-cell").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     if (parseInt(cell.dataset.row) === row) {
       cell.classList.add("row-drop-target");
     }
@@ -1283,7 +1286,7 @@ const setRowDropTarget = (row) => {
 };
 
 const clearRowDropTarget = () => {
-  state.gridEl.querySelectorAll(".grid-cell.row-drop-target").forEach((cell) => {
+  state.getCells().forEach((cell) => {
     cell.classList.remove("row-drop-target");
   });
 };
