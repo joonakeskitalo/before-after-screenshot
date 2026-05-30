@@ -49,6 +49,10 @@ export const getObjectFitRect = (img) => {
 // This is the single source of truth for the "get image rect → get fitRect → compute
 // normalized coordinates" pattern used by redrawCanvas, mousemove, and shape previews.
 export const getCanvasContentMetrics = (canvas, dpr, { img: cachedImg, imgRect: cachedImgRect, canvasRect: cachedCanvasRect, fitRect: cachedFitRect } = {}) => {
+  if (canvas.width === 0 || canvas.height === 0) {
+    const noop = () => 0;
+    return { contentOffsetX: 0, contentOffsetY: 0, contentWidth: 0, contentHeight: 0, toCanvasX: noop, toCanvasY: noop };
+  }
   let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
 
   let img = cachedImg;
@@ -292,6 +296,7 @@ export const renderPaths = (ctx, paths, toX, toY, scale) => {
 // Coordinates are relative to the visible image content (0-1), so we map them
 // to canvas space accounting for object-fit positioning.
 export const redrawCanvas = (canvas, dpr) => {
+  if (canvas.width === 0 || canvas.height === 0) return;
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const data = state.canvasDataMap.get(canvas);
