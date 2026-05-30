@@ -184,26 +184,28 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
 
 // --- Scale dispatchers ---
 
-const copyWithScale = () => {
-  if (isExporting) return;
+const copyWithScale = async () => {
+  if (isExporting) {
+    showToast("Export already in progress", "error");
+    return;
+  }
   isExporting = true;
 
   const container = document.querySelector(".content-container");
   const savedScrollTop = container.scrollTop;
   const savedScrollLeft = container.scrollLeft;
 
-  const select = document.getElementById("copy-scale");
-  const value = select.value;
-  let doExport;
-  if (value.startsWith("output-")) {
-    const outputScale = parseFloat(value.replace("output-", ""));
-    doExport = copyAsImageWithOutputScale(outputScale);
-  } else {
-    const scale = parseFloat(value);
-    doExport = copyAsImage(true, scale);
-  }
-
-  Promise.resolve(doExport).finally(() => {
+  try {
+    const select = document.getElementById("copy-scale");
+    const value = select.value;
+    if (value.startsWith("output-")) {
+      const outputScale = parseFloat(value.replace("output-", ""));
+      await copyAsImageWithOutputScale(outputScale);
+    } else {
+      const scale = parseFloat(value);
+      await copyAsImage(true, scale);
+    }
+  } finally {
     isExporting = false;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -211,11 +213,14 @@ const copyWithScale = () => {
         container.scrollLeft = savedScrollLeft;
       });
     });
-  });
+  }
 };
 
-const copySelectedRows = () => {
-  if (isExporting) return;
+const copySelectedRows = async () => {
+  if (isExporting) {
+    showToast("Export already in progress", "error");
+    return;
+  }
   isExporting = true;
 
   const container = document.querySelector(".content-container");
@@ -260,19 +265,17 @@ const copySelectedRows = () => {
     state.gridEl.style.gridTemplateRows = "auto";
   }
 
-  const select = document.getElementById("copy-scale");
-  const value = select.value;
-
-  let doExport;
-  if (value.startsWith("output-")) {
-    const outputScale = parseFloat(value.replace("output-", ""));
-    doExport = copyAsImageWithOutputScale(outputScale);
-  } else {
-    const scale = parseFloat(value);
-    doExport = copyAsImage(true, scale);
-  }
-
-  Promise.resolve(doExport).finally(() => {
+  try {
+    const select = document.getElementById("copy-scale");
+    const value = select.value;
+    if (value.startsWith("output-")) {
+      const outputScale = parseFloat(value.replace("output-", ""));
+      await copyAsImageWithOutputScale(outputScale);
+    } else {
+      const scale = parseFloat(value);
+      await copyAsImage(true, scale);
+    }
+  } finally {
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
     });
@@ -283,11 +286,14 @@ const copySelectedRows = () => {
         container.scrollLeft = savedScrollLeft;
       });
     });
-  });
+  }
 };
 
-const downloadWithScale = () => {
-  if (isExporting) return;
+const downloadWithScale = async () => {
+  if (isExporting) {
+    showToast("Export already in progress", "error");
+    return;
+  }
   isExporting = true;
 
   const container = document.querySelector(".content-container");
@@ -333,16 +339,15 @@ const downloadWithScale = () => {
     state.gridEl.style.gridTemplateRows = "auto";
   }
 
-  let doExport;
-  if (value.startsWith("output-")) {
-    const outputScale = parseFloat(value.replace("output-", ""));
-    doExport = downloadAsImageWithOutputScale(outputScale);
-  } else {
-    const scale = parseFloat(value);
-    doExport = downloadAsImage(true, scale);
-  }
-
-  Promise.resolve(doExport).finally(() => {
+  try {
+    if (value.startsWith("output-")) {
+      const outputScale = parseFloat(value.replace("output-", ""));
+      await downloadAsImageWithOutputScale(outputScale);
+    } else {
+      const scale = parseFloat(value);
+      await downloadAsImage(true, scale);
+    }
+  } finally {
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
     });
@@ -353,7 +358,7 @@ const downloadWithScale = () => {
         container.scrollLeft = savedScrollLeft;
       });
     });
-  });
+  }
 };
 
 // --- Grid-size copy ---
