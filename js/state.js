@@ -31,7 +31,10 @@ const state = {
   colorFilter: "none",
 
   // Canvas data stores
-  canvasDataMap: new WeakMap(),
+  // Use a Map (not WeakMap) so drawing data survives DOM rebuilds until explicitly deleted.
+  // WeakMap entries are eligible for GC as soon as the key (canvas element) is removed from
+  // the DOM, which can race with code that reads paths during grid rebuilds.
+  canvasDataMap: new Map(),
   canvasObservers: new WeakMap(),
 
   // Row drag

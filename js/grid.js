@@ -15,6 +15,14 @@ const toDataMap = (dataArray) => {
   return map;
 };
 
+// Remove canvasDataMap entries for canvases that are about to be destroyed.
+// This prevents memory leaks now that canvasDataMap is a Map instead of a WeakMap.
+const cleanupCanvasData = (canvases) => {
+  for (const canvas of canvases) {
+    state.canvasDataMap.delete(canvas);
+  }
+};
+
 // Collect all blob URLs currently used in grid cells.
 const collectBlobUrls = () => {
   const urls = new Set();
@@ -768,7 +776,7 @@ const buildGrid = () => {
     const img = cell.querySelector("img");
     const textarea = cell.querySelector("textarea");
     const canvas = cell.querySelector(".drawing-canvas");
-    const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? state.canvasDataMap.get(canvas).paths : [];
+    const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? [...state.canvasDataMap.get(canvas).paths] : [];
     existingData.push({
       row: parseInt(cell.dataset.row),
       col: parseInt(cell.dataset.col),
@@ -778,6 +786,9 @@ const buildGrid = () => {
       drawingPaths: drawingPaths,
     });
   });
+
+  // Clean up canvasDataMap entries before destroying old canvases
+  cleanupCanvasData(oldCanvases);
 
   state.gridEl.innerHTML = "";
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
@@ -1123,6 +1134,7 @@ const insertColumnAt = (insertIndex) => {
   }
 
   // Column insertion changes the total cell count and grid template — rebuild is needed
+  cleanupCanvasData(state.gridEl.querySelectorAll(".drawing-canvas"));
   state.gridEl.innerHTML = "";
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
@@ -1172,7 +1184,7 @@ const deleteRowAt = (rowIndex) => {
   for (let c = cols - 1; c >= 0; c--) {
     const idx = (state.gridRows - 1) * cols + c;
     const cell = cells[idx];
-    // Clean up canvas observer
+    // Clean up canvas observer and data
     const canvas = cell.querySelector(".drawing-canvas");
     if (canvas) {
       const observer = state.canvasObservers.get(canvas);
@@ -1180,6 +1192,7 @@ const deleteRowAt = (rowIndex) => {
         observer.disconnect();
         state.canvasObservers.delete(canvas);
       }
+      state.canvasDataMap.delete(canvas);
     }
     cell.remove();
   }
@@ -1307,7 +1320,7 @@ const collectGridData = () => {
     const img = cell.querySelector("img");
     const textarea = cell.querySelector("textarea");
     const canvas = cell.querySelector(".drawing-canvas");
-    const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? state.canvasDataMap.get(canvas).paths : [];
+    const drawingPaths = canvas && state.canvasDataMap.get(canvas) ? [...state.canvasDataMap.get(canvas).paths] : [];
     data.push({
       row: parseInt(cell.dataset.row),
       col: parseInt(cell.dataset.col),
@@ -1417,6 +1430,7 @@ const relayoutGrid = () => {
   state.focusedCellIndex = -1;
 
   // Rebuild grid with compacted data
+  cleanupCanvasData(state.gridEl.querySelectorAll(".drawing-canvas"));
   state.gridEl.innerHTML = "";
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
@@ -1484,6 +1498,7 @@ const deleteColumnAt = (colIndex) => {
   document.getElementById("grid-cols").value = state.gridCols;
 
   // Column deletion changes total cell count — rebuild DOM
+  cleanupCanvasData(state.gridEl.querySelectorAll(".drawing-canvas"));
   state.gridEl.innerHTML = "";
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
