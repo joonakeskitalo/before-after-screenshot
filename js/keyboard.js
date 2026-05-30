@@ -300,6 +300,10 @@ const miscActions = {
       if (span) span.style.display = "block";
       const textarea = cell.querySelector("textarea");
       if (textarea) textarea.value = "";
+      const canvas = cell.querySelector(".drawing-canvas");
+      if (canvas) {
+        state.canvasDataMap.delete(canvas);
+      }
       updateFilenameLabel(cell);
     }
   },
