@@ -18,6 +18,7 @@ import {
 import { applyFilterToImageData } from './filter-kernels.js';
 import { closeFilterPreview, previewAllFilters } from './filter-preview.js';
 import { showToast } from './toast.js';
+import { getVisibleCellIndices, hideNonVisibleCells } from './grid-selection-utils.js';
 
 // Guard against concurrent exports
 let isExporting = false;
@@ -227,41 +228,10 @@ const copySelectedRows = async () => {
   const savedScrollTop = container.scrollTop;
   const savedScrollLeft = container.scrollLeft;
 
-  const hasSelection = state.selectedRows.size > 0 || state.selectedCells.size > 0 || state.focusedCellIndex >= 0;
-
-  const allCells = hasSelection ? state.getCells() : [];
-  const hiddenCells = [];
+  const { hiddenCells, hasSelection } = hideNonVisibleCells();
 
   if (hasSelection) {
-    const selectedColCount = state.gridCols;
-
-    if (state.selectedRows.size > 0) {
-      allCells.forEach((cell) => {
-        const row = parseInt(cell.dataset.row, 10);
-        if (!state.selectedRows.has(row)) {
-          cell.style.display = "none";
-          hiddenCells.push(cell);
-        }
-      });
-    } else if (state.selectedCells.size > 0) {
-      const cellsArray = [...allCells];
-      cellsArray.forEach((cell, index) => {
-        if (!state.selectedCells.has(index)) {
-          cell.style.display = "none";
-          hiddenCells.push(cell);
-        }
-      });
-    } else {
-      const cellsArray = [...allCells];
-      cellsArray.forEach((cell, index) => {
-        if (index !== state.focusedCellIndex) {
-          cell.style.display = "none";
-          hiddenCells.push(cell);
-        }
-      });
-    }
-
-    state.gridEl.style.gridTemplateColumns = `repeat(${selectedColCount}, auto)`;
+    state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, auto)`;
     state.gridEl.style.gridTemplateRows = "auto";
   }
 
@@ -303,39 +273,10 @@ const downloadWithScale = async () => {
   const select = document.getElementById("copy-scale");
   const value = select.value;
 
-  const allCells = state.getCells();
-  const hiddenCells = [];
+  const { hiddenCells, hasSelection } = hideNonVisibleCells();
 
-  if (state.selectedRows.size > 0 || state.selectedCells.size > 0 || state.focusedCellIndex >= 0) {
-    const selectedColCount = state.gridCols;
-
-    if (state.selectedRows.size > 0) {
-      allCells.forEach((cell) => {
-        const row = parseInt(cell.dataset.row, 10);
-        if (!state.selectedRows.has(row)) {
-          cell.style.display = "none";
-          hiddenCells.push(cell);
-        }
-      });
-    } else if (state.selectedCells.size > 0) {
-      const cellsArray = [...allCells];
-      cellsArray.forEach((cell, index) => {
-        if (!state.selectedCells.has(index)) {
-          cell.style.display = "none";
-          hiddenCells.push(cell);
-        }
-      });
-    } else {
-      const cellsArray = [...allCells];
-      cellsArray.forEach((cell, index) => {
-        if (index !== state.focusedCellIndex) {
-          cell.style.display = "none";
-          hiddenCells.push(cell);
-        }
-      });
-    }
-
-    state.gridEl.style.gridTemplateColumns = `repeat(${selectedColCount}, auto)`;
+  if (hasSelection) {
+    state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, auto)`;
     state.gridEl.style.gridTemplateRows = "auto";
   }
 
@@ -429,31 +370,15 @@ const bulkDownloadImages = async () => {
   }
 
   const allCells = state.getCells();
+  const indices = getVisibleCellIndices();
 
-  if (state.selectedRows.size > 0) {
-    allCells.forEach((cell) => {
-      const row = parseInt(cell.dataset.row, 10);
-      if (!state.selectedRows.has(row)) return;
-      const img = cell.querySelector("img");
-      if (img && isImageSrc(img.src) && img.style.display !== "none") {
-        images.push({ src: img.src, name: img.alt || "" });
-      }
-    });
-  } else if (state.selectedCells.size > 0) {
-    allCells.forEach((cell, index) => {
-      if (!state.selectedCells.has(index)) return;
-      const img = cell.querySelector("img");
-      if (img && isImageSrc(img.src) && img.style.display !== "none") {
-        images.push({ src: img.src, name: img.alt || "" });
-      }
-    });
-  } else {
-    allCells.forEach((cell) => {
-      const img = cell.querySelector("img");
-      if (img && isImageSrc(img.src) && img.style.display !== "none") {
-        images.push({ src: img.src, name: img.alt || "" });
-      }
-    });
+  for (const index of indices) {
+    const cell = allCells[index];
+    if (!cell) continue;
+    const img = cell.querySelector("img");
+    if (img && isImageSrc(img.src) && img.style.display !== "none") {
+      images.push({ src: img.src, name: img.alt || "" });
+    }
   }
 
   if (images.length === 0) return;
@@ -483,16 +408,7 @@ const copySelectedRawImages = async () => {
   isExporting = true;
   try {
     const allCells = state.getCells();
-    const indices = state.selectedCells.size > 0
-      ? [...state.selectedCells].sort((a, b) => a - b)
-      : state.selectedRows.size > 0
-        ? allCells.reduce((acc, cell, i) => {
-            if (state.selectedRows.has(parseInt(cell.dataset.row, 10))) acc.push(i);
-            return acc;
-          }, [])
-        : state.focusedCellIndex >= 0
-          ? [state.focusedCellIndex]
-          : [];
+    const indices = getVisibleCellIndices();
 
     const images = [];
     for (const idx of indices) {
@@ -547,17 +463,7 @@ const copyWithAllFilters = async () => {
   isExporting = true;
   try {
     const allCells = state.getCells();
-
-    const indices = state.selectedCells.size > 0
-      ? [...state.selectedCells].sort((a, b) => a - b)
-      : state.selectedRows.size > 0
-        ? allCells.reduce((acc, cell, i) => {
-            if (state.selectedRows.has(parseInt(cell.dataset.row, 10))) acc.push(i);
-            return acc;
-          }, [])
-        : state.focusedCellIndex >= 0
-          ? [state.focusedCellIndex]
-          : allCells.map((_, i) => i);
+    const indices = getVisibleCellIndices();
 
     const sourceImages = [];
     for (const idx of indices) {
