@@ -595,6 +595,7 @@ export const previewAllFilters = async () => {
   document.body.appendChild(overlay);
 
   // Register focus change listener to update preview when navigating cells
+  let focusChangeGeneration = 0;
   state.onFocusedCellChange = async (newIndex) => {
     if (!filterPreviewOverlay || !filterPreviewGrid || !filterPreviewBuildFn) return;
     const cells = state.getCells();
@@ -602,7 +603,32 @@ export const previewAllFilters = async () => {
     const cell = cells[newIndex];
     const img = cell.querySelector("img");
     if (!img || !img.src || img.style.display === "none") return;
-    await filterPreviewBuildFn(filterPreviewGrid, [{ img, name: img.alt || "" }]);
+
+    // Increment generation to discard stale updates from rapid navigation
+    const gen = ++focusChangeGeneration;
+
+    // Build new content into an off-screen container to avoid flashing
+    const tempGrid = document.createElement("div");
+    await filterPreviewBuildFn(tempGrid, [{ img, name: img.alt || "" }]);
+
+    // Bail if a newer navigation happened or the preview was closed
+    if (gen !== focusChangeGeneration) return;
+    if (!filterPreviewOverlay || !filterPreviewGrid) return;
+
+    // Wait for all images to fully decode before swapping
+    const newImages = tempGrid.querySelectorAll("img");
+    await Promise.all(Array.from(newImages).map((i) => i.decode().catch(() => {})));
+
+    // Re-check after async decode
+    if (gen !== focusChangeGeneration) return;
+    if (!filterPreviewOverlay || !filterPreviewGrid) return;
+
+    // Swap content atomically — images are already decoded so no flicker
+    filterPreviewGrid.innerHTML = "";
+    while (tempGrid.firstChild) {
+      filterPreviewGrid.appendChild(tempGrid.firstChild);
+    }
+
     if (state.drawingMode) {
       filterPreviewGrid.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
     }
