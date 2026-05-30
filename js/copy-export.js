@@ -230,6 +230,9 @@ const copySelectedRows = async () => {
 
   const { hiddenCells, hasSelection } = hideNonVisibleCells();
 
+  const savedGridTemplateColumns = state.gridEl.style.gridTemplateColumns;
+  const savedGridTemplateRows = state.gridEl.style.gridTemplateRows;
+
   if (hasSelection) {
     state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, auto)`;
     state.gridEl.style.gridTemplateRows = "auto";
@@ -246,6 +249,8 @@ const copySelectedRows = async () => {
       await copyAsImage(true, scale);
     }
   } finally {
+    state.gridEl.style.gridTemplateColumns = savedGridTemplateColumns;
+    state.gridEl.style.gridTemplateRows = savedGridTemplateRows;
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
     });
@@ -275,6 +280,9 @@ const downloadWithScale = async () => {
 
   const { hiddenCells, hasSelection } = hideNonVisibleCells();
 
+  const savedGridTemplateColumns = state.gridEl.style.gridTemplateColumns;
+  const savedGridTemplateRows = state.gridEl.style.gridTemplateRows;
+
   if (hasSelection) {
     state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, auto)`;
     state.gridEl.style.gridTemplateRows = "auto";
@@ -289,6 +297,8 @@ const downloadWithScale = async () => {
       await downloadAsImage(true, scale);
     }
   } finally {
+    state.gridEl.style.gridTemplateColumns = savedGridTemplateColumns;
+    state.gridEl.style.gridTemplateRows = savedGridTemplateRows;
     hiddenCells.forEach((cell) => {
       cell.style.display = "";
     });
