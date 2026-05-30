@@ -1493,8 +1493,6 @@ const copyWithAllFilters = async () => {
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 };
 
-document.getElementById("copy-all-filters-btn").addEventListener("click", copyWithAllFilters);
-
 // --- Preview All Filters ---
 // Opens an overlay showing all images with every filter applied, one row per image.
 
