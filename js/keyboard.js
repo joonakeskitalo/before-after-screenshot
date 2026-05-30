@@ -25,6 +25,8 @@ const setFocusedCell = (index) => {
     // Scroll the focused cell fully into view
     cells[state.focusedCellIndex].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }
+  // Update copy button label to reflect focused cell
+  updateCopySelectedBtn();
   // Notify listeners (e.g. filter preview)
   if (state.onFocusedCellChange) {
     state.onFocusedCellChange(index);
@@ -37,6 +39,7 @@ const clearFocusedCell = () => {
     cells[state.focusedCellIndex].classList.remove("keyboard-focused");
   }
   state.focusedCellIndex = -1;
+  updateCopySelectedBtn();
 };
 
 // --- Multi-selection ---
@@ -326,7 +329,7 @@ document.addEventListener("keydown", (e) => {
   // Cmd+C: copy selected cells/rows, or copy entire grid if nothing selected
   if (e.key === "c" && e.metaKey && !e.shiftKey) {
     e.preventDefault();
-    if (state.selectedCells.size > 0 || state.selectedRows.size > 0) {
+    if (state.selectedCells.size > 0 || state.selectedRows.size > 0 || state.focusedCellIndex >= 0) {
       copySelectedRows();
     } else {
       copyWithScale();
@@ -337,7 +340,7 @@ document.addEventListener("keydown", (e) => {
   // Cmd+B: copy raw image(s) from selected grid cells to clipboard
   if (e.key === "b" && e.metaKey && !e.shiftKey) {
     e.preventDefault();
-    if (state.selectedCells.size > 0 || state.selectedRows.size > 0) {
+    if (state.selectedCells.size > 0 || state.selectedRows.size > 0 || state.focusedCellIndex >= 0) {
       copySelectedRawImages();
     }
     return;

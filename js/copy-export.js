@@ -566,8 +566,8 @@ const cropAndScaleBlob = async (blob, maxHeight, scale) => {
 };
 
 const copySelectedRows = () => {
-  if (state.selectedRows.size === 0 && state.selectedCells.size === 0) {
-    // Nothing selected — fall back to copying all
+  if (state.selectedRows.size === 0 && state.selectedCells.size === 0 && state.focusedCellIndex < 0) {
+    // Nothing selected or focused — fall back to copying all
     copyWithScale();
     return;
   }
@@ -592,10 +592,19 @@ const copySelectedRows = () => {
         hiddenCells.push(cell);
       }
     });
-  } else {
+  } else if (state.selectedCells.size > 0) {
     const cellsArray = [...allCells];
     cellsArray.forEach((cell, index) => {
       if (!state.selectedCells.has(index)) {
+        cell.style.display = "none";
+        hiddenCells.push(cell);
+      }
+    });
+  } else {
+    // Use the focused cell as the selection
+    const cellsArray = [...allCells];
+    cellsArray.forEach((cell, index) => {
+      if (index !== state.focusedCellIndex) {
         cell.style.display = "none";
         hiddenCells.push(cell);
       }
@@ -774,6 +783,8 @@ const updateCopySelectedBtn = () => {
     btn.textContent = `Copy (${state.selectedRows.size} rows)`;
   } else if (state.selectedCells.size > 0) {
     btn.textContent = `Copy (${state.selectedCells.size} cells)`;
+  } else if (state.focusedCellIndex >= 0) {
+    btn.textContent = `Copy (1 cell)`;
   } else {
     btn.textContent = "Copy";
   }
@@ -1034,7 +1045,7 @@ const downloadWithScale = () => {
   const allCells = state.gridEl.querySelectorAll(".grid-cell");
   const hiddenCells = [];
 
-  if (state.selectedRows.size > 0 || state.selectedCells.size > 0) {
+  if (state.selectedRows.size > 0 || state.selectedCells.size > 0 || state.focusedCellIndex >= 0) {
     const selectedColCount = state.gridCols;
 
     if (state.selectedRows.size > 0) {
@@ -1045,10 +1056,19 @@ const downloadWithScale = () => {
           hiddenCells.push(cell);
         }
       });
-    } else {
+    } else if (state.selectedCells.size > 0) {
       const cellsArray = [...allCells];
       cellsArray.forEach((cell, index) => {
         if (!state.selectedCells.has(index)) {
+          cell.style.display = "none";
+          hiddenCells.push(cell);
+        }
+      });
+    } else {
+      // Use the focused cell as the selection
+      const cellsArray = [...allCells];
+      cellsArray.forEach((cell, index) => {
+        if (index !== state.focusedCellIndex) {
           cell.style.display = "none";
           hiddenCells.push(cell);
         }
@@ -1305,7 +1325,9 @@ const copySelectedRawImages = async () => {
           if (state.selectedRows.has(parseInt(cell.dataset.row))) acc.push(i);
           return acc;
         }, [])
-      : [];
+      : state.focusedCellIndex >= 0
+        ? [state.focusedCellIndex]
+        : [];
 
   // Collect visible images from the selected cells
   const images = [];
