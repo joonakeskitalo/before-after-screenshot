@@ -56,6 +56,9 @@ const state = {
   // Callback invoked when focusedCellIndex changes (used by filter preview)
   onFocusedCellChange: null,
 
+  // Callback invoked when drawing tool/mode changes (used by filter preview)
+  onDrawingToolChange: null,
+
   // Cached array of grid cell elements — invalidated on grid rebuild
   _cellsCache: null,
 };

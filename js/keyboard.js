@@ -344,7 +344,7 @@ const thicknessActions = {
 
 // Number keys: select preset color by index
 const handleNumberKey = (key) => {
-  const presetBtns = document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn");
+  const presetBtns = document.querySelectorAll(".toolbar-drawing-controls:not(.filter-preview-drawing-controls) .preset-color-btn");
   const index = parseInt(key, 10) - 1;
   if (index < presetBtns.length) {
     presetBtns[index].click();

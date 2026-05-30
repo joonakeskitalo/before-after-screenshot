@@ -30,6 +30,7 @@ export const enableDrawingMode = () => {
   if (state.drawTool === TOOL_NAMES.TEXT) document.body.classList.add("text-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
   updateDrawingCursor();
+  if (state.onDrawingToolChange) state.onDrawingToolChange();
 };
 
 export const disableDrawingMode = () => {
@@ -40,6 +41,7 @@ export const disableDrawingMode = () => {
   document.body.classList.remove("move-tool");
   document.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.remove("active"));
   document.body.style.removeProperty("--drawing-cursor");
+  if (state.onDrawingToolChange) state.onDrawingToolChange();
 };
 
 // Get tool button references
@@ -174,6 +176,7 @@ drawColorInput.addEventListener("input", (e) => {
   state.drawColor = e.target.value;
   updatePresetColorSelection();
   updateDrawingCursor();
+  if (state.onDrawingToolChange) state.onDrawingToolChange();
 });
 
 document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => {
@@ -185,6 +188,7 @@ document.querySelectorAll(".thickness-presets .thickness-btn").forEach((btn) => 
     });
     btn.classList.add("active");
     updateDrawingCursor();
+    if (state.onDrawingToolChange) state.onDrawingToolChange();
   });
 });
 
@@ -195,6 +199,7 @@ document.querySelectorAll(".toolbar-drawing-controls .preset-color-btn").forEach
     drawColorInput.value = state.drawColor;
     updatePresetColorSelection();
     updateDrawingCursor();
+    if (state.onDrawingToolChange) state.onDrawingToolChange();
   });
 });
 

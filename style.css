@@ -94,7 +94,7 @@ body {
     flex-shrink: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 6px 12px;
+    height: 42px;
     border-top: 1px solid oklch(92.8% 0.006 264.531);
     background-color: #ffffffdf;
 }
@@ -311,15 +311,15 @@ button:-webkit-details-marker {
 }
 
 input[type="color"] {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     margin: 0;
     appearance: none;
     -webkit-appearance: none;
     border: none;
-    border-radius: 8px;
-    border: 2px solid rgb(112, 109, 109);
+    border-radius: 6px;
+    border: 1px solid rgb(112, 109, 109);
 }
 
 input[type="color"]::-webkit-color-swatch-wrapper {
@@ -999,6 +999,7 @@ body.cell-dragging .grid-cell.keyboard-selected {
     align-items: center;
     justify-content: center;
     padding: 24px;
+    transition: opacity 0.15s ease;
 }
 
 .filter-preview-panel {
@@ -1123,6 +1124,7 @@ body.cell-dragging .grid-cell.keyboard-selected {
     min-width: 0;
     flex: 1;
     width: 100%;
+    overflow: hidden;
 }
 
 .filter-preview-img-container img {
@@ -1135,6 +1137,7 @@ body.cell-dragging .grid-cell.keyboard-selected {
     min-height: 0;
     min-width: 0;
     user-select: none;
+    display: block;
 }
 
 .filter-preview-img-container .drawing-canvas {
@@ -1205,6 +1208,53 @@ body.drawing-mode.eraser-tool .filter-preview-img-container {
 
 body.drawing-mode.move-tool .filter-preview-img-container {
     cursor: default;
+}
+
+/* Drawing controls inside filter preview */
+.filter-preview-drawing-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-bottom: 1px solid oklch(92.8% 0.006 264.531);
+    flex-wrap: wrap;
+}
+
+/* Hide the main toolbar drawing controls when filter preview is open */
+body:has(.filter-preview-overlay) .toolbar-drawing-controls:not(.filter-preview-drawing-controls) > * {
+    display: none;
+}
+
+.filter-preview-drawing-controls input[type="color"] {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.filter-preview-drawing-controls .tool-mode-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid oklch(92.8% 0.006 264.531);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.filter-preview-drawing-controls .tool-mode-btn:hover {
+    background: oklch(96% 0.006 264.531);
+}
+
+.filter-preview-drawing-controls .tool-mode-btn.active {
+    background: oklch(90% 0.02 264.531);
+    border-color: oklch(70% 0.02 264.531);
 }
 
 
