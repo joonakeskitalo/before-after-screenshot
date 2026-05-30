@@ -2,6 +2,7 @@ import state from './state.js';
 import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js';
 import { attachDragTo, updateCopySelectedBtn } from './grid-ui.js';
 import { applyGridZoom } from './zoom.js';
+import { isAllowedImageSrc, sanitizeFilename, isValidElementId } from './sanitize.js';
 import {
   GRID_MIN_COL_WIDTH, EDGE_EXPANSION_THRESHOLD, EDGE_EXPANSION_MAX_COLS,
   EDGE_EXPANSION_MAX_ROWS, SWAP_ANIMATION_FALLBACK_MS,
@@ -516,12 +517,12 @@ const setupCell = (cell) => {
     }
 
     const src = e.dataTransfer.getData("text/plain");
-    if (src && (src.startsWith("data:") || src.startsWith("blob:"))) {
+    if (src && isAllowedImageSrc(src)) {
       // Check if dragged from toolbar — insert from toolbar
       const source = e.dataTransfer.getData("source");
       const draggedId = e.dataTransfer.getData("id");
-      if (source === "toolbar" && draggedId) {
-        const draggedFilename = e.dataTransfer.getData("filename") || "";
+      if (source === "toolbar" && draggedId && isValidElementId(draggedId)) {
+        const draggedFilename = sanitizeFilename(e.dataTransfer.getData("filename") || "");
         img.style.display = "block";
         img.src = src;
         img.alt = draggedFilename;
@@ -532,7 +533,7 @@ const setupCell = (cell) => {
       }
 
       // Dragged from another grid cell — swap the two cells
-      if (draggedId) {
+      if (draggedId && isValidElementId(draggedId)) {
         const srcImg = document.getElementById(draggedId);
         if (srcImg && srcImg !== img) {
           const srcCell = srcImg.closest(".grid-cell");

@@ -1,5 +1,6 @@
 import state from './state.js';
 import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt } from './grid.js';
+import { isAllowedImageSrc } from './sanitize.js';
 import {
   TOOLBAR_MIN_HEIGHT, TOOLBAR_COMPACT_THRESHOLD, TOOLBAR_PADDING_OFFSET, TOOLBAR_BODY_PADDING,
 } from './constants.js';
@@ -198,7 +199,7 @@ bottomToolbarDrop.addEventListener("drop", (e) => {
 
   // Handle blob or data URL drops (from grid cells back to toolbar)
   const src = e.dataTransfer.getData("text/plain");
-  if (src && (src.startsWith("data:") || src.startsWith("blob:"))) {
+  if (src && isAllowedImageSrc(src)) {
     state.addImageToToolbar(src);
   }
 });
