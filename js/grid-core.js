@@ -5,6 +5,7 @@ import { isAllowedImageSrc, isAllowedImageFile, sanitizeFilename, isValidElement
 import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS, GRID_MAX_ROWS, GRID_MAX_COLS } from './constants.js';
 import { handleCellClick } from './grid-selection.js';
 import { handleCellDragStart } from './grid-drag.js';
+import { unobserveDrop } from './shared-observers.js';
 import {
   buildRowControls,
   swapRows,
@@ -374,16 +375,8 @@ const buildGrid = () => {
   // Disconnect ResizeObservers from old canvases to prevent leaks
   const oldCanvases = state.gridEl.querySelectorAll(".drawing-canvas");
   oldCanvases.forEach((canvas) => {
-    const observer = state.canvasObservers.get(canvas);
-    if (observer) {
-      observer.disconnect();
-      state.canvasObservers.delete(canvas);
-    }
-    const visObserver = state.canvasVisibilityObservers.get(canvas);
-    if (visObserver) {
-      visObserver.disconnect();
-      state.canvasVisibilityObservers.delete(canvas);
-    }
+    const drop = canvas.parentElement;
+    if (drop) unobserveDrop(drop);
     const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
     if (mouseUpHandler) {
       document.removeEventListener("mouseup", mouseUpHandler);

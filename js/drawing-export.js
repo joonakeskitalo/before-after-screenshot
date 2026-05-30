@@ -1,5 +1,6 @@
 import state from './state.js';
 import { getObjectFitRect, renderPaths, redrawCanvas } from './drawing-render.js';
+import { disconnectAll, reconnectAll } from './shared-observers.js';
 
 // --- Export Preparation & Restoration ---
 
@@ -7,13 +8,8 @@ import { getObjectFitRect, renderPaths, redrawCanvas } from './drawing-render.js
 // Since drawing coords are stored relative to the image (0-1), we bake them
 // directly onto the image for a pixel-perfect export.
 export const redrawAllCanvasesForExport = async (scale) => {
-  // Disconnect all ResizeObservers so they don't interfere during export
-  document.querySelectorAll(".drawing-canvas").forEach((canvas) => {
-    const obs = state.canvasObservers.get(canvas);
-    if (obs) obs.disconnect();
-    const visObs = state.canvasVisibilityObservers.get(canvas);
-    if (visObs) visObs.disconnect();
-  });
+  // Disconnect shared observers so they don't interfere during export
+  disconnectAll();
 
   // Ensure all images are fully decoded before reading naturalWidth/naturalHeight.
   // getObjectFitRect returns null for images that haven't loaded yet, which would
@@ -129,10 +125,8 @@ export const restoreAllCanvases = () => {
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     redrawCanvas(canvas, dpr);
-
-    const obs = state.canvasObservers.get(canvas);
-    if (obs) obs.observe(drop);
-    const visObs = state.canvasVisibilityObservers.get(canvas);
-    if (visObs) visObs.observe(drop);
   });
+
+  // Reconnect shared observers for all active drops
+  reconnectAll();
 };

@@ -36,8 +36,6 @@ const state = {
   // WeakMap entries are eligible for GC as soon as the key (canvas element) is removed from
   // the DOM, which can race with code that reads paths during grid rebuilds.
   canvasDataMap: new Map(),
-  canvasObservers: new WeakMap(),
-  canvasVisibilityObservers: new WeakMap(),
   canvasMouseUpHandlers: new WeakMap(),
 
   // Row drag

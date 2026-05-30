@@ -1,6 +1,7 @@
 import state from './state.js';
 import { GRID_MIN_COL_WIDTH, GRID_MAX_ROWS, GRID_MAX_COLS } from './constants.js';
 import { updateCopySelectedBtn } from './grid-ui.js';
+import { unobserveDrop } from './shared-observers.js';
 
 // These are resolved lazily to avoid circular imports with grid-core.js
 let _getCellData = null;
@@ -378,16 +379,8 @@ const deleteRowAt = (rowIndex) => {
     // Clean up canvas observer and data
     const canvas = cell.querySelector(".drawing-canvas");
     if (canvas) {
-      const observer = state.canvasObservers.get(canvas);
-      if (observer) {
-        observer.disconnect();
-        state.canvasObservers.delete(canvas);
-      }
-      const visObserver = state.canvasVisibilityObservers.get(canvas);
-      if (visObserver) {
-        visObserver.disconnect();
-        state.canvasVisibilityObservers.delete(canvas);
-      }
+      const drop = canvas.parentElement;
+      if (drop) unobserveDrop(drop);
       const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
       if (mouseUpHandler) {
         document.removeEventListener("mouseup", mouseUpHandler);
@@ -484,16 +477,8 @@ const deleteColumnAt = (colIndex) => {
     // Clean up canvas observer and data
     const canvas = cell.querySelector(".drawing-canvas");
     if (canvas) {
-      const observer = state.canvasObservers.get(canvas);
-      if (observer) {
-        observer.disconnect();
-        state.canvasObservers.delete(canvas);
-      }
-      const visObserver = state.canvasVisibilityObservers.get(canvas);
-      if (visObserver) {
-        visObserver.disconnect();
-        state.canvasVisibilityObservers.delete(canvas);
-      }
+      const drop = canvas.parentElement;
+      if (drop) unobserveDrop(drop);
       const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
       if (mouseUpHandler) {
         document.removeEventListener("mouseup", mouseUpHandler);

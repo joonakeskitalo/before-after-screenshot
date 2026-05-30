@@ -3,6 +3,7 @@ import { getObjectFitRect, getCanvasContentMetrics, redrawCanvas } from './drawi
 import { setLastActiveDrawingCanvas } from './drawing-tools.js';
 import { getToolStrategy } from './drawing-strategies.js';
 import { TOOL_NAMES } from './constants.js';
+import { observeDrop } from './shared-observers.js';
 
 // Re-export hit-test utilities so the public API of this module is unchanged.
 export { hitTestPath, distToSegment, offsetPath } from './drawing-hit-test.js';
@@ -120,7 +121,7 @@ export const initDrawingCanvas = (drop) => {
 
   // Preview canvas for in-progress shape rendering
   const previewCanvas = document.createElement("canvas");
-  previewCanvas.className = "drawing-canvas";
+  previewCanvas.className = "drawing-canvas drawing-canvas-preview";
   previewCanvas.style.pointerEvents = "none";
   drop.appendChild(previewCanvas);
 
@@ -145,50 +146,8 @@ export const initDrawingCanvas = (drop) => {
   // Initialize data store
   state.canvasDataMap.set(canvas, { paths: [], redoStack: [] });
 
-  // --- Resize handling (debounced with rAF) ---
-  let resizeRafId = null;
-  const resizeCanvas = () => {
-    if (resizeRafId) return;
-    resizeRafId = requestAnimationFrame(() => {
-      resizeRafId = null;
-      const dpr = window.devicePixelRatio || 1;
-      const w = drop.clientWidth;
-      const h = drop.clientHeight;
-      if (w === 0 || h === 0) return;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      canvas.style.width = w + "px";
-      canvas.style.height = h + "px";
-      previewCanvas.width = w * dpr;
-      previewCanvas.height = h * dpr;
-      previewCanvas.style.width = w + "px";
-      previewCanvas.style.height = h + "px";
-      redrawCanvas(canvas, dpr);
-    });
-  };
-
-  const resizeObserver = new ResizeObserver(resizeCanvas);
-  resizeObserver.observe(drop);
-  state.canvasObservers.set(canvas, resizeObserver);
-
-  const visibilityObserver = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.isIntersecting && (canvas.width === 0 || canvas.height === 0)) {
-        resizeCanvas();
-      }
-    }
-  });
-  visibilityObserver.observe(drop);
-  state.canvasVisibilityObservers.set(canvas, visibilityObserver);
-
-  let dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-  const handleDprChange = () => {
-    resizeCanvas();
-    dprMediaQuery.removeEventListener("change", handleDprChange);
-    dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    dprMediaQuery.addEventListener("change", handleDprChange);
-  };
-  dprMediaQuery.addEventListener("change", handleDprChange);
+  // --- Resize & visibility handling via shared observers ---
+  observeDrop(drop);
 
   // --- Shared drawing infrastructure ---
   let isDrawing = false;
