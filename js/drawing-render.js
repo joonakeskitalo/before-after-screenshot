@@ -215,79 +215,33 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
 // Render a list of drawing paths onto a canvas context.
 // toX/toY map normalized (0-1) coordinates to canvas pixel coordinates.
 // scale is the multiplier for line widths and font sizes (e.g. zoomScale * dpr).
-// Paths are grouped by style (color + lineWidth) to minimize canvas state changes.
-// Order-sensitive types (eraser) act as batch barriers to preserve visual correctness.
+// Paths are rendered in insertion order. Consecutive same-style paths share canvas
+// state to minimize redundant state changes without reordering.
 export const renderPaths = (ctx, paths, toX, toY, scale) => {
   if (!paths.length) return;
 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  // For small path counts, skip grouping overhead and just batch consecutive same-style.
-  if (paths.length < 16) {
-    let currentColor = null;
-    let currentLineWidth = null;
-    for (const path of paths) {
+  let currentColor = null;
+  let currentLineWidth = null;
+
+  for (const path of paths) {
+    // Erasers manage their own state via save/restore inside renderPath
+    if (path.type !== TOOL_NAMES.ERASER) {
       if (path.color !== currentColor || path.lineWidth !== currentLineWidth) {
         ctx.strokeStyle = path.color;
         ctx.lineWidth = path.lineWidth * scale;
         currentColor = path.color;
         currentLineWidth = path.lineWidth;
       }
-      renderPath(ctx, path, toX, toY, scale);
     }
-    return;
-  }
-
-  // For larger path counts, group by style to minimize state changes.
-  // Erasers modify compositing mode and must be rendered in their original order
-  // relative to other paths, so they act as batch barriers.
-  // Strategy: split paths into segments separated by erasers, then within each
-  // segment group by style key and render all paths of the same style together.
-
-  const segments = [];
-  let currentSegment = [];
-
-  for (const path of paths) {
+    renderPath(ctx, path, toX, toY, scale);
+    // After an eraser, canvas state was restored — reset tracked values so the
+    // next non-eraser path re-applies its style.
     if (path.type === TOOL_NAMES.ERASER) {
-      if (currentSegment.length) {
-        segments.push({ type: "batch", paths: currentSegment });
-        currentSegment = [];
-      }
-      segments.push({ type: TOOL_NAMES.ERASER, path });
-    } else {
-      currentSegment.push(path);
-    }
-  }
-  if (currentSegment.length) {
-    segments.push({ type: "batch", paths: currentSegment });
-  }
-
-  for (const segment of segments) {
-    if (segment.type === TOOL_NAMES.ERASER) {
-      // Erasers set their own state internally via save/restore
-      renderPath(ctx, segment.path, toX, toY, scale);
-      continue;
-    }
-
-    // Group paths by style key (color + lineWidth) to batch state changes
-    const groups = new Map();
-    for (const path of segment.paths) {
-      const key = `${path.color}|${path.lineWidth}`;
-      let group = groups.get(key);
-      if (!group) {
-        group = { color: path.color, lineWidth: path.lineWidth, paths: [] };
-        groups.set(key, group);
-      }
-      group.paths.push(path);
-    }
-
-    for (const group of groups.values()) {
-      ctx.strokeStyle = group.color;
-      ctx.lineWidth = group.lineWidth * scale;
-      for (const path of group.paths) {
-        renderPath(ctx, path, toX, toY, scale);
-      }
+      currentColor = null;
+      currentLineWidth = null;
     }
   }
 };
