@@ -49,7 +49,7 @@ export const hideForExport = () => {
 // Shared filter function for capture — avoids creating a new closure per export call.
 export const exportNodeFilter = (node) => {
   const tag = node.tagName;
-  if (tag === "SPAN") return false;
+  if (tag === "SPAN" && node.parentElement && node.parentElement.classList.contains("drop")) return false;
   if (tag === "IMG") return node.src.startsWith("data:") || node.src.startsWith("blob:");
   if (tag === "CANVAS") return node.style.display !== "none";
   const cl = node.classList;
