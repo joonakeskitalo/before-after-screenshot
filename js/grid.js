@@ -40,29 +40,33 @@ let cellDragState = null; // { startIndex, startX, startY, active }
 
 const getCellIndexAtPoint = (x, y) => {
   const cells = state.getCells();
-  // Direct hit test
-  for (let i = 0; i < cells.length; i++) {
-    const rect = cells[i].getBoundingClientRect();
-    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-      return i;
+  if (cells.length === 0) return -1;
+
+  // O(1) hit test using the browser's built-in spatial index
+  const el = document.elementFromPoint(x, y);
+  if (el) {
+    const cell = el.closest(".grid-cell");
+    if (cell) {
+      const idx = cells.indexOf(cell);
+      if (idx !== -1) return idx;
     }
   }
-  // If cursor is within the grid but in a gap, find the nearest cell
+
+  // If cursor is within the grid but in a gap, estimate the nearest cell
+  // from grid geometry instead of iterating all cells.
   const gridRect = state.gridEl.getBoundingClientRect();
   if (x >= gridRect.left && x <= gridRect.right && y >= gridRect.top && y <= gridRect.bottom) {
-    let closestIndex = -1;
-    let closestDist = Infinity;
-    for (let i = 0; i < cells.length; i++) {
-      const rect = cells[i].getBoundingClientRect();
-      const cx = (rect.left + rect.right) / 2;
-      const cy = (rect.top + rect.bottom) / 2;
-      const dist = (x - cx) ** 2 + (y - cy) ** 2;
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestIndex = i;
-      }
-    }
-    return closestIndex;
+    const cols = state.gridCols;
+    const rows = state.gridRows;
+
+    // Compute approximate column and row from relative position
+    const relX = x - gridRect.left;
+    const relY = y - gridRect.top;
+    const col = Math.min(cols - 1, Math.max(0, Math.floor((relX / gridRect.width) * cols)));
+    const row = Math.min(rows - 1, Math.max(0, Math.floor((relY / gridRect.height) * rows)));
+    const idx = row * cols + col;
+
+    if (idx >= 0 && idx < cells.length) return idx;
   }
   return -1;
 };
