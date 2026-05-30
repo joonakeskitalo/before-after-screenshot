@@ -1,5 +1,6 @@
 import state from './state.js';
 import { updateFilenameLabel, buildGrid, toggleFilenames } from './grid.js';
+import { redrawCanvas } from './drawing.js';
 
 // --- Bottom Toolbar Logic ---
 const bottomToolbar = document.getElementById("bottom-toolbar");
@@ -487,5 +488,49 @@ insertAllBtn.addEventListener("click", (e) => {
   updateStagingInstruction();
 });
 
+
+// --- Clear Grid ---
+const clearGridBtn = document.getElementById("clear-grid-btn");
+
+clearGridBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+
+  const cells = state.gridEl.querySelectorAll(".grid-cell");
+  cells.forEach((cell) => {
+    const img = cell.querySelector("img");
+    const drop = cell.querySelector(".drop");
+    const span = cell.querySelector("span");
+    const textarea = cell.querySelector("textarea");
+    const canvas = cell.querySelector(".drawing-canvas");
+
+    if (img) {
+      img.src = "";
+      img.alt = "";
+      img.style.display = "none";
+    }
+    if (drop) drop.style.border = "var(--border)";
+    if (span) span.style.display = "block";
+    if (textarea) textarea.value = "";
+    if (canvas) {
+      const canvasData = state.canvasDataMap.get(canvas);
+      if (canvasData) {
+        canvasData.paths = [];
+        const dpr = window.devicePixelRatio || 1;
+        redrawCanvas(canvas, dpr);
+      }
+    }
+    updateFilenameLabel(cell);
+  });
+});
+
+// --- Clear Staging Area ---
+const clearStagingBtn = document.getElementById("clear-staging-btn");
+
+clearStagingBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const stagedItems = bottomToolbarInner.querySelectorAll(".bottom-toolbar-item");
+  stagedItems.forEach((item) => item.remove());
+  updateStagingInstruction();
+});
 
 export { toggleStagingArea };
