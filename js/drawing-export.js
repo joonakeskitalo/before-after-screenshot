@@ -103,7 +103,12 @@ export const restoreAllCanvases = () => {
     const img = drop.querySelector("img");
 
     if (canvas.dataset.originalImgSrc) {
-      if (img) img.src = canvas.dataset.originalImgSrc;
+      if (img) {
+        img.src = canvas.dataset.originalImgSrc;
+        img.style.width = null;
+        img.style.height = null;
+        img.style.objectFit = null;
+      }
       delete canvas.dataset.originalImgSrc;
       if (canvas.dataset.blobUrl) {
         URL.revokeObjectURL(canvas.dataset.blobUrl);
