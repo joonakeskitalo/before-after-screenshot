@@ -2,6 +2,7 @@ import state from './state.js';
 import { initDrawingCanvas } from './drawing.js';
 import { renderPaths } from './drawing-render.js';
 import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
+import { showToast } from './toast.js';
 
 // Color matrix definitions matching the SVG filters
 const COLOR_MATRICES = {
@@ -412,6 +413,7 @@ const buildGridContent = async (targetGrid, images) => {
           setTimeout(() => { copyClipBtn.textContent = "📋"; }, 1200);
         } catch (err) {
           console.error("Failed to copy to clipboard:", err);
+          showToast("Failed to copy — check clipboard permissions", "error");
         }
       });
 
@@ -528,6 +530,7 @@ export const previewAllFilters = async () => {
       setTimeout(() => { copyWithFiltersBtn.textContent = "Copy with filters"; }, 1500);
     } catch (err) {
       console.error("Failed to copy with filters:", err);
+      showToast("Failed to copy — check clipboard permissions", "error");
     }
   });
 

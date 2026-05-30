@@ -1206,3 +1206,33 @@ body.drawing-mode.eraser-tool .filter-preview-img-container {
 body.drawing-mode.move-tool .filter-preview-img-container {
     cursor: default;
 }
+
+
+/* Toast notification */
+.toast-notification {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 10pt;
+    font-weight: 500;
+    color: #fff;
+    background: #1a1a1a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 10001;
+    white-space: nowrap;
+}
+
+.toast-notification.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast-notification[data-type="error"] {
+    background: #c53030;
+}

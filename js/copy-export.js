@@ -16,6 +16,7 @@ import {
   scaleBlob, cropAndScaleBlob, generateFilename, triggerDownload,
 } from './export-utils.js';
 import { COLOR_MATRICES, applyFilterToCanvas, closeFilterPreview, previewAllFilters } from './filter-preview.js';
+import { showToast } from './toast.js';
 
 // Guard against concurrent exports
 let isExporting = false;
@@ -141,14 +142,26 @@ const exportToBlobWithOutputScale = async (outputScale) => {
 const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
   const blob = await exportToBlob(useFullSize, resolutionScale);
   if (blob) {
-    navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      showToast("Copied to clipboard");
+    } catch (err) {
+      console.error("Clipboard write failed:", err);
+      showToast("Failed to copy — check clipboard permissions", "error");
+    }
   }
 };
 
 const copyAsImageWithOutputScale = async (outputScale) => {
   const blob = await exportToBlobWithOutputScale(outputScale);
   if (blob) {
-    navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      showToast("Copied to clipboard");
+    } catch (err) {
+      console.error("Clipboard write failed:", err);
+      showToast("Failed to copy — check clipboard permissions", "error");
+    }
   }
 };
 
@@ -374,9 +387,13 @@ const copyAsGridSize = async () => {
     const captureHeight = finalizeLayoutForCapture(effectiveCols, GRID_SIZE_EXPORT_PADDING);
     const blob = await captureToBlob(captureHeight, 1);
 
-    navigator.clipboard.write([
-      new ClipboardItem({ "image/png": blob }),
-    ]);
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      showToast("Copied to clipboard");
+    } catch (err) {
+      console.error("Clipboard write failed:", err);
+      showToast("Failed to copy — check clipboard permissions", "error");
+    }
 
     restoreAfterExport(ctx);
   } catch (error) {
@@ -523,6 +540,7 @@ const copySelectedRawImages = async () => {
       const response = await fetch(images[0].src);
       const blob = await response.blob();
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      showToast("Copied to clipboard");
       return;
     }
 
@@ -543,6 +561,10 @@ const copySelectedRawImages = async () => {
 
     const blob = await canvas.convertToBlob({ type: "image/png" });
     await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    showToast("Copied to clipboard");
+  } catch (err) {
+    console.error("Clipboard write failed:", err);
+    showToast("Failed to copy — check clipboard permissions", "error");
   } finally {
     isExporting = false;
   }
@@ -688,7 +710,13 @@ const copyWithAllFilters = async () => {
     bitmaps.forEach((bm) => bm.close());
 
     const blob = await canvas.convertToBlob({ type: "image/png" });
-    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      showToast("Copied to clipboard");
+    } catch (err) {
+      console.error("Clipboard write failed:", err);
+      showToast("Failed to copy — check clipboard permissions", "error");
+    }
   } finally {
     isExporting = false;
   }
