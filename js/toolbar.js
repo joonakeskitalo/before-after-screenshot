@@ -227,13 +227,13 @@ document.addEventListener("paste", function (event) {
   const items = (event.clipboardData || event.originalEvent.clipboardData).items;
 
   if (state.focusedCellIndex >= 0) {
-    // Collect all image blobs from the clipboard
+    // Collect all image blobs from the clipboard (raster images only; SVGs excluded for security)
     const blobs = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.kind === "file") {
         const blob = item.getAsFile();
-        if (blob) blobs.push(blob);
+        if (blob && isAllowedImageFile(blob)) blobs.push(blob);
       }
     }
     // No image files — let the browser handle the paste normally (e.g. text into a textarea)
@@ -281,7 +281,9 @@ document.addEventListener("paste", function (event) {
     const item = items[i];
     if (item.kind === "file") {
       const blob = item.getAsFile();
-      state.addImageToToolbar(URL.createObjectURL(blob), blob.name || "");
+      if (blob && isAllowedImageFile(blob)) {
+        state.addImageToToolbar(URL.createObjectURL(blob), blob.name || "");
+      }
     }
   }
 });
