@@ -146,7 +146,7 @@ state.addImageToToolbar = (srcUrl, fileName = "") => {
         const span = cell.querySelector("span");
         cellImg.src = img.src;
         cellImg.alt = fileName;
-        cellImg.style.display = "flex";
+        cellImg.style.display = "block";
         drop.style.border = "unset";
         if (span) span.style.display = "none";
         updateFilenameLabel(cell);
@@ -264,7 +264,7 @@ document.onpaste = function (event) {
       if (cell) {
         const img = cell.querySelector("img");
         const span = cell.querySelector("span");
-        img.style.display = "flex";
+        img.style.display = "block";
         img.src = URL.createObjectURL(blob);
         img.alt = blob.name || "";
         if (span) span.style.display = "none";
@@ -370,7 +370,7 @@ const applyCardZoom = (dropEl) => {
   cardZoomOverlay = document.createElement("div");
   cardZoomOverlay.className = "zoom-overlay card-zoom-overlay";
   const clone = img.cloneNode(true);
-  clone.style.display = "flex";
+  clone.style.display = "block";
   cardZoomOverlay.appendChild(clone);
 
   // Use natural image dimensions, capped to viewport
@@ -517,7 +517,7 @@ insertAllBtn.addEventListener("click", (e) => {
 
     cellImg.src = stagedImg.src;
     cellImg.alt = stagedImg.alt || "";
-    cellImg.style.display = "flex";
+    cellImg.style.display = "block";
     drop.style.border = "unset";
     if (span) span.style.display = "none";
     updateFilenameLabel(cell);

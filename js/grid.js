@@ -489,7 +489,7 @@ const setupCell = (cell) => {
 
     const droppedFile = e.dataTransfer.files?.[0];
     if (droppedFile && droppedFile.type.startsWith("image/")) {
-      img.style.display = "flex";
+      img.style.display = "block";
       img.src = URL.createObjectURL(droppedFile);
       img.alt = droppedFile.name;
       span.style.display = "none";
@@ -504,7 +504,7 @@ const setupCell = (cell) => {
       const draggedId = e.dataTransfer.getData("id");
       if (source === "toolbar" && draggedId) {
         const draggedFilename = e.dataTransfer.getData("filename") || "";
-        img.style.display = "flex";
+        img.style.display = "block";
         img.src = src;
         img.alt = draggedFilename;
         span.style.display = "none";
@@ -526,7 +526,7 @@ const setupCell = (cell) => {
       }
 
       // Fallback: just set the image (e.g. external drop)
-      img.style.display = "flex";
+      img.style.display = "block";
       img.src = src;
       img.alt = "";
       span.style.display = "none";
@@ -598,7 +598,7 @@ const setCellData = (cell, data) => {
   if (data.imgSrc) {
     img.src = data.imgSrc;
     img.alt = data.imgAlt;
-    img.style.display = "flex";
+    img.style.display = "block";
     drop.style.border = "unset";
     if (span) span.style.display = "none";
   } else {
@@ -799,7 +799,7 @@ const buildGrid = () => {
         if (existing.imgSrc) {
           img.src = existing.imgSrc;
           img.alt = existing.imgAlt;
-          img.style.display = "flex";
+          img.style.display = "block";
           drop.style.border = "unset";
           span.style.display = "none";
         }
@@ -1322,7 +1322,7 @@ const restoreCellData = (cell, data) => {
   if (data.imgSrc) {
     img.src = data.imgSrc;
     img.alt = data.imgAlt;
-    img.style.display = "flex";
+    img.style.display = "block";
     drop.style.border = "unset";
     span.style.display = "none";
   }
