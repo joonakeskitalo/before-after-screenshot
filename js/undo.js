@@ -76,7 +76,10 @@ const pushUndo = () => {
       const textarea = cell.querySelector("textarea");
       const canvas = cell.querySelector(".drawing-canvas");
       const drawingPaths = canvas && state.canvasDataMap.get(canvas)
-        ? state.canvasDataMap.get(canvas).paths.map((p) => ({ ...p, points: [...p.points] }))
+        ? state.canvasDataMap.get(canvas).paths.map((p) => ({
+            ...p,
+            ...(p.points ? { points: [...p.points] } : {}),
+          }))
         : [];
       return {
         row: parseInt(cell.dataset.row, 10),
