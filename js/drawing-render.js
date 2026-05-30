@@ -103,116 +103,136 @@ export const drawArrow = (ctx, x1, y1, x2, y2, lineWidth) => {
   ctx.stroke();
 };
 
+// Render a single drawing path onto a canvas context.
+// Assumes strokeStyle, lineWidth, lineCap, lineJoin are already set on ctx.
+const renderPath = (ctx, path, toX, toY, scale) => {
+  if (path.type === "text") {
+    const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) * scale;
+    const lineHeight = fontSize * DRAW_TEXT_LINE_HEIGHT;
+    ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
+    ctx.textBaseline = "top";
+    const x = toX(path.position.x);
+    const y = toY(path.position.y);
+    const lines = path.text.split("\n");
+    const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    const totalHeight = fontSize + (lines.length - 1) * lineHeight;
+    const padding = DRAW_TEXT_BG_PADDING * scale;
+    ctx.fillStyle = `rgba(0, 0, 0, ${DRAW_TEXT_BG_OPACITY})`;
+    const radius = fontSize * DRAW_TEXT_RADIUS_FACTOR;
+    ctx.beginPath();
+    ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
+    ctx.fill();
+    ctx.fillStyle = path.color;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, x, y + i * lineHeight);
+    });
+  } else if (path.type === "arrow") {
+    const fromX = toX(path.from.x);
+    const fromY = toY(path.from.y);
+    const tX = toX(path.to.x);
+    const tY = toY(path.to.y);
+    drawArrow(ctx, fromX, fromY, tX, tY, path.lineWidth * scale);
+  } else if (path.type === "line") {
+    const fromX = toX(path.from.x);
+    const fromY = toY(path.from.y);
+    const tX = toX(path.to.x);
+    const tY = toY(path.to.y);
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(tX, tY);
+    ctx.stroke();
+  } else if (path.type === "rect") {
+    const x = toX(Math.min(path.from.x, path.to.x));
+    const y = toY(Math.min(path.from.y, path.to.y));
+    const w = toX(Math.max(path.from.x, path.to.x)) - x;
+    const h = toY(Math.max(path.from.y, path.to.y)) - y;
+    ctx.fillStyle = path.color;
+    ctx.fillRect(x, y, w, h);
+  } else if (path.type === "rectstroke") {
+    const x = toX(Math.min(path.from.x, path.to.x));
+    const y = toY(Math.min(path.from.y, path.to.y));
+    const w = toX(Math.max(path.from.x, path.to.x)) - x;
+    const h = toY(Math.max(path.from.y, path.to.y)) - y;
+    ctx.strokeRect(x, y, w, h);
+  } else if (path.type === "oval") {
+    const x = toX(Math.min(path.from.x, path.to.x));
+    const y = toY(Math.min(path.from.y, path.to.y));
+    const w = toX(Math.max(path.from.x, path.to.x)) - x;
+    const h = toY(Math.max(path.from.y, path.to.y)) - y;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (path.type === "ovalfill") {
+    const x = toX(Math.min(path.from.x, path.to.x));
+    const y = toY(Math.min(path.from.y, path.to.y));
+    const w = toX(Math.max(path.from.x, path.to.x)) - x;
+    const h = toY(Math.max(path.from.y, path.to.y)) - y;
+    ctx.fillStyle = path.color;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (path.type === "dot") {
+    const cx = toX(path.position.x);
+    const cy = toY(path.position.y);
+    const radius = (path.lineWidth + DRAW_DOT_RADIUS_EXTRA) * scale;
+    ctx.globalAlpha = DRAW_DOT_OPACITY;
+    ctx.fillStyle = path.color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  } else if (path.type === "eraser") {
+    if (path.points.length < 2) return;
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "rgba(0,0,0,1)";
+    ctx.lineWidth = (path.lineWidth + DRAW_ERASER_EXTRA_WIDTH) * scale;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));
+    for (let i = 1; i < path.points.length; i++) {
+      ctx.lineTo(toX(path.points[i].x), toY(path.points[i].y));
+    }
+    ctx.stroke();
+    ctx.restore();
+  } else {
+    // Freehand path
+    if (path.points.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));
+    for (let i = 1; i < path.points.length; i++) {
+      ctx.lineTo(toX(path.points[i].x), toY(path.points[i].y));
+    }
+    ctx.stroke();
+  }
+};
+
 // Render a list of drawing paths onto a canvas context.
 // toX/toY map normalized (0-1) coordinates to canvas pixel coordinates.
 // scale is the multiplier for line widths and font sizes (e.g. zoomScale * dpr).
+// Paths are grouped by style (color + lineWidth) to minimize canvas state changes.
 export const renderPaths = (ctx, paths, toX, toY, scale) => {
-  for (const path of paths) {
-    ctx.strokeStyle = path.color;
-    ctx.lineWidth = path.lineWidth * scale;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+  // Group consecutive paths that share the same base style to batch state changes.
+  // "eraser" and "dot" types override state internally, so they break batches.
+  let currentColor = null;
+  let currentLineWidth = null;
 
-    if (path.type === "text") {
-      const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) * scale;
-      const lineHeight = fontSize * DRAW_TEXT_LINE_HEIGHT;
-      ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
-      ctx.textBaseline = "top";
-      const x = toX(path.position.x);
-      const y = toY(path.position.y);
-      const lines = path.text.split("\n");
-      const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
-      const totalHeight = fontSize + (lines.length - 1) * lineHeight;
-      const padding = DRAW_TEXT_BG_PADDING * scale;
-      ctx.fillStyle = `rgba(0, 0, 0, ${DRAW_TEXT_BG_OPACITY})`;
-      const radius = fontSize * DRAW_TEXT_RADIUS_FACTOR;
-      ctx.beginPath();
-      ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
-      ctx.fill();
-      ctx.fillStyle = path.color;
-      lines.forEach((line, i) => {
-        ctx.fillText(line, x, y + i * lineHeight);
-      });
-    } else if (path.type === "arrow") {
-      const fromX = toX(path.from.x);
-      const fromY = toY(path.from.y);
-      const tX = toX(path.to.x);
-      const tY = toY(path.to.y);
-      drawArrow(ctx, fromX, fromY, tX, tY, path.lineWidth * scale);
-    } else if (path.type === "line") {
-      const fromX = toX(path.from.x);
-      const fromY = toY(path.from.y);
-      const tX = toX(path.to.x);
-      const tY = toY(path.to.y);
-      ctx.beginPath();
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(tX, tY);
-      ctx.stroke();
-    } else if (path.type === "rect") {
-      const x = toX(Math.min(path.from.x, path.to.x));
-      const y = toY(Math.min(path.from.y, path.to.y));
-      const w = toX(Math.max(path.from.x, path.to.x)) - x;
-      const h = toY(Math.max(path.from.y, path.to.y)) - y;
-      ctx.fillStyle = path.color;
-      ctx.fillRect(x, y, w, h);
-    } else if (path.type === "rectstroke") {
-      const x = toX(Math.min(path.from.x, path.to.x));
-      const y = toY(Math.min(path.from.y, path.to.y));
-      const w = toX(Math.max(path.from.x, path.to.x)) - x;
-      const h = toY(Math.max(path.from.y, path.to.y)) - y;
-      ctx.strokeRect(x, y, w, h);
-    } else if (path.type === "oval") {
-      const x = toX(Math.min(path.from.x, path.to.x));
-      const y = toY(Math.min(path.from.y, path.to.y));
-      const w = toX(Math.max(path.from.x, path.to.x)) - x;
-      const h = toY(Math.max(path.from.y, path.to.y)) - y;
-      ctx.beginPath();
-      ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (path.type === "ovalfill") {
-      const x = toX(Math.min(path.from.x, path.to.x));
-      const y = toY(Math.min(path.from.y, path.to.y));
-      const w = toX(Math.max(path.from.x, path.to.x)) - x;
-      const h = toY(Math.max(path.from.y, path.to.y)) - y;
-      ctx.fillStyle = path.color;
-      ctx.beginPath();
-      ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (path.type === "dot") {
-      const cx = toX(path.position.x);
-      const cy = toY(path.position.y);
-      const radius = (path.lineWidth + DRAW_DOT_RADIUS_EXTRA) * scale;
-      ctx.globalAlpha = DRAW_DOT_OPACITY;
-      ctx.fillStyle = path.color;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-    } else if (path.type === "eraser") {
-      if (path.points.length < 2) continue;
-      ctx.save();
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.strokeStyle = "rgba(0,0,0,1)";
-      ctx.lineWidth = (path.lineWidth + DRAW_ERASER_EXTRA_WIDTH) * scale;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));
-      for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(toX(path.points[i].x), toY(path.points[i].y));
-      }
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      // Freehand path
-      if (path.points.length < 2) continue;
-      ctx.beginPath();
-      ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));
-      for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(toX(path.points[i].x), toY(path.points[i].y));
-      }
-      ctx.stroke();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  for (const path of paths) {
+    const needsStyleChange =
+      path.color !== currentColor || path.lineWidth !== currentLineWidth;
+
+    if (needsStyleChange) {
+      ctx.strokeStyle = path.color;
+      ctx.lineWidth = path.lineWidth * scale;
+      currentColor = path.color;
+      currentLineWidth = path.lineWidth;
     }
+
+    renderPath(ctx, path, toX, toY, scale);
   }
 };
 
