@@ -16,11 +16,7 @@ const dropNewImage = (e) => {
   [...e.dataTransfer.files]
     .filter((x) => x.type.startsWith("image/"))
     .forEach((droppedFile) => {
-      const reader = new FileReader();
-      reader.onloadend = function () {
-        state.addImageToToolbar(this.result, droppedFile.name);
-      };
-      reader.readAsDataURL(droppedFile);
+      state.addImageToToolbar(URL.createObjectURL(droppedFile), droppedFile.name);
     });
 };
 

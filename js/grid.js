@@ -463,15 +463,11 @@ const setupCell = (cell) => {
 
     const droppedFile = e.dataTransfer.files?.[0];
     if (droppedFile && droppedFile.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = function () {
-        img.style.display = "flex";
-        img.src = this.result;
-        img.alt = droppedFile.name;
-        span.style.display = "none";
-        updateFilenameLabel(cell);
-      };
-      reader.readAsDataURL(droppedFile);
+      img.style.display = "flex";
+      img.src = URL.createObjectURL(droppedFile);
+      img.alt = droppedFile.name;
+      span.style.display = "none";
+      updateFilenameLabel(cell);
       return;
     }
 

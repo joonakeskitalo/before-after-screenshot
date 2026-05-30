@@ -90,7 +90,7 @@ const sortStagingArea = () => {
   });
 };
 
-state.addImageToToolbar = (dataUrl, fileName = "") => {
+state.addImageToToolbar = (srcUrl, fileName = "") => {
   const item = document.createElement("div");
   item.className = "bottom-toolbar-item";
   item.draggable = true;
@@ -98,7 +98,7 @@ state.addImageToToolbar = (dataUrl, fileName = "") => {
   item.dataset.id = id;
 
   const img = document.createElement("img");
-  img.src = dataUrl;
+  img.src = srcUrl;
   img.alt = fileName;
   img.draggable = false;
 
@@ -107,6 +107,10 @@ state.addImageToToolbar = (dataUrl, fileName = "") => {
   removeBtn.textContent = "×";
   removeBtn.addEventListener("click", (e) => {
     e.stopPropagation();
+    // Revoke blob URL to free memory
+    if (img.src && img.src.startsWith("blob:")) {
+      URL.revokeObjectURL(img.src);
+    }
     item.remove();
     updateStagingInstruction();
   });
@@ -120,7 +124,7 @@ state.addImageToToolbar = (dataUrl, fileName = "") => {
   item.appendChild(nameLabel);
 
   item.addEventListener("dragstart", (e) => {
-    e.dataTransfer.setData("text/plain", dataUrl);
+    e.dataTransfer.setData("text/plain", img.src);
     e.dataTransfer.setData("id", id);
     e.dataTransfer.setData("source", "toolbar");
     e.dataTransfer.setData("filename", fileName || "");
@@ -140,13 +144,13 @@ state.addImageToToolbar = (dataUrl, fileName = "") => {
       if (!cellImg || !cellImg.src || cellImg.style.display === "none") {
         const drop = cell.querySelector(".drop");
         const span = cell.querySelector("span");
-        cellImg.src = dataUrl;
+        cellImg.src = img.src;
         cellImg.alt = fileName;
         cellImg.style.display = "flex";
         drop.style.border = "unset";
         if (span) span.style.display = "none";
         updateFilenameLabel(cell);
-        // Remove from toolbar
+        // Remove from toolbar (don't revoke — the grid cell now owns the URL)
         item.remove();
         updateStagingInstruction();
         // Scroll the added image into view
@@ -183,18 +187,14 @@ bottomToolbarDrop.addEventListener("drop", (e) => {
   );
   if (files.length) {
     files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = function () {
-        state.addImageToToolbar(this.result, file.name);
-      };
-      reader.readAsDataURL(file);
+      state.addImageToToolbar(URL.createObjectURL(file), file.name);
     });
     return;
   }
 
-  // Handle data URL drops (from grid cells back to toolbar)
+  // Handle blob or data URL drops (from grid cells back to toolbar)
   const src = e.dataTransfer.getData("text/plain");
-  if (src && src.startsWith("data:")) {
+  if (src && (src.startsWith("data:") || src.startsWith("blob:"))) {
     state.addImageToToolbar(src);
   }
 });
@@ -217,11 +217,7 @@ bottomToolbar.addEventListener("drop", (e) => {
   );
   if (files.length) {
     files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = function () {
-        state.addImageToToolbar(this.result, file.name);
-      };
-      reader.readAsDataURL(file);
+      state.addImageToToolbar(URL.createObjectURL(file), file.name);
     });
   }
 });
@@ -235,11 +231,7 @@ document.onpaste = function (event) {
     const item = items[index];
     if (item.kind === "file") {
       const blob = item.getAsFile();
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        state.addImageToToolbar(event.target.result, blob.name || "");
-      };
-      reader.readAsDataURL(blob);
+      state.addImageToToolbar(URL.createObjectURL(blob), blob.name || "");
     }
   }
 };
@@ -504,6 +496,10 @@ clearGridBtn.addEventListener("click", (e) => {
     const canvas = cell.querySelector(".drawing-canvas");
 
     if (img) {
+      // Revoke blob URL to free memory
+      if (img.src && img.src.startsWith("blob:")) {
+        URL.revokeObjectURL(img.src);
+      }
       img.src = "";
       img.alt = "";
       img.style.display = "none";
@@ -536,7 +532,13 @@ const clearStagingBtn = document.getElementById("clear-staging-btn");
 clearStagingBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   const stagedItems = bottomToolbarInner.querySelectorAll(".bottom-toolbar-item");
-  stagedItems.forEach((item) => item.remove());
+  stagedItems.forEach((item) => {
+    const img = item.querySelector("img");
+    if (img && img.src && img.src.startsWith("blob:")) {
+      URL.revokeObjectURL(img.src);
+    }
+    item.remove();
+  });
   updateStagingInstruction();
 });
 

@@ -1255,11 +1255,14 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
 const bulkDownloadImages = () => {
   const images = [];
 
+  // Helper: check if a src is a usable image URL (data: or blob:)
+  const isImageSrc = (src) => src && (src.startsWith("data:") || src.startsWith("blob:"));
+
   // Collect from staging area (bottom toolbar)
   const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
   if (bottomToolbarInner) {
     bottomToolbarInner.querySelectorAll(".bottom-toolbar-item img").forEach((img) => {
-      if (img.src && img.src.startsWith("data:")) {
+      if (isImageSrc(img.src)) {
         images.push({ src: img.src, name: img.alt || "" });
       }
     });
@@ -1274,7 +1277,7 @@ const bulkDownloadImages = () => {
       const row = parseInt(cell.dataset.row);
       if (!state.selectedRows.has(row)) return;
       const img = cell.querySelector("img");
-      if (img && img.src && img.src.startsWith("data:") && img.style.display !== "none") {
+      if (img && isImageSrc(img.src) && img.style.display !== "none") {
         images.push({ src: img.src, name: img.alt || "" });
       }
     });
@@ -1283,7 +1286,7 @@ const bulkDownloadImages = () => {
     allCells.forEach((cell, index) => {
       if (!state.selectedCells.has(index)) return;
       const img = cell.querySelector("img");
-      if (img && img.src && img.src.startsWith("data:") && img.style.display !== "none") {
+      if (img && isImageSrc(img.src) && img.style.display !== "none") {
         images.push({ src: img.src, name: img.alt || "" });
       }
     });
@@ -1291,7 +1294,7 @@ const bulkDownloadImages = () => {
     // No selection — include all grid images
     allCells.forEach((cell) => {
       const img = cell.querySelector("img");
-      if (img && img.src && img.src.startsWith("data:") && img.style.display !== "none") {
+      if (img && isImageSrc(img.src) && img.style.display !== "none") {
         images.push({ src: img.src, name: img.alt || "" });
       }
     });
@@ -1301,11 +1304,11 @@ const bulkDownloadImages = () => {
 
   // Download each image with a small delay to avoid browser blocking
   images.forEach((image, index) => {
+    let filename = image.name || `image-${index + 1}`;
+    // Determine extension from src type or filename
     const ext = image.src.startsWith("data:image/png") ? ".png" :
                 image.src.startsWith("data:image/jpeg") ? ".jpg" :
                 image.src.startsWith("data:image/webp") ? ".webp" : ".png";
-
-    let filename = image.name || `image-${index + 1}`;
     // Strip existing extension if present, then add the correct one
     filename = filename.replace(/\.[^.]+$/, "") + ext;
 
@@ -2000,13 +2003,9 @@ const previewAllFilters = () => {
     const canvas = await renderPreviewGrid();
     if (!canvas) return;
     const blob = await canvas.convertToBlob({ type: "image/png" });
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      state.addImageToToolbar(reader.result, "filter-grid.png");
-      stageMergedBtn.textContent = "Staged ✓";
-      setTimeout(() => { stageMergedBtn.textContent = "Stage merged"; }, 1500);
-    };
-    reader.readAsDataURL(blob);
+    state.addImageToToolbar(URL.createObjectURL(blob), "filter-grid.png");
+    stageMergedBtn.textContent = "Staged ✓";
+    setTimeout(() => { stageMergedBtn.textContent = "Stage merged"; }, 1500);
   });
 
   const closeBtn = document.createElement("button");
