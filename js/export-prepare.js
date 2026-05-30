@@ -149,11 +149,26 @@ export const hideSelectionForExport = () => {
   };
 };
 
+// Sync textarea .value into the DOM textContent so that dom-to-image libraries
+// (which serialize the DOM, not form state) can capture the text.
+const syncTextareasForExport = (container) => {
+  const textareas = container.querySelectorAll("textarea");
+  textareas.forEach((ta) => {
+    ta.textContent = ta.value;
+  });
+  return () => {
+    textareas.forEach((ta) => {
+      ta.textContent = "";
+    });
+  };
+};
+
 // --- Shared export prepare/restore pair ---
 export const prepareForExport = () => {
   const showAfterExport = hideForExport();
   const restoreSelection = hideSelectionForExport();
   const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
+  const restoreTextareas = syncTextareasForExport(state.cardsEl);
 
   const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
   const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
@@ -181,6 +196,7 @@ export const prepareForExport = () => {
     showAfterExport,
     restoreSelection,
     restoreEmptyRows,
+    restoreTextareas,
     effectiveCols,
     allCells,
     allImages,
@@ -190,7 +206,7 @@ export const prepareForExport = () => {
 };
 
 export const restoreAfterExport = (ctx) => {
-  const { allCells, allImages, allDrops, prevZoom, restoreEmptyRows, restoreSelection } = ctx;
+  const { allCells, allImages, allDrops, prevZoom, restoreEmptyRows, restoreSelection, restoreTextareas } = ctx;
 
   allCells.forEach((cell) => {
     cell.style.overflow = null;
@@ -224,6 +240,7 @@ export const restoreAfterExport = (ctx) => {
   restoreAllCanvases();
   restoreEmptyRows();
   restoreSelection();
+  restoreTextareas();
 };
 
 // Finalize the grid layout for capture: set grid template, padding, lock width,
