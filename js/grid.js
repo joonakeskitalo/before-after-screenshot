@@ -47,6 +47,46 @@ const revokeOrphanedBlobUrls = (previousUrls) => {
   }
 };
 
+// --- SVG Icon Factories (DOM-based to avoid innerHTML/XSS vectors) ---
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const createSvgElement = (tag, attrs) => {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    el.setAttribute(key, value);
+  }
+  return el;
+};
+
+/** Six-dot drag handle icon */
+const createDragIcon = () => {
+  const svg = createSvgElement("svg", { width: "12", height: "12", viewBox: "0 0 12 12" });
+  const positions = [[4,3],[8,3],[4,6],[8,6],[4,9],[8,9]];
+  for (const [cx, cy] of positions) {
+    svg.appendChild(createSvgElement("circle", { cx, cy, r: "1.2", fill: "currentColor" }));
+  }
+  return svg;
+};
+
+/** X / close icon */
+const createDeleteIcon = () => {
+  const svg = createSvgElement("svg", { width: "12", height: "12", viewBox: "0 0 12 12" });
+  const lineAttrs = { stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" };
+  svg.appendChild(createSvgElement("line", { x1: "3", y1: "3", x2: "9", y2: "9", ...lineAttrs }));
+  svg.appendChild(createSvgElement("line", { x1: "9", y1: "3", x2: "3", y2: "9", ...lineAttrs }));
+  return svg;
+};
+
+/** Plus / add icon */
+const createAddIcon = () => {
+  const svg = createSvgElement("svg", { width: "12", height: "12", viewBox: "0 0 12 12" });
+  const lineAttrs = { stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" };
+  svg.appendChild(createSvgElement("line", { x1: "6", y1: "2", x2: "6", y2: "10", ...lineAttrs }));
+  svg.appendChild(createSvgElement("line", { x1: "2", y1: "6", x2: "10", y2: "6", ...lineAttrs }));
+  return svg;
+};
+
 // --- Mouse drag-to-move for selected cells ---
 
 let cellDragState = null; // { startIndex, startX, startY, active }
@@ -808,7 +848,7 @@ const buildGrid = () => {
   // Clean up canvasDataMap entries before destroying old canvases
   cleanupCanvasData(oldCanvases);
 
-  state.gridEl.innerHTML = "";
+  state.gridEl.replaceChildren();
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
@@ -918,7 +958,7 @@ const buildRowControls = () => {
     handle.draggable = true;
     handle.dataset.row = r;
     handle.title = `Drag to reorder row ${r + 1}`;
-    handle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="4" cy="3" r="1.2" fill="currentColor"/><circle cx="8" cy="3" r="1.2" fill="currentColor"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="8" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="9" r="1.2" fill="currentColor"/><circle cx="8" cy="9" r="1.2" fill="currentColor"/></svg>`;
+    handle.appendChild(createDragIcon());
 
     handle.addEventListener("dragstart", (e) => {
       const row = parseInt(handle.dataset.row, 10);
@@ -934,7 +974,7 @@ const buildRowControls = () => {
     deleteBtn.className = "delete-row-btn";
     deleteBtn.dataset.row = r;
     deleteBtn.title = `Delete row ${r + 1}`;
-    deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9" y1="3" x2="3" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+    deleteBtn.appendChild(createDeleteIcon());
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       deleteRowAt(parseInt(deleteBtn.dataset.row, 10));
@@ -1018,7 +1058,7 @@ const createAddRowButton = (insertIndex) => {
   btn.className = "add-row-btn";
   btn.dataset.insertIndex = insertIndex;
   btn.title = `Add row here`;
-  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  btn.appendChild(createAddIcon());
 
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1525,7 +1565,7 @@ const relayoutGrid = () => {
 
   // Rebuild grid with compacted data
   cleanupCanvasData(state.gridEl.querySelectorAll(".drawing-canvas"));
-  state.gridEl.innerHTML = "";
+  state.gridEl.replaceChildren();
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 

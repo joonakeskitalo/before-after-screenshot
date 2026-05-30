@@ -237,7 +237,7 @@ const cloneBitmap = (sourceBitmap) => {
 // Uses a Web Worker pool to offload pixel manipulation off the main thread.
 const buildGridContent = async (targetGrid, images) => {
   revokeFilterPreviewBlobs();
-  targetGrid.innerHTML = "";
+  targetGrid.replaceChildren();
 
   const filters = FILTER_OPTIONS;
 
@@ -510,7 +510,7 @@ export const previewAllFilters = async () => {
     if (!filterPreviewOverlay || !filterPreviewGrid) return;
 
     // Swap content atomically — images are already decoded so no flicker
-    filterPreviewGrid.innerHTML = "";
+    filterPreviewGrid.replaceChildren();
     while (tempGrid.firstChild) {
       filterPreviewGrid.appendChild(tempGrid.firstChild);
     }
