@@ -1053,7 +1053,8 @@ body.cell-dragging .grid-cell.keyboard-selected {
 
 .filter-preview-body {
     padding: 16px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -1064,18 +1065,14 @@ body.cell-dragging .grid-cell.keyboard-selected {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    flex: 1;
-    min-height: 0;
 }
 
 .filter-preview-row {
     display: flex;
     gap: 8px;
     align-items: flex-start;
-    overflow-x: hidden;
+    overflow-x: auto;
     padding-bottom: 4px;
-    flex: 1;
-    min-height: 0;
 }
 
 .filter-preview-cell {
