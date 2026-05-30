@@ -661,7 +661,13 @@ export const initDrawingCanvas = (drop) => {
   };
 
   canvas.addEventListener("mouseup", endDraw);
-  canvas.addEventListener("mouseleave", endDraw);
+
+  // Use a document-level mouseup so drawing completes even if the cursor
+  // leaves the canvas mid-stroke (instead of committing on mouseleave).
+  document.addEventListener("mouseup", (e) => {
+    if (!isDrawing) return;
+    endDraw(e);
+  });
 
   return canvas;
 };
