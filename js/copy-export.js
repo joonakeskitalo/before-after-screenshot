@@ -88,15 +88,10 @@ const hideEmptyRowsForExport = () => {
   const occupiedRows = new Set();
   const occupiedCols = new Set();
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const cell = allCells.find(
-        (c) => parseInt(c.dataset.row) === row && parseInt(c.dataset.col) === col
-      );
-      if (cell && cellHasVisibleContent(cell)) {
-        occupiedRows.add(row);
-        occupiedCols.add(col);
-      }
+  for (const cell of allCells) {
+    if (cellHasVisibleContent(cell)) {
+      occupiedRows.add(parseInt(cell.dataset.row));
+      occupiedCols.add(parseInt(cell.dataset.col));
     }
   }
 

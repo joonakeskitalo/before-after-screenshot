@@ -3,6 +3,15 @@ import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js'
 import { attachDragTo, updateCopySelectedBtn } from './copy-export.js';
 import { applyGridZoom } from './zoom.js';
 
+// Convert an array of {row, col, ...} objects to a Map keyed by "row,col" for O(1) lookup.
+const toDataMap = (dataArray) => {
+  const map = new Map();
+  for (const d of dataArray) {
+    map.set(`${d.row},${d.col}`, d);
+  }
+  return map;
+};
+
 // --- Mouse drag-to-move for selected cells ---
 
 let cellDragState = null; // { startIndex, startX, startY, active }
@@ -738,13 +747,15 @@ const buildGrid = () => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const existingDataMap = toDataMap(existingData);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
       // Restore data if it existed at this position
-      const existing = existingData.find((d) => d.row === r && d.col === c);
+      const existing = existingDataMap.get(`${r},${c}`);
       if (existing) {
         const img = cell.querySelector("img");
         const drop = cell.querySelector(".drop");
@@ -992,12 +1003,14 @@ const insertRowAt = (insertIndex) => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const newDataMap = toDataMap(newData);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = newData.find((d) => d.row === r && d.col === c);
+      const existing = newDataMap.get(`${r},${c}`);
       if (existing) {
         restoreCellData(cell, existing);
       }
@@ -1025,12 +1038,14 @@ const insertColumnAt = (insertIndex) => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const newDataMap = toDataMap(newData);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = newData.find((d) => d.row === r && d.col === c);
+      const existing = newDataMap.get(`${r},${c}`);
       if (existing) {
         restoreCellData(cell, existing);
       }
@@ -1072,12 +1087,14 @@ const deleteRowAt = (rowIndex) => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const newDataMap = toDataMap(newData);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = newData.find((d) => d.row === r && d.col === c);
+      const existing = newDataMap.get(`${r},${c}`);
       if (existing) {
         restoreCellData(cell, existing);
       }
@@ -1144,12 +1161,14 @@ const moveRow = (sourceRow, targetIndex) => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const finalDataMap = toDataMap(finalData);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = finalData.find((d) => d.row === r && d.col === c);
+      const existing = finalDataMap.get(`${r},${c}`);
       if (existing) {
         restoreCellData(cell, existing);
       }
@@ -1188,12 +1207,14 @@ const swapRows = (rowA, rowB) => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const newDataMap = toDataMap(newData);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = newData.find((d) => d.row === r && d.col === c);
+      const existing = newDataMap.get(`${r},${c}`);
       if (existing) {
         restoreCellData(cell, existing);
       }
@@ -1323,12 +1344,14 @@ const relayoutGrid = () => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const reindexedMap = toDataMap(reindexed);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = reindexed.find((d) => d.row === r && d.col === c);
+      const existing = reindexedMap.get(`${r},${c}`);
       if (existing) {
         restoreCellData(cell, existing);
       }
@@ -1377,12 +1400,14 @@ const deleteColumnAt = (colIndex) => {
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
+  const newDataMap = toDataMap(newData);
+
   for (let r = 0; r < state.gridRows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = newData.find((d) => d.row === r && d.col === c);
+      const existing = newDataMap.get(`${r},${c}`);
       if (existing) {
         restoreCellData(cell, existing);
       }
