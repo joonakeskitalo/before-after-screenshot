@@ -105,7 +105,7 @@ export const drawArrow = (ctx, x1, y1, x2, y2, lineWidth) => {
 
 // Render a single drawing path onto a canvas context.
 // Assumes strokeStyle, lineWidth, lineCap, lineJoin are already set on ctx.
-const renderPath = (ctx, path, toX, toY, scale) => {
+export const renderPath = (ctx, path, toX, toY, scale) => {
   if (path.type === "text") {
     const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) * scale;
     const lineHeight = fontSize * DRAW_TEXT_LINE_HEIGHT;

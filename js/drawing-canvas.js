@@ -1,5 +1,5 @@
 import state from './state.js';
-import { getObjectFitRect, getCanvasContentMetrics, renderPaths, redrawCanvas, drawArrow } from './drawing-render.js';
+import { getObjectFitRect, getCanvasContentMetrics, renderPaths, renderPath, redrawCanvas } from './drawing-render.js';
 import { setLastActiveDrawingCanvas } from './drawing-tools.js';
 import {
   DRAW_DEFAULT_FONT_SIZE, DRAW_HIT_TEST_THRESHOLD, DRAW_TEXT_HIT_DIVISOR,
@@ -481,82 +481,24 @@ export const initDrawingCanvas = (drop) => {
       }
     }
 
-    if (state.drawTool === "arrow" && arrowStart) {
+    if ((state.drawTool === "arrow" || state.drawTool === "line" || state.drawTool === "rect" || state.drawTool === "rectstroke" || state.drawTool === "oval" || state.drawTool === "ovalfill") && arrowStart) {
       const dpr = window.devicePixelRatio || 1;
       clearPreview();
       const ctx = previewCanvas.getContext("2d");
       const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      const zs = state.gridZoom / 100;
-      ctx.strokeStyle = state.drawColor;
-      ctx.lineWidth = state.drawLineWidth * zs * dpr;
+      const zoomScale = state.gridZoom / 100;
+      const previewPath = {
+        type: state.drawTool,
+        color: state.drawColor,
+        lineWidth: state.drawLineWidth,
+        from: arrowStart,
+        to: { x, y },
+      };
+      ctx.strokeStyle = previewPath.color;
+      ctx.lineWidth = previewPath.lineWidth * zoomScale * dpr;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      drawArrow(ctx, toCanvasX(arrowStart.x), toCanvasY(arrowStart.y), toCanvasX(x), toCanvasY(y), state.drawLineWidth * zs * dpr);
-    } else if (state.drawTool === "line" && arrowStart) {
-      const dpr = window.devicePixelRatio || 1;
-      clearPreview();
-      const ctx = previewCanvas.getContext("2d");
-      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      ctx.strokeStyle = state.drawColor;
-      ctx.lineWidth = state.drawLineWidth * (state.gridZoom / 100) * dpr;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(toCanvasX(arrowStart.x), toCanvasY(arrowStart.y));
-      ctx.lineTo(toCanvasX(x), toCanvasY(y));
-      ctx.stroke();
-    } else if (state.drawTool === "rect" && arrowStart) {
-      const dpr = window.devicePixelRatio || 1;
-      clearPreview();
-      const ctx = previewCanvas.getContext("2d");
-      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      const rx = toCanvasX(Math.min(arrowStart.x, x));
-      const ry = toCanvasY(Math.min(arrowStart.y, y));
-      const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
-      const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
-      ctx.fillStyle = state.drawColor;
-      ctx.fillRect(rx, ry, rw, rh);
-    } else if (state.drawTool === "rectstroke" && arrowStart) {
-      const dpr = window.devicePixelRatio || 1;
-      clearPreview();
-      const ctx = previewCanvas.getContext("2d");
-      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      const rx = toCanvasX(Math.min(arrowStart.x, x));
-      const ry = toCanvasY(Math.min(arrowStart.y, y));
-      const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
-      const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
-      ctx.strokeStyle = state.drawColor;
-      ctx.lineWidth = state.drawLineWidth * (state.gridZoom / 100) * dpr;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeRect(rx, ry, rw, rh);
-    } else if (state.drawTool === "oval" && arrowStart) {
-      const dpr = window.devicePixelRatio || 1;
-      clearPreview();
-      const ctx = previewCanvas.getContext("2d");
-      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      const rx = toCanvasX(Math.min(arrowStart.x, x));
-      const ry = toCanvasY(Math.min(arrowStart.y, y));
-      const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
-      const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
-      ctx.strokeStyle = state.drawColor;
-      ctx.lineWidth = state.drawLineWidth * (state.gridZoom / 100) * dpr;
-      ctx.beginPath();
-      ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (state.drawTool === "ovalfill" && arrowStart) {
-      const dpr = window.devicePixelRatio || 1;
-      clearPreview();
-      const ctx = previewCanvas.getContext("2d");
-      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
-      const rx = toCanvasX(Math.min(arrowStart.x, x));
-      const ry = toCanvasY(Math.min(arrowStart.y, y));
-      const rw = toCanvasX(Math.max(arrowStart.x, x)) - rx;
-      const rh = toCanvasY(Math.max(arrowStart.y, y)) - ry;
-      ctx.fillStyle = state.drawColor;
-      ctx.beginPath();
-      ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      renderPath(ctx, previewPath, toCanvasX, toCanvasY, zoomScale * dpr);
     } else if (currentPath) {
       currentPath.points.push({ x, y });
 
