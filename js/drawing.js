@@ -905,6 +905,13 @@ const initDrawingCanvas = (drop) => {
   canvas.className = "drawing-canvas";
   drop.appendChild(canvas);
 
+  // Preview canvas — sits on top of the main canvas for in-progress shape rendering.
+  // This avoids redrawing all committed paths on every mousemove during shape tools.
+  const previewCanvas = document.createElement("canvas");
+  previewCanvas.className = "drawing-canvas";
+  previewCanvas.style.pointerEvents = "none";
+  drop.appendChild(previewCanvas);
+
   // Clear drawing button
   const clearBtn = document.createElement("button");
   clearBtn.className = "clear-drawing-btn";
@@ -934,6 +941,10 @@ const initDrawingCanvas = (drop) => {
     canvas.height = h * dpr;
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
+    previewCanvas.width = w * dpr;
+    previewCanvas.height = h * dpr;
+    previewCanvas.style.width = w + "px";
+    previewCanvas.style.height = h + "px";
     redrawCanvas(canvas, dpr);
   };
 
@@ -941,6 +952,30 @@ const initDrawingCanvas = (drop) => {
   const observer = new ResizeObserver(resizeCanvas);
   observer.observe(drop);
   state.canvasObservers.set(canvas, observer);
+
+  // Helper: clear the preview canvas
+  const clearPreview = () => {
+    const ctx = previewCanvas.getContext("2d");
+    ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  };
+
+  // Helper: compute content offset/size for coordinate mapping
+  const getContentMetrics = (dpr) => {
+    const img = drop.querySelector("img");
+    let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
+    if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
+      const fitRect = getObjectFitRect(img);
+      const canvasRect = canvas.getBoundingClientRect();
+      const imgRect = img.getBoundingClientRect();
+      contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
+      contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
+      contentWidth = fitRect.width;
+      contentHeight = fitRect.height;
+    }
+    const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
+    const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+    return { contentOffsetX, contentOffsetY, contentWidth, contentHeight, toCanvasX, toCanvasY };
+  };
 
   // Drawing state
   let isDrawing = false;
@@ -1111,24 +1146,11 @@ const initDrawingCanvas = (drop) => {
     }
 
     if (state.drawTool === "arrow" && arrowStart) {
-      // Preview the arrow by redrawing existing paths + the in-progress arrow
+      // Preview the arrow on the preview canvas (no full redraw needed)
       const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-
-      // Draw preview arrow
-      const ctx = canvas.getContext("2d");
-      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-        const fitRect = getObjectFitRect(img);
-        const canvasRect = canvas.getBoundingClientRect();
-        const imgRect = img.getBoundingClientRect();
-        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-        contentWidth = fitRect.width;
-        contentHeight = fitRect.height;
-      }
-      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+      clearPreview();
+      const ctx = previewCanvas.getContext("2d");
+      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
       const zs = state.gridZoom / 100;
       ctx.strokeStyle = state.drawColor;
@@ -1139,21 +1161,9 @@ const initDrawingCanvas = (drop) => {
     } else if (state.drawTool === "line" && arrowStart) {
       // Preview straight line
       const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-
-      const ctx = canvas.getContext("2d");
-      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-        const fitRect = getObjectFitRect(img);
-        const canvasRect = canvas.getBoundingClientRect();
-        const imgRect = img.getBoundingClientRect();
-        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-        contentWidth = fitRect.width;
-        contentHeight = fitRect.height;
-      }
-      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+      clearPreview();
+      const ctx = previewCanvas.getContext("2d");
+      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
       ctx.strokeStyle = state.drawColor;
       ctx.lineWidth = state.drawLineWidth * (state.gridZoom / 100) * dpr;
@@ -1166,21 +1176,9 @@ const initDrawingCanvas = (drop) => {
     } else if (state.drawTool === "rect" && arrowStart) {
       // Preview solid rectangle
       const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-
-      const ctx = canvas.getContext("2d");
-      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-        const fitRect = getObjectFitRect(img);
-        const canvasRect = canvas.getBoundingClientRect();
-        const imgRect = img.getBoundingClientRect();
-        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-        contentWidth = fitRect.width;
-        contentHeight = fitRect.height;
-      }
-      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+      clearPreview();
+      const ctx = previewCanvas.getContext("2d");
+      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
       const rx = toCanvasX(Math.min(arrowStart.x, x));
       const ry = toCanvasY(Math.min(arrowStart.y, y));
@@ -1191,21 +1189,9 @@ const initDrawingCanvas = (drop) => {
     } else if (state.drawTool === "rectstroke" && arrowStart) {
       // Preview bordered rectangle
       const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-
-      const ctx = canvas.getContext("2d");
-      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-        const fitRect = getObjectFitRect(img);
-        const canvasRect = canvas.getBoundingClientRect();
-        const imgRect = img.getBoundingClientRect();
-        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-        contentWidth = fitRect.width;
-        contentHeight = fitRect.height;
-      }
-      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+      clearPreview();
+      const ctx = previewCanvas.getContext("2d");
+      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
       const rx = toCanvasX(Math.min(arrowStart.x, x));
       const ry = toCanvasY(Math.min(arrowStart.y, y));
@@ -1219,21 +1205,9 @@ const initDrawingCanvas = (drop) => {
     } else if (state.drawTool === "oval" && arrowStart) {
       // Preview oval
       const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-
-      const ctx = canvas.getContext("2d");
-      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-        const fitRect = getObjectFitRect(img);
-        const canvasRect = canvas.getBoundingClientRect();
-        const imgRect = img.getBoundingClientRect();
-        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-        contentWidth = fitRect.width;
-        contentHeight = fitRect.height;
-      }
-      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+      clearPreview();
+      const ctx = previewCanvas.getContext("2d");
+      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
       const rx = toCanvasX(Math.min(arrowStart.x, x));
       const ry = toCanvasY(Math.min(arrowStart.y, y));
@@ -1247,21 +1221,9 @@ const initDrawingCanvas = (drop) => {
     } else if (state.drawTool === "ovalfill" && arrowStart) {
       // Preview solid oval
       const dpr = window.devicePixelRatio || 1;
-      redrawCanvas(canvas, dpr);
-
-      const ctx = canvas.getContext("2d");
-      let contentOffsetX = 0, contentOffsetY = 0, contentWidth = canvas.width / dpr, contentHeight = canvas.height / dpr;
-      if (img && img.src && img.style.display !== "none" && img.naturalWidth) {
-        const fitRect = getObjectFitRect(img);
-        const canvasRect = canvas.getBoundingClientRect();
-        const imgRect = img.getBoundingClientRect();
-        contentOffsetX = (imgRect.left - canvasRect.left) + fitRect.x;
-        contentOffsetY = (imgRect.top - canvasRect.top) + fitRect.y;
-        contentWidth = fitRect.width;
-        contentHeight = fitRect.height;
-      }
-      const toCanvasX = (ix) => (contentOffsetX + ix * contentWidth) * dpr;
-      const toCanvasY = (iy) => (contentOffsetY + iy * contentHeight) * dpr;
+      clearPreview();
+      const ctx = previewCanvas.getContext("2d");
+      const { toCanvasX, toCanvasY } = getContentMetrics(dpr);
 
       const rx = toCanvasX(Math.min(arrowStart.x, x));
       const ry = toCanvasY(Math.min(arrowStart.y, y));
@@ -1321,6 +1283,9 @@ const initDrawingCanvas = (drop) => {
   const endDraw = (e) => {
     if (!isDrawing) return;
     isDrawing = false;
+
+    // Clear the preview canvas — the shape will be committed to the main canvas
+    clearPreview();
 
     if (state.drawTool === "move" && movingPath) {
       // Move is complete — just reset state
@@ -1570,113 +1535,123 @@ const redrawAllCanvasesForExport = async (scale) => {
     // Draw the original image at the content area size (not the element size)
     ctx.drawImage(img, 0, 0, fitRect.width * dpr, fitRect.height * dpr);
 
-    // Draw paths on top — coords are already image-relative (0-1)
+    // Draw annotations on a separate overlay canvas so eraser only removes
+    // drawing strokes, not the underlying image pixels.
+    const overlayCanvas = document.createElement("canvas");
+    overlayCanvas.width = tempCanvas.width;
+    overlayCanvas.height = tempCanvas.height;
+    const oCtx = overlayCanvas.getContext("2d");
+
+    // Draw paths onto the overlay — coords are already image-relative (0-1)
     for (const path of data.paths) {
-      ctx.strokeStyle = path.color;
-      ctx.lineWidth = path.lineWidth * dpr;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+      oCtx.strokeStyle = path.color;
+      oCtx.lineWidth = path.lineWidth * dpr;
+      oCtx.lineCap = "round";
+      oCtx.lineJoin = "round";
 
       if (path.type === "text") {
         const fontSize = (path.fontSize || 16) * dpr;
         const lineHeight = fontSize * 1.3;
-        ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
-        ctx.textBaseline = "top";
+        oCtx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
+        oCtx.textBaseline = "top";
         const x = path.position.x * fitRect.width * dpr;
         const y = path.position.y * fitRect.height * dpr;
         const lines = path.text.split("\n");
-        const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+        const maxWidth = Math.max(...lines.map((l) => oCtx.measureText(l).width));
         const totalHeight = fontSize + (lines.length - 1) * lineHeight;
         const padding = 4 * dpr;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        oCtx.fillStyle = "rgba(0, 0, 0, 0.05)";
         const radius = fontSize * 0.2;
-        ctx.beginPath();
-        ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
-        ctx.fill();
-        ctx.fillStyle = path.color;
+        oCtx.beginPath();
+        oCtx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
+        oCtx.fill();
+        oCtx.fillStyle = path.color;
         lines.forEach((line, i) => {
-          ctx.fillText(line, x, y + i * lineHeight);
+          oCtx.fillText(line, x, y + i * lineHeight);
         });
       } else if (path.type === "arrow") {
         const fromX = path.from.x * fitRect.width * dpr;
         const fromY = path.from.y * fitRect.height * dpr;
         const toX = path.to.x * fitRect.width * dpr;
         const toY = path.to.y * fitRect.height * dpr;
-        drawArrow(ctx, fromX, fromY, toX, toY, path.lineWidth * dpr);
+        drawArrow(oCtx, fromX, fromY, toX, toY, path.lineWidth * dpr);
       } else if (path.type === "line") {
         const fromX = path.from.x * fitRect.width * dpr;
         const fromY = path.from.y * fitRect.height * dpr;
         const toX = path.to.x * fitRect.width * dpr;
         const toY = path.to.y * fitRect.height * dpr;
-        ctx.beginPath();
-        ctx.moveTo(fromX, fromY);
-        ctx.lineTo(toX, toY);
-        ctx.stroke();
+        oCtx.beginPath();
+        oCtx.moveTo(fromX, fromY);
+        oCtx.lineTo(toX, toY);
+        oCtx.stroke();
       } else if (path.type === "rect") {
         const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
         const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
         const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
         const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
-        ctx.fillStyle = path.color;
-        ctx.fillRect(rx, ry, rw, rh);
+        oCtx.fillStyle = path.color;
+        oCtx.fillRect(rx, ry, rw, rh);
       } else if (path.type === "rectstroke") {
         const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
         const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
         const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
         const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
-        ctx.strokeRect(rx, ry, rw, rh);
+        oCtx.strokeRect(rx, ry, rw, rh);
       } else if (path.type === "oval") {
         const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
         const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
         const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
         const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
-        ctx.beginPath();
-        ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        oCtx.beginPath();
+        oCtx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+        oCtx.stroke();
       } else if (path.type === "ovalfill") {
         const rx = Math.min(path.from.x, path.to.x) * fitRect.width * dpr;
         const ry = Math.min(path.from.y, path.to.y) * fitRect.height * dpr;
         const rw = Math.abs(path.to.x - path.from.x) * fitRect.width * dpr;
         const rh = Math.abs(path.to.y - path.from.y) * fitRect.height * dpr;
-        ctx.fillStyle = path.color;
-        ctx.beginPath();
-        ctx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
+        oCtx.fillStyle = path.color;
+        oCtx.beginPath();
+        oCtx.ellipse(rx + rw / 2, ry + rh / 2, rw / 2, rh / 2, 0, 0, Math.PI * 2);
+        oCtx.fill();
       } else if (path.type === "dot") {
         const cx = path.position.x * fitRect.width * dpr;
         const cy = path.position.y * fitRect.height * dpr;
         const radius = (path.lineWidth + 4) * dpr;
-        ctx.globalAlpha = 0.7;
-        ctx.fillStyle = path.color;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
+        oCtx.globalAlpha = 0.7;
+        oCtx.fillStyle = path.color;
+        oCtx.beginPath();
+        oCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+        oCtx.fill();
+        oCtx.globalAlpha = 1.0;
       } else if (path.type === "eraser") {
         if (path.points.length < 2) continue;
-        ctx.save();
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.strokeStyle = "rgba(0,0,0,1)";
-        ctx.lineWidth = (path.lineWidth + 8) * dpr;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(path.points[0].x * fitRect.width * dpr, path.points[0].y * fitRect.height * dpr);
+        oCtx.save();
+        oCtx.globalCompositeOperation = "destination-out";
+        oCtx.strokeStyle = "rgba(0,0,0,1)";
+        oCtx.lineWidth = (path.lineWidth + 8) * dpr;
+        oCtx.lineCap = "round";
+        oCtx.lineJoin = "round";
+        oCtx.beginPath();
+        oCtx.moveTo(path.points[0].x * fitRect.width * dpr, path.points[0].y * fitRect.height * dpr);
         for (let i = 1; i < path.points.length; i++) {
-          ctx.lineTo(path.points[i].x * fitRect.width * dpr, path.points[i].y * fitRect.height * dpr);
+          oCtx.lineTo(path.points[i].x * fitRect.width * dpr, path.points[i].y * fitRect.height * dpr);
         }
-        ctx.stroke();
-        ctx.restore();
+        oCtx.stroke();
+        oCtx.restore();
       } else {
         if (!path.points || path.points.length < 2) continue;
-        ctx.beginPath();
-        ctx.moveTo(path.points[0].x * fitRect.width * dpr, path.points[0].y * fitRect.height * dpr);
+        oCtx.beginPath();
+        oCtx.moveTo(path.points[0].x * fitRect.width * dpr, path.points[0].y * fitRect.height * dpr);
         for (let i = 1; i < path.points.length; i++) {
-          ctx.lineTo(path.points[i].x * fitRect.width * dpr, path.points[i].y * fitRect.height * dpr);
+          oCtx.lineTo(path.points[i].x * fitRect.width * dpr, path.points[i].y * fitRect.height * dpr);
         }
-        ctx.stroke();
+        oCtx.stroke();
       }
     }
+
+    // Composite the annotation overlay onto the image
+    ctx.drawImage(overlayCanvas, 0, 0);
 
     // Store original src for restoration
     canvas.dataset.originalImgSrc = img.src;
