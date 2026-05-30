@@ -1,17 +1,22 @@
 import state from './state.js';
 import { getObjectFitRect, getCanvasContentMetrics, renderPaths, redrawCanvas, drawArrow } from './drawing-render.js';
 import { setLastActiveDrawingCanvas } from './drawing-tools.js';
+import {
+  DRAW_DEFAULT_FONT_SIZE, DRAW_HIT_TEST_THRESHOLD, DRAW_TEXT_HIT_DIVISOR,
+  DRAW_TEXT_LINE_HEIGHT, DRAW_TEXT_WIDTH_FACTOR, DRAW_ERASER_EXTRA_WIDTH,
+  DRAW_MIN_DRAG_DISTANCE,
+} from './constants.js';
 
 // --- Canvas Initialization, Input Handling & Hit Testing ---
 
 // Hit-test a normalized point (x, y) against a path to determine if the click is "on" it.
 // Returns true if the point is close enough to the path to count as a hit.
-export const hitTestPath = (path, x, y, threshold = 0.02) => {
+export const hitTestPath = (path, x, y, threshold = DRAW_HIT_TEST_THRESHOLD) => {
   if (path.type === "text") {
-    const fontSize = (path.fontSize || 13) / 500;
+    const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) / DRAW_TEXT_HIT_DIVISOR;
     const lines = path.text.split("\n");
-    const width = Math.max(0.05, lines.reduce((max, l) => Math.max(max, l.length * fontSize * 0.6), 0));
-    const height = lines.length * fontSize * 1.3;
+    const width = Math.max(0.05, lines.reduce((max, l) => Math.max(max, l.length * fontSize * DRAW_TEXT_WIDTH_FACTOR), 0));
+    const height = lines.length * fontSize * DRAW_TEXT_LINE_HEIGHT;
     return (
       x >= path.position.x - threshold &&
       x <= path.position.x + width + threshold &&
@@ -556,7 +561,7 @@ export const initDrawingCanvas = (drop) => {
           ctx.save();
           ctx.globalCompositeOperation = "destination-out";
           ctx.strokeStyle = "rgba(0,0,0,1)";
-          ctx.lineWidth = (currentPath.lineWidth + 8) * (state.gridZoom / 100) * dpr;
+          ctx.lineWidth = (currentPath.lineWidth + DRAW_ERASER_EXTRA_WIDTH) * (state.gridZoom / 100) * dpr;
         } else {
           ctx.strokeStyle = currentPath.color;
           ctx.lineWidth = currentPath.lineWidth * (state.gridZoom / 100) * dpr;
@@ -623,7 +628,7 @@ export const initDrawingCanvas = (drop) => {
 
       const dx = x - arrowStart.x;
       const dy = y - arrowStart.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 0.005) {
+      if (Math.sqrt(dx * dx + dy * dy) > DRAW_MIN_DRAG_DISTANCE) {
         commitPath({
           type: state.drawTool,
           color: state.drawColor,

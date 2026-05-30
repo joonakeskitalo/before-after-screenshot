@@ -8,6 +8,7 @@ import {
   textModeBtn, drawColorInput,
 } from './drawing.js';
 import { toggleStagingArea } from './toolbar.js';
+import { ZOOM_STEP, ZOOM_TOGGLE_LOW, ZOOM_TOGGLE_HIGH, SCROLL_AFTER_MOVE_DELAY_MS } from './constants.js';
 import { updateCopySelectedBtn, copySelectedRows, copySelectedRawImages, copyWithScale, previewAllFilters, copyWithAllFilters } from './copy-export.js';
 import { cycleColorFilter } from './color-filter.js';
 
@@ -286,7 +287,7 @@ const moveGridItem = (direction) => {
   setTimeout(() => {
     const cell = state.getCells()[newFocusIndex];
     if (cell) cell.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-  }, 250);
+  }, SCROLL_AFTER_MOVE_DELAY_MS);
 };
 
 // --- Hotkeys ---
@@ -528,12 +529,12 @@ document.addEventListener("keydown", (e) => {
       break;
     case "[":
       // Zoom out
-      applyGridZoom(state.gridZoom - 10);
+      applyGridZoom(state.gridZoom - ZOOM_STEP);
       e.preventDefault();
       break;
     case "]":
       // Zoom in
-      applyGridZoom(state.gridZoom + 10);
+      applyGridZoom(state.gridZoom + ZOOM_STEP);
       e.preventDefault();
       break;
     case "s": {
@@ -589,7 +590,7 @@ document.addEventListener("keydown", (e) => {
     case "z":
       // Toggle zoom between 100% and 200% (skip if Cmd/Ctrl held — that's undo)
       if (!e.metaKey && !e.ctrlKey) {
-        applyGridZoom(state.gridZoom === 200 ? 100 : 200);
+        applyGridZoom(state.gridZoom === ZOOM_TOGGLE_HIGH ? ZOOM_TOGGLE_LOW : ZOOM_TOGGLE_HIGH);
       }
       break;
     case "x": {

@@ -1,4 +1,10 @@
 import state from './state.js';
+import {
+  DRAW_DEFAULT_FONT_SIZE, DRAW_TEXT_LINE_HEIGHT, DRAW_TEXT_BG_PADDING,
+  DRAW_TEXT_BG_OPACITY, DRAW_TEXT_RADIUS_FACTOR,
+  DRAW_ARROWHEAD_MIN_LENGTH, DRAW_ARROWHEAD_SCALE,
+  DRAW_DOT_RADIUS_EXTRA, DRAW_DOT_OPACITY, DRAW_ERASER_EXTRA_WIDTH,
+} from './constants.js';
 
 // --- Rendering Logic ---
 
@@ -73,7 +79,7 @@ export const getCanvasContentMetrics = (canvas, dpr, { img: cachedImg, imgRect: 
 
 // Draw an arrow from (x1,y1) to (x2,y2) with an arrowhead
 export const drawArrow = (ctx, x1, y1, x2, y2, lineWidth) => {
-  const headLength = Math.max(10, lineWidth * 4);
+  const headLength = Math.max(DRAW_ARROWHEAD_MIN_LENGTH, lineWidth * DRAW_ARROWHEAD_SCALE);
   const angle = Math.atan2(y2 - y1, x2 - x1);
 
   // Draw the line
@@ -108,8 +114,8 @@ export const renderPaths = (ctx, paths, toX, toY, scale) => {
     ctx.lineJoin = "round";
 
     if (path.type === "text") {
-      const fontSize = (path.fontSize || 13) * scale;
-      const lineHeight = fontSize * 1.3;
+      const fontSize = (path.fontSize || DRAW_DEFAULT_FONT_SIZE) * scale;
+      const lineHeight = fontSize * DRAW_TEXT_LINE_HEIGHT;
       ctx.font = `500 ${fontSize}px "Inter", system-ui, sans-serif`;
       ctx.textBaseline = "top";
       const x = toX(path.position.x);
@@ -117,9 +123,9 @@ export const renderPaths = (ctx, paths, toX, toY, scale) => {
       const lines = path.text.split("\n");
       const maxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
       const totalHeight = fontSize + (lines.length - 1) * lineHeight;
-      const padding = 4 * scale;
-      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-      const radius = fontSize * 0.2;
+      const padding = DRAW_TEXT_BG_PADDING * scale;
+      ctx.fillStyle = `rgba(0, 0, 0, ${DRAW_TEXT_BG_OPACITY})`;
+      const radius = fontSize * DRAW_TEXT_RADIUS_FACTOR;
       ctx.beginPath();
       ctx.roundRect(x - padding, y - padding, maxWidth + padding * 2, totalHeight + padding * 2, radius);
       ctx.fill();
@@ -175,8 +181,8 @@ export const renderPaths = (ctx, paths, toX, toY, scale) => {
     } else if (path.type === "dot") {
       const cx = toX(path.position.x);
       const cy = toY(path.position.y);
-      const radius = (path.lineWidth + 4) * scale;
-      ctx.globalAlpha = 0.7;
+      const radius = (path.lineWidth + DRAW_DOT_RADIUS_EXTRA) * scale;
+      ctx.globalAlpha = DRAW_DOT_OPACITY;
       ctx.fillStyle = path.color;
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -187,7 +193,7 @@ export const renderPaths = (ctx, paths, toX, toY, scale) => {
       ctx.save();
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "rgba(0,0,0,1)";
-      ctx.lineWidth = (path.lineWidth + 8) * scale;
+      ctx.lineWidth = (path.lineWidth + DRAW_ERASER_EXTRA_WIDTH) * scale;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();

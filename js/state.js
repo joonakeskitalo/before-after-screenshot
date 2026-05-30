@@ -1,3 +1,7 @@
+import {
+  DRAW_DEFAULT_FONT_SIZE, DRAW_DEFAULT_LINE_WIDTH, ZOOM_DEFAULT,
+} from './constants.js';
+
 // Shared mutable application state.
 // All modules import this object and read/write properties directly.
 const state = {
@@ -16,12 +20,12 @@ const state = {
   // Drawing
   drawingMode: false,
   drawColor: "#ff0000",
-  drawLineWidth: 2,
+  drawLineWidth: DRAW_DEFAULT_LINE_WIDTH,
   drawTool: "freehand",
-  drawFontSize: 13,
+  drawFontSize: DRAW_DEFAULT_FONT_SIZE,
 
   // Zoom
-  gridZoom: 100,
+  gridZoom: ZOOM_DEFAULT,
 
   // Color filter for accessibility checking
   colorFilter: "none",

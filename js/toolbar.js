@@ -1,5 +1,8 @@
 import state from './state.js';
 import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt } from './grid.js';
+import {
+  TOOLBAR_MIN_HEIGHT, TOOLBAR_COMPACT_THRESHOLD, TOOLBAR_PADDING_OFFSET, TOOLBAR_BODY_PADDING,
+} from './constants.js';
 
 // --- Bottom Toolbar Logic ---
 const bottomToolbar = document.getElementById("bottom-toolbar");
@@ -43,20 +46,20 @@ resizeHandle.addEventListener("mousedown", (e) => {
 document.addEventListener("mousemove", (e) => {
   if (!isResizing) return;
   const delta = startY - e.clientY;
-  const newHeight = Math.max(40, startHeight + delta);
+  const newHeight = Math.max(TOOLBAR_MIN_HEIGHT, startHeight + delta);
   bottomToolbar.style.height = newHeight + "px";
-  bottomToolbarInner.style.minHeight = (newHeight - 24) + "px";
+  bottomToolbarInner.style.minHeight = (newHeight - TOOLBAR_PADDING_OFFSET) + "px";
 
   // Add compact class when toolbar is narrow or has no images and hasn't been resized up
   const hasImages = bottomToolbarInner.querySelector(".bottom-toolbar-item") !== null;
-  if (newHeight < 100) {
+  if (newHeight < TOOLBAR_COMPACT_THRESHOLD) {
     bottomToolbar.classList.add("compact");
   } else {
     bottomToolbar.classList.remove("compact");
   }
 
   // Resize toolbar images and drop zone to match
-  const imgHeight = (newHeight - 24 - 24) + "px"; // account for padding
+  const imgHeight = (newHeight - TOOLBAR_PADDING_OFFSET - TOOLBAR_PADDING_OFFSET) + "px"; // account for padding
   bottomToolbarInner.querySelectorAll(".bottom-toolbar-item").forEach((item) => {
     item.style.height = imgHeight;
   });
@@ -64,8 +67,8 @@ document.addEventListener("mousemove", (e) => {
   if (dropZone) dropZone.style.height = imgHeight;
 
   // Update body padding so content isn't hidden behind the toolbar
-  document.body.style.paddingBottom = (newHeight + 32) + "px";
-  state.cardsEl.style.paddingBottom = (newHeight + 32) + "px";
+  document.body.style.paddingBottom = (newHeight + TOOLBAR_BODY_PADDING) + "px";
+  state.cardsEl.style.paddingBottom = (newHeight + TOOLBAR_BODY_PADDING) + "px";
 });
 
 document.addEventListener("mouseup", () => {

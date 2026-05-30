@@ -2,6 +2,9 @@ import state from './state.js';
 import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js';
 import { attachDragTo, updateCopySelectedBtn } from './copy-export.js';
 import { applyGridZoom } from './zoom.js';
+import {
+  GRID_MIN_COL_WIDTH, EDGE_EXPANSION_THRESHOLD, SWAP_ANIMATION_FALLBACK_MS,
+} from './constants.js';
 
 // Convert an array of {row, col, ...} objects to a Map keyed by "row,col" for O(1) lookup.
 const toDataMap = (dataArray) => {
@@ -185,7 +188,7 @@ document.addEventListener("dragstart", (e) => {
 // Detect which edge the cursor is beyond relative to the grid, for auto-expansion
 const getEdgeExpansionDirection = (clientX, clientY) => {
   const gridRect = state.gridEl.getBoundingClientRect();
-  const threshold = 40; // px beyond edge to trigger expansion
+  const threshold = EDGE_EXPANSION_THRESHOLD; // px beyond edge to trigger expansion
 
   if (clientX > gridRect.right + threshold) return "right";
   if (clientX < gridRect.left - threshold) return "left";
@@ -667,7 +670,7 @@ const swapCells = (cellA, cellB) => {
 
   cellA.addEventListener("transitionend", cleanup, { once: true });
   // Fallback in case transitionend doesn't fire
-  setTimeout(cleanup, 250);
+  setTimeout(cleanup, SWAP_ANIMATION_FALLBACK_MS);
 };
 
 const getAdjacentCell = (cell, direction) => {
@@ -777,7 +780,7 @@ const buildGrid = () => {
   });
 
   state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
   const existingDataMap = toDataMap(existingData);
@@ -1055,7 +1058,7 @@ const insertRowAt = (insertIndex) => {
   }
 
   // Update grid template
-  state.gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
   // Invalidate cache since we added cells
@@ -1121,7 +1124,7 @@ const insertColumnAt = (insertIndex) => {
 
   // Column insertion changes the total cell count and grid template — rebuild is needed
   state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
   const newDataMap = toDataMap(newData);
@@ -1196,7 +1199,7 @@ const deleteRowAt = (rowIndex) => {
   document.getElementById("grid-rows").value = state.gridRows;
 
   // Update grid template
-  state.gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
   // Invalidate cache and fix dataset.row attributes
@@ -1415,7 +1418,7 @@ const relayoutGrid = () => {
 
   // Rebuild grid with compacted data
   state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
   const reindexedMap = toDataMap(reindexed);
@@ -1482,7 +1485,7 @@ const deleteColumnAt = (colIndex) => {
 
   // Column deletion changes total cell count — rebuild DOM
   state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
   for (let r = 0; r < rows; r++) {

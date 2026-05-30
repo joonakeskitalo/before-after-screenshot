@@ -3,6 +3,13 @@ import { redrawAllCanvasesForExport, restoreAllCanvases, initDrawingCanvas } fro
 import { applyGridZoom } from './zoom.js';
 import { FILTER_OPTIONS, FILTER_LABELS } from './color-filter.js';
 import { domToBlob } from '../lib/modern-screenshot.mjs';
+import {
+  EXPORT_GAP, EXPORT_GAP_FULLSIZE, EXPORT_PADDING_STANDARD, EXPORT_PADDING_FULLSIZE,
+  EXPORT_COLLAPSED_DROP_SIZE, EXPORT_BASE_FONT_SIZE, EXPORT_FONT_SCALE_FACTOR,
+  OUTPUT_SCALE_RENDER_MULTIPLIER, OUTPUT_SCALE_GAP_BASE, OUTPUT_SCALE_FONT_BASE,
+  OUTPUT_SCALE_FILENAME_FONT, OUTPUT_SCALE_PADDING, GRID_SIZE_EXPORT_PADDING,
+  COMPOSITE_IMAGE_GAP,
+} from './constants.js';
 
 // Color matrix definitions matching the SVG filters (shared across export and preview)
 const COLOR_MATRICES = {
@@ -329,8 +336,8 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const { effectiveCols, allImages, allDrops } = ctx;
 
     state.root.style.setProperty("--image-max-width", "unset");
-    state.root.style.setProperty("--gap", `96px`);
-    state.root.style.setProperty("--text-fontsize", `15pt`);
+    state.root.style.setProperty("--gap", `${EXPORT_GAP}px`);
+    state.root.style.setProperty("--text-fontsize", `${EXPORT_BASE_FONT_SIZE}pt`);
     state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
 
     // Let images size naturally for the capture
@@ -347,19 +354,19 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     });
 
     if (useFullSize) {
-      const baseFontSize = 15;
-      const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * 3));
+      const baseFontSize = EXPORT_BASE_FONT_SIZE;
+      const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * EXPORT_FONT_SCALE_FACTOR));
       state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
-      const gap = 192 * resolutionScale;
+      const gap = EXPORT_GAP_FULLSIZE * resolutionScale;
       state.root.style.setProperty("--gap", `${gap}px`);
 
       // Collapse empty drops
       allDrops.forEach((drop) => {
         const img = drop.querySelector("img");
         if (!img || !img.src || img.style.display === "none") {
-          drop.style.width = "32px";
-          drop.style.height = "32px";
+          drop.style.width = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
+          drop.style.height = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
         }
       });
 
@@ -372,7 +379,7 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       });
     }
 
-    const initialPadding = useFullSize ? 192 : 64;
+    const initialPadding = useFullSize ? EXPORT_PADDING_FULLSIZE : EXPORT_PADDING_STANDARD;
     const padding = Math.floor(initialPadding * resolutionScale);
     const captureHeight = finalizeLayoutForCapture(effectiveCols, padding);
 
@@ -426,7 +433,7 @@ const copyWithScale = () => {
 // Used by both copy and download variants.
 const prepareOutputScaleExport = (ctx, outputScale) => {
   const { effectiveCols, allImages, allDrops } = ctx;
-  const baseMultiplier = 2; // Render at 2x grid size for higher resolution
+  const baseMultiplier = OUTPUT_SCALE_RENDER_MULTIPLIER; // Render at 2x grid size for higher resolution
 
   // Capture current rendered sizes before modifying styles
   const imageSizes = [];
@@ -455,14 +462,14 @@ const prepareOutputScaleExport = (ctx, outputScale) => {
   // Scale gap and font to match the capped layout
   // Divide by outputScale so that after the final downscale, text remains crisp
   const scale = state.gridZoom / 100;
-  const gap = Math.round(48 * scale * cappedMultiplier);
+  const gap = Math.round(OUTPUT_SCALE_GAP_BASE * scale * cappedMultiplier);
   state.root.style.setProperty("--gap", `${gap}px`);
-  const fontSize = Math.round(16 * scale * cappedMultiplier / outputScale);
+  const fontSize = Math.round(OUTPUT_SCALE_FONT_BASE * scale * cappedMultiplier / outputScale);
   state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
   // Scale filename labels so they remain legible after output downscale
   const filenameLabels = state.cardsEl.querySelectorAll(".grid-cell-filename");
-  const filenameFontSize = Math.round(8 * cappedMultiplier / outputScale);
+  const filenameFontSize = Math.round(OUTPUT_SCALE_FILENAME_FONT * cappedMultiplier / outputScale);
   filenameLabels.forEach((label) => {
     label.style.fontSize = `${filenameFontSize}pt`;
   });
@@ -471,12 +478,12 @@ const prepareOutputScaleExport = (ctx, outputScale) => {
   allDrops.forEach((drop) => {
     const img = drop.querySelector("img");
     if (!img || !img.src || img.style.display === "none") {
-      drop.style.width = "32px";
-      drop.style.height = "32px";
+      drop.style.width = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
+      drop.style.height = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
     }
   });
 
-  const padding = Math.round(32 * cappedMultiplier);
+  const padding = Math.round(OUTPUT_SCALE_PADDING * cappedMultiplier);
   const captureHeight = finalizeLayoutForCapture(effectiveCols, padding);
 
   return { cappedMultiplier, filenameLabels, captureHeight };
@@ -673,12 +680,12 @@ const copyAsGridSize = async () => {
     allDrops.forEach((drop) => {
       const img = drop.querySelector("img");
       if (!img || !img.src || img.style.display === "none") {
-        drop.style.width = "32px";
-        drop.style.height = "32px";
+        drop.style.width = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
+        drop.style.height = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
       }
     });
 
-    const captureHeight = finalizeLayoutForCapture(effectiveCols, 32);
+    const captureHeight = finalizeLayoutForCapture(effectiveCols, GRID_SIZE_EXPORT_PADDING);
 
     // Redraw canvases at 1:1 since we're keeping display size
     const blob = await captureToBlob(captureHeight, 1);
@@ -820,8 +827,8 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const { effectiveCols, allImages, allDrops } = ctx;
 
     state.root.style.setProperty("--image-max-width", "unset");
-    state.root.style.setProperty("--gap", `96px`);
-    state.root.style.setProperty("--text-fontsize", `15pt`);
+    state.root.style.setProperty("--gap", `${EXPORT_GAP}px`);
+    state.root.style.setProperty("--text-fontsize", `${EXPORT_BASE_FONT_SIZE}pt`);
     state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
 
     // Let images size naturally for the capture
@@ -838,18 +845,18 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
     });
 
     if (useFullSize) {
-      const baseFontSize = 15;
-      const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * 3));
+      const baseFontSize = EXPORT_BASE_FONT_SIZE;
+      const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * EXPORT_FONT_SCALE_FACTOR));
       state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
 
-      const gap = 192 * resolutionScale;
+      const gap = EXPORT_GAP_FULLSIZE * resolutionScale;
       state.root.style.setProperty("--gap", `${gap}px`);
 
       allDrops.forEach((drop) => {
         const img = drop.querySelector("img");
         if (!img || !img.src || img.style.display === "none") {
-          drop.style.width = "32px";
-          drop.style.height = "32px";
+          drop.style.width = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
+          drop.style.height = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
         }
       });
 
@@ -862,7 +869,7 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
       });
     }
 
-    const initialPadding = useFullSize ? 192 : 64;
+    const initialPadding = useFullSize ? EXPORT_PADDING_FULLSIZE : EXPORT_PADDING_STANDARD;
     const padding = Math.floor(initialPadding * resolutionScale);
     const captureHeight = finalizeLayoutForCapture(effectiveCols, padding);
 
@@ -1098,7 +1105,7 @@ const copySelectedRawImages = async () => {
 
     // Multiple images — composite side-by-side at native resolution
     const bitmaps = await Promise.all(images.map((img) => createImageBitmap(img)));
-    const gap = 32;
+    const gap = COMPOSITE_IMAGE_GAP;
     const totalWidth = bitmaps.reduce((sum, bm) => sum + bm.width, 0) + gap * (bitmaps.length - 1);
     const maxHeight = Math.max(...bitmaps.map((bm) => bm.height));
 
