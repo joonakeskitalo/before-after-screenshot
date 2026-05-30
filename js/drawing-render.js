@@ -196,8 +196,7 @@ export const renderPath = (ctx, path, toX, toY, scale) => {
     }
     ctx.stroke();
     ctx.restore();
-  } else {
-    // Freehand path
+  } else if (path.type === "freehand") {
     if (path.points.length < 2) return;
     ctx.beginPath();
     ctx.moveTo(toX(path.points[0].x), toY(path.points[0].y));

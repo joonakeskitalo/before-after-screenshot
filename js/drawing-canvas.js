@@ -49,7 +49,7 @@ export const hitTestPath = (path, x, y, threshold = DRAW_HIT_TEST_THRESHOLD) => 
     return inside && !deepInside;
   }
 
-  if (path.type === "eraser" || !path.type || path.type === "freehand") {
+  if (path.type === "eraser" || path.type === "freehand") {
     if (!path.points || path.points.length < 2) {
       if (path.points && path.points.length === 1) {
         const dx = x - path.points[0].x;
@@ -439,7 +439,7 @@ export const initDrawingCanvas = (drop) => {
       arrowStart = { x, y };
     } else {
       currentPath = {
-        type: state.drawTool === "eraser" ? "eraser" : undefined,
+        type: state.drawTool === "eraser" ? "eraser" : "freehand",
         color: state.drawColor,
         lineWidth: state.drawLineWidth,
         points: [{ x, y }],
