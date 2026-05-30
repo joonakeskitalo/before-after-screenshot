@@ -34,7 +34,13 @@ const setElementWidths = (arr, size) => {
   });
 };
 
-const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
+// --- Shared export-to-blob logic ---
+
+/**
+ * Core export function that prepares the DOM, captures a blob, and restores state.
+ * Both copy and download are thin wrappers around this.
+ */
+const exportToBlob = async (useFullSize = false, resolutionScale = 1) => {
   const ctx = prepareForExport();
   try {
     const { effectiveCols, allImages, allDrops } = ctx;
@@ -88,18 +94,81 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
     const exportScale = useFullSize ? resolutionScale : 1;
     const blob = await captureToBlob(captureHeight, exportScale);
 
-    navigator.clipboard.write([
-      new ClipboardItem({ "image/png": blob }),
-    ]);
-
     restoreAfterExport(ctx);
+    return blob;
   } catch (error) {
     console.error(error);
     restoreAfterExport(ctx);
+    return null;
   } finally {
     ctx.showAfterExport();
   }
 };
+
+/**
+ * Core output-scale export: renders at full resolution then scales down.
+ */
+const exportToBlobWithOutputScale = async (outputScale) => {
+  const ctx = prepareForExport();
+  try {
+    const { cappedMultiplier, filenameLabels, captureHeight } = prepareOutputScaleExport(ctx, outputScale);
+
+    await redrawAllCanvasesForExport(cappedMultiplier);
+    await waitForImagesDecode(state.cardsEl);
+
+    let blob = await domToBlob(state.cardsEl, {
+      height: captureHeight,
+      filter: exportNodeFilter,
+    });
+
+    const scaledBlob = await cropAndScaleBlob(blob, captureHeight, outputScale);
+
+    restoreOutputScaleExport(filenameLabels);
+    restoreAfterExport(ctx);
+    return scaledBlob;
+  } catch (error) {
+    console.error(error);
+    restoreOutputScaleExport(state.cardsEl.querySelectorAll(".grid-cell-filename"));
+    restoreAfterExport(ctx);
+    return null;
+  } finally {
+    ctx.showAfterExport();
+  }
+};
+
+// --- Copy wrappers ---
+
+const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
+  const blob = await exportToBlob(useFullSize, resolutionScale);
+  if (blob) {
+    navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+  }
+};
+
+const copyAsImageWithOutputScale = async (outputScale) => {
+  const blob = await exportToBlobWithOutputScale(outputScale);
+  if (blob) {
+    navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+  }
+};
+
+// --- Download wrappers ---
+
+const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
+  const blob = await exportToBlob(useFullSize, resolutionScale);
+  if (blob) {
+    triggerDownload(blob, generateFilename());
+  }
+};
+
+const downloadAsImageWithOutputScale = async (outputScale) => {
+  const blob = await exportToBlobWithOutputScale(outputScale);
+  if (blob) {
+    triggerDownload(blob, generateFilename());
+  }
+};
+
+// --- Scale dispatchers ---
 
 const copyWithScale = () => {
   if (isExporting) return;
@@ -129,37 +198,6 @@ const copyWithScale = () => {
       });
     });
   });
-};
-
-// Export at full native resolution, then scale the entire output image down
-const copyAsImageWithOutputScale = async (outputScale) => {
-  const ctx = prepareForExport();
-  try {
-    const { cappedMultiplier, filenameLabels, captureHeight } = prepareOutputScaleExport(ctx, outputScale);
-
-    await redrawAllCanvasesForExport(cappedMultiplier);
-    await waitForImagesDecode(state.cardsEl);
-
-    let blob = await domToBlob(state.cardsEl, {
-      height: captureHeight,
-      filter: exportNodeFilter,
-    });
-
-    const scaledBlob = await cropAndScaleBlob(blob, captureHeight, outputScale);
-
-    navigator.clipboard.write([
-      new ClipboardItem({ "image/png": scaledBlob }),
-    ]);
-
-    restoreOutputScaleExport(filenameLabels);
-    restoreAfterExport(ctx);
-  } catch (error) {
-    console.error(error);
-    restoreOutputScaleExport(state.cardsEl.querySelectorAll(".grid-cell-filename"));
-    restoreAfterExport(ctx);
-  } finally {
-    ctx.showAfterExport();
-  }
 };
 
 const copySelectedRows = () => {
@@ -234,166 +272,6 @@ const copySelectedRows = () => {
   });
 };
 
-const copyAsGridSize = async () => {
-  const ctx = prepareForExport();
-  try {
-    const { effectiveCols, allImages, allDrops } = ctx;
-
-    const imageSizes = [];
-    allImages.forEach((img) => {
-      if (img.src && img.style.display !== "none") {
-        imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
-      }
-    });
-
-    imageSizes.forEach(({ img, width, height }) => {
-      img.style.width = width + "px";
-      img.style.height = height + "px";
-      img.style.objectFit = "contain";
-      img.style.maxHeight = "unset";
-    });
-
-    allDrops.forEach((drop) => {
-      const img = drop.querySelector("img");
-      if (!img || !img.src || img.style.display === "none") {
-        drop.style.width = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
-        drop.style.height = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
-      }
-    });
-
-    const captureHeight = finalizeLayoutForCapture(effectiveCols, GRID_SIZE_EXPORT_PADDING);
-    const blob = await captureToBlob(captureHeight, 1);
-
-    navigator.clipboard.write([
-      new ClipboardItem({ "image/png": blob }),
-    ]);
-
-    restoreAfterExport(ctx);
-  } catch (error) {
-    console.error(error);
-    restoreAfterExport(ctx);
-  } finally {
-    ctx.showAfterExport();
-  }
-};
-
-const updateCopySelectedBtn = () => {
-  const btn = document.getElementById("copy-btn");
-  if (!btn) return;
-  if (state.selectedRows.size > 0) {
-    btn.textContent = `Copy (${state.selectedRows.size} rows)`;
-  } else if (state.selectedCells.size > 0) {
-    btn.textContent = `Copy (${state.selectedCells.size} cells)`;
-  } else if (state.focusedCellIndex >= 0) {
-    btn.textContent = `Copy (1 cell)`;
-  } else {
-    btn.textContent = "Copy";
-  }
-};
-
-const attachDragTo = (img) => {
-  if (!img) return;
-  img.draggable = true;
-  img.addEventListener("dragstart", (e) => {
-    if (!img.id) {
-      img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
-    }
-
-    const cell = e.target.closest(".grid-cell");
-    const textArea = cell ? cell.querySelector("textarea") : null;
-
-    const canvas = cell ? cell.querySelector(".drawing-canvas") : null;
-    const drawingData = canvas && state.canvasDataMap.get(canvas) ? state.canvasDataMap.get(canvas).paths : [];
-
-    e.dataTransfer.setData("text/plain", img.src);
-    e.dataTransfer.setData("id", img.id);
-    e.dataTransfer.setData("note", textArea ? textArea.value : "");
-    e.dataTransfer.setData("drawings", JSON.stringify(drawingData));
-    e.dataTransfer.effectAllowed = "move";
-  });
-};
-
-const clearOrCopyImage = async (event, img, drop, span) => {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-
-  if (event.metaKey) {
-    img.src = "";
-    img.style.display = "none";
-    drop.style.border = "var(--border)";
-    span.style.display = "block";
-    const cell = drop.closest(".grid-cell");
-    if (cell) state.updateFilenameLabel(cell);
-  }
-};
-
-// --- Download helpers ---
-
-const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
-  const ctx = prepareForExport();
-  try {
-    const { effectiveCols, allImages, allDrops } = ctx;
-
-    state.root.style.setProperty("--image-max-width", "unset");
-    state.root.style.setProperty("--gap", `${EXPORT_GAP}px`);
-    state.root.style.setProperty("--text-fontsize", `${EXPORT_BASE_FONT_SIZE}pt`);
-    state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
-
-    allImages.forEach((img) => {
-      if (img.src && img.style.display !== "none") {
-        img.style.objectFit = "contain";
-        img.style.height = "auto";
-        img.style.maxHeight = "unset";
-      }
-    });
-
-    allDrops.forEach((drop) => {
-      drop.style.height = "auto";
-    });
-
-    if (useFullSize) {
-      const baseFontSize = EXPORT_BASE_FONT_SIZE;
-      const fontSize = Math.max(baseFontSize, Math.floor(baseFontSize * resolutionScale * EXPORT_FONT_SCALE_FACTOR));
-      state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
-
-      const gap = EXPORT_GAP_FULLSIZE * resolutionScale;
-      state.root.style.setProperty("--gap", `${gap}px`);
-
-      allDrops.forEach((drop) => {
-        const img = drop.querySelector("img");
-        if (!img || !img.src || img.style.display === "none") {
-          drop.style.width = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
-          drop.style.height = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
-        }
-      });
-
-      allImages.forEach((img) => {
-        if (img.src && img.style.display !== "none") {
-          img.style.width =
-            Math.floor(img.naturalWidth * resolutionScale) + "px";
-          img.style.height = "auto";
-        }
-      });
-    }
-
-    const initialPadding = useFullSize ? EXPORT_PADDING_FULLSIZE : EXPORT_PADDING_STANDARD;
-    const padding = Math.floor(initialPadding * resolutionScale);
-    const captureHeight = finalizeLayoutForCapture(effectiveCols, padding);
-
-    const exportScale = useFullSize ? resolutionScale : 1;
-    const blob = await captureToBlob(captureHeight, exportScale);
-
-    triggerDownload(blob, generateFilename());
-
-    restoreAfterExport(ctx);
-  } catch (error) {
-    console.error(error);
-    restoreAfterExport(ctx);
-  } finally {
-    ctx.showAfterExport();
-  }
-};
-
 const downloadWithScale = () => {
   if (isExporting) return;
   isExporting = true;
@@ -464,35 +342,105 @@ const downloadWithScale = () => {
   });
 };
 
-const downloadAsImageWithOutputScale = async (outputScale) => {
+// --- Grid-size copy ---
+
+const copyAsGridSize = async () => {
   const ctx = prepareForExport();
   try {
-    const { cappedMultiplier, filenameLabels, captureHeight } = prepareOutputScaleExport(ctx, outputScale);
+    const { effectiveCols, allImages, allDrops } = ctx;
 
-    await redrawAllCanvasesForExport(cappedMultiplier);
-    await waitForImagesDecode(state.cardsEl);
-
-    let blob = await domToBlob(state.cardsEl, {
-      height: captureHeight,
-      filter: exportNodeFilter,
+    const imageSizes = [];
+    allImages.forEach((img) => {
+      if (img.src && img.style.display !== "none") {
+        imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
+      }
     });
 
-    const scaledBlob = await cropAndScaleBlob(blob, captureHeight, outputScale);
+    imageSizes.forEach(({ img, width, height }) => {
+      img.style.width = width + "px";
+      img.style.height = height + "px";
+      img.style.objectFit = "contain";
+      img.style.maxHeight = "unset";
+    });
 
-    triggerDownload(scaledBlob, generateFilename());
+    allDrops.forEach((drop) => {
+      const img = drop.querySelector("img");
+      if (!img || !img.src || img.style.display === "none") {
+        drop.style.width = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
+        drop.style.height = `${EXPORT_COLLAPSED_DROP_SIZE}px`;
+      }
+    });
 
-    restoreOutputScaleExport(filenameLabels);
+    const captureHeight = finalizeLayoutForCapture(effectiveCols, GRID_SIZE_EXPORT_PADDING);
+    const blob = await captureToBlob(captureHeight, 1);
+
+    navigator.clipboard.write([
+      new ClipboardItem({ "image/png": blob }),
+    ]);
+
     restoreAfterExport(ctx);
   } catch (error) {
     console.error(error);
-    restoreOutputScaleExport(state.cardsEl.querySelectorAll(".grid-cell-filename"));
     restoreAfterExport(ctx);
   } finally {
     ctx.showAfterExport();
   }
 };
 
-// Bulk download all images from the staging area and grid cells
+// --- UI helpers ---
+
+const updateCopySelectedBtn = () => {
+  const btn = document.getElementById("copy-btn");
+  if (!btn) return;
+  if (state.selectedRows.size > 0) {
+    btn.textContent = `Copy (${state.selectedRows.size} rows)`;
+  } else if (state.selectedCells.size > 0) {
+    btn.textContent = `Copy (${state.selectedCells.size} cells)`;
+  } else if (state.focusedCellIndex >= 0) {
+    btn.textContent = `Copy (1 cell)`;
+  } else {
+    btn.textContent = "Copy";
+  }
+};
+
+const attachDragTo = (img) => {
+  if (!img) return;
+  img.draggable = true;
+  img.addEventListener("dragstart", (e) => {
+    if (!img.id) {
+      img.id = `drop-img-${Math.random().toString(36).slice(2)}`;
+    }
+
+    const cell = e.target.closest(".grid-cell");
+    const textArea = cell ? cell.querySelector("textarea") : null;
+
+    const canvas = cell ? cell.querySelector(".drawing-canvas") : null;
+    const drawingData = canvas && state.canvasDataMap.get(canvas) ? state.canvasDataMap.get(canvas).paths : [];
+
+    e.dataTransfer.setData("text/plain", img.src);
+    e.dataTransfer.setData("id", img.id);
+    e.dataTransfer.setData("note", textArea ? textArea.value : "");
+    e.dataTransfer.setData("drawings", JSON.stringify(drawingData));
+    e.dataTransfer.effectAllowed = "move";
+  });
+};
+
+const clearOrCopyImage = async (event, img, drop, span) => {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  if (event.metaKey) {
+    img.src = "";
+    img.style.display = "none";
+    drop.style.border = "var(--border)";
+    span.style.display = "block";
+    const cell = drop.closest(".grid-cell");
+    if (cell) state.updateFilenameLabel(cell);
+  }
+};
+
+// --- Bulk download ---
+
 const bulkDownloadImages = async () => {
   const images = [];
 
@@ -545,25 +493,18 @@ const bulkDownloadImages = async () => {
                 image.src.startsWith("data:image/webp") ? ".webp" : ".png";
     filename = filename.replace(/\.[^.]+$/, "") + ext;
 
-    // Convert data:/blob: source to a fresh blob so triggerDownload can
-    // create and immediately revoke the object URL, preventing leaks.
     const response = await fetch(image.src);
     const blob = await response.blob();
     triggerDownload(blob, filename);
 
-    // Stagger downloads to avoid browser throttling
     if (index < images.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 };
 
-// Wire up copy buttons
-document.getElementById("copy-btn").addEventListener("click", copySelectedRows);
-document.getElementById("download-btn").addEventListener("click", downloadWithScale);
-document.getElementById("bulk-download-btn").addEventListener("click", bulkDownloadImages);
+// --- Raw image copy ---
 
-// Copy the raw image(s) from selected grid cells to clipboard without any scaling/rendering.
 const copySelectedRawImages = async () => {
   if (isExporting) return;
   isExporting = true;
@@ -599,7 +540,6 @@ const copySelectedRawImages = async () => {
       return;
     }
 
-    // Multiple images — composite side-by-side at native resolution
     const bitmaps = await Promise.all(images.map((img) => createImageBitmap(img)));
     const gap = COMPOSITE_IMAGE_GAP;
     const totalWidth = bitmaps.reduce((sum, bm) => sum + bm.width, 0) + gap * (bitmaps.length - 1);
@@ -622,7 +562,8 @@ const copySelectedRawImages = async () => {
   }
 };
 
-// Copy selected image(s) rendered with all color filters, each labeled below.
+// --- Filter composite copy ---
+
 const copyWithAllFilters = async () => {
   if (isExporting) return;
   isExporting = true;
@@ -767,8 +708,15 @@ const copyWithAllFilters = async () => {
   }
 };
 
+// Wire up copy buttons
+document.getElementById("copy-btn").addEventListener("click", copySelectedRows);
+document.getElementById("download-btn").addEventListener("click", downloadWithScale);
+document.getElementById("bulk-download-btn").addEventListener("click", bulkDownloadImages);
+
 export {
   setElementWidths,
+  exportToBlob,
+  exportToBlobWithOutputScale,
   copyAsImage,
   copyWithScale,
   copyAsImageWithOutputScale,
