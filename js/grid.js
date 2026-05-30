@@ -1019,14 +1019,18 @@ const createAddRowButton = (insertIndex) => {
 };
 
 const insertRowAt = (insertIndex) => {
-  // Collect all existing cell data
-  const allData = collectGridData();
+  const cols = state.gridCols;
+  const oldRows = state.gridRows;
 
-  // Shift rows at and after insertIndex down by 1
-  const newData = allData.map((d) => ({
-    ...d,
-    row: d.row >= insertIndex ? d.row + 1 : d.row,
-  }));
+  // Collect data for rows that need to shift (from insertIndex onward) BEFORE modifying DOM
+  const shiftData = [];
+  const cells = state.getCells();
+  for (let r = oldRows - 1; r >= insertIndex; r--) {
+    for (let c = cols - 1; c >= 0; c--) {
+      const idx = r * cols + c;
+      shiftData.push({ row: r, col: c, data: getCellData(cells[idx]) });
+    }
+  }
 
   // Update state.selectedRows — shift indices at or after insertIndex
   const newSelected = new Set();
@@ -1040,22 +1044,41 @@ const insertRowAt = (insertIndex) => {
   state.gridRows++;
   document.getElementById("grid-rows").value = state.gridRows;
 
-  // Rebuild grid with shifted data
-  state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  // Append new empty cells for the extra row at the end of the grid
+  for (let c = 0; c < cols; c++) {
+    const cell = createCell(oldRows, c);
+    state.gridEl.appendChild(cell);
+  }
+
+  // Update grid template
+  state.gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
-  const newDataMap = toDataMap(newData);
+  // Invalidate cache since we added cells
+  state.invalidateCellsCache();
+  const updatedCells = state.getCells();
 
+  // Shift data down: move each cell from row r to row r+1 (bottom-up to avoid overwriting)
+  for (const { row, col, data } of shiftData) {
+    const targetIdx = (row + 1) * cols + col;
+    const targetCell = updatedCells[targetIdx];
+    targetCell.dataset.row = String(row + 1);
+    setCellData(targetCell, data);
+  }
+
+  // Clear the newly inserted row
+  for (let c = 0; c < cols; c++) {
+    const idx = insertIndex * cols + c;
+    const cell = updatedCells[idx];
+    cell.dataset.row = String(insertIndex);
+    setCellData(cell, { imgSrc: null, imgAlt: "", text: "", drawingPaths: [] });
+  }
+
+  // Fix dataset.row for all cells (the appended cells and shifted cells may have stale values)
   for (let r = 0; r < state.gridRows; r++) {
-    for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
-
-      const existing = newDataMap.get(`${r},${c}`);
-      if (existing) {
-        restoreCellData(cell, existing);
-      }
+    for (let c = 0; c < cols; c++) {
+      updatedCells[r * cols + c].dataset.row = String(r);
+      updatedCells[r * cols + c].dataset.col = String(c);
     }
   }
 
@@ -1063,32 +1086,49 @@ const insertRowAt = (insertIndex) => {
 };
 
 const insertColumnAt = (insertIndex) => {
-  // Collect all existing cell data
-  const allData = collectGridData();
+  const oldCols = state.gridCols;
+  const rows = state.gridRows;
 
-  // Shift columns at and after insertIndex right by 1
-  const newData = allData.map((d) => ({
-    ...d,
-    col: d.col >= insertIndex ? d.col + 1 : d.col,
-  }));
+  // Collect all existing cell data keyed by (row, col)
+  const cells = state.getCells();
+  const dataByPos = new Map();
+  for (const cell of cells) {
+    const r = parseInt(cell.dataset.row);
+    const c = parseInt(cell.dataset.col);
+    dataByPos.set(`${r},${c}`, getCellData(cell));
+  }
 
   state.gridCols++;
   document.getElementById("grid-cols").value = state.gridCols;
 
-  // Rebuild grid with shifted data
+  // Build new data array with shifted columns
+  const newData = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < state.gridCols; c++) {
+      if (c === insertIndex) {
+        newData.push({ row: r, col: c, imgSrc: null, imgAlt: "", text: "", drawingPaths: [] });
+      } else {
+        const srcCol = c < insertIndex ? c : c - 1;
+        const existing = dataByPos.get(`${r},${srcCol}`);
+        newData.push(existing ? { ...existing, row: r, col: c } : { row: r, col: c, imgSrc: null, imgAlt: "", text: "", drawingPaths: [] });
+      }
+    }
+  }
+
+  // Column insertion changes the total cell count and grid template — rebuild is needed
   state.gridEl.innerHTML = "";
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
-  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+  state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
   const newDataMap = toDataMap(newData);
 
-  for (let r = 0; r < state.gridRows; r++) {
+  for (let r = 0; r < rows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
       const existing = newDataMap.get(`${r},${c}`);
-      if (existing) {
+      if (existing && (existing.imgSrc || existing.text || (existing.drawingPaths && existing.drawingPaths.length > 0))) {
         restoreCellData(cell, existing);
       }
     }
@@ -1100,16 +1140,42 @@ const insertColumnAt = (insertIndex) => {
 const deleteRowAt = (rowIndex) => {
   if (state.gridRows <= 1) return; // Don't delete the last row
 
-  const previousBlobUrls = collectBlobUrls();
-  const allData = collectGridData();
+  const cols = state.gridCols;
+  const cells = state.getCells();
 
-  // Remove data for the deleted row and shift rows above it down
-  const newData = allData
-    .filter((d) => d.row !== rowIndex)
-    .map((d) => ({
-      ...d,
-      row: d.row > rowIndex ? d.row - 1 : d.row,
-    }));
+  // Revoke blob URLs for the deleted row
+  for (let c = 0; c < cols; c++) {
+    const idx = rowIndex * cols + c;
+    const img = cells[idx].querySelector("img");
+    if (img && img.src && img.src.startsWith("blob:")) {
+      URL.revokeObjectURL(img.src);
+    }
+  }
+
+  // Shift data up: move each cell from row r+1 to row r (top-down from deleted row)
+  for (let r = rowIndex; r < state.gridRows - 1; r++) {
+    for (let c = 0; c < cols; c++) {
+      const targetIdx = r * cols + c;
+      const sourceIdx = (r + 1) * cols + c;
+      setCellData(cells[targetIdx], getCellData(cells[sourceIdx]));
+    }
+  }
+
+  // Remove the last row's cells from DOM
+  for (let c = cols - 1; c >= 0; c--) {
+    const idx = (state.gridRows - 1) * cols + c;
+    const cell = cells[idx];
+    // Clean up canvas observer
+    const canvas = cell.querySelector(".drawing-canvas");
+    if (canvas) {
+      const observer = state.canvasObservers.get(canvas);
+      if (observer) {
+        observer.disconnect();
+        state.canvasObservers.delete(canvas);
+      }
+    }
+    cell.remove();
+  }
 
   // Update state.selectedRows — remove deleted row and shift indices
   const newSelected = new Set();
@@ -1125,26 +1191,19 @@ const deleteRowAt = (rowIndex) => {
   state.gridRows--;
   document.getElementById("grid-rows").value = state.gridRows;
 
-  // Rebuild grid
-  state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
+  // Update grid template
+  state.gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
 
-  const newDataMap = toDataMap(newData);
-
+  // Invalidate cache and fix dataset.row attributes
+  state.invalidateCellsCache();
+  const updatedCells = state.getCells();
   for (let r = 0; r < state.gridRows; r++) {
-    for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
-
-      const existing = newDataMap.get(`${r},${c}`);
-      if (existing) {
-        restoreCellData(cell, existing);
-      }
+    for (let c = 0; c < cols; c++) {
+      updatedCells[r * cols + c].dataset.row = String(r);
     }
   }
 
-  revokeOrphanedBlobUrls(previousBlobUrls);
   buildRowControls();
 };
 
@@ -1152,38 +1211,39 @@ const moveRow = (sourceRow, targetIndex) => {
   // If dropping in the same position or adjacent (no-op)
   if (targetIndex === sourceRow || targetIndex === sourceRow + 1) return;
 
-  const allData = collectGridData();
-
-  // Track whether the source row was selected
-  const sourceWasSelected = state.selectedRows.has(sourceRow);
+  const cols = state.gridCols;
+  const cells = state.getCells();
 
   // Extract source row data
-  const sourceData = allData.filter((d) => d.row === sourceRow);
-  const otherData = allData.filter((d) => d.row !== sourceRow);
+  const sourceData = [];
+  for (let c = 0; c < cols; c++) {
+    sourceData.push(getCellData(cells[sourceRow * cols + c]));
+  }
 
-  // Calculate new row indices
-  // After removing source row, rows shift up if they were below it
-  const reindexed = otherData.map((d) => ({
-    ...d,
-    row: d.row > sourceRow ? d.row - 1 : d.row,
-  }));
-
-  // Determine the effective insert position after removal
+  // Determine the effective target after removal
   const effectiveTarget = targetIndex > sourceRow ? targetIndex - 1 : targetIndex;
 
-  // Shift rows at and after effectiveTarget down to make room
-  const shifted = reindexed.map((d) => ({
-    ...d,
-    row: d.row >= effectiveTarget ? d.row + 1 : d.row,
-  }));
+  // Shift rows to fill the gap left by sourceRow
+  if (effectiveTarget > sourceRow) {
+    // Moving down: shift rows between sourceRow+1..effectiveTarget up by one
+    for (let r = sourceRow; r < effectiveTarget; r++) {
+      for (let c = 0; c < cols; c++) {
+        setCellData(cells[r * cols + c], getCellData(cells[(r + 1) * cols + c]));
+      }
+    }
+  } else {
+    // Moving up: shift rows between effectiveTarget..sourceRow-1 down by one
+    for (let r = sourceRow; r > effectiveTarget; r--) {
+      for (let c = 0; c < cols; c++) {
+        setCellData(cells[r * cols + c], getCellData(cells[(r - 1) * cols + c]));
+      }
+    }
+  }
 
   // Place source row at effectiveTarget
-  const movedData = sourceData.map((d) => ({
-    ...d,
-    row: effectiveTarget,
-  }));
-
-  const finalData = [...shifted, ...movedData];
+  for (let c = 0; c < cols; c++) {
+    setCellData(cells[effectiveTarget * cols + c], sourceData[c]);
+  }
 
   // Update state.selectedRows to reflect the move
   const newSelected = new Set();
@@ -1200,39 +1260,24 @@ const moveRow = (sourceRow, targetIndex) => {
   state.selectedRows.clear();
   newSelected.forEach((r) => state.selectedRows.add(r));
 
-  // Rebuild grid
-  state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
-  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-
-  const finalDataMap = toDataMap(finalData);
-
-  for (let r = 0; r < state.gridRows; r++) {
-    for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
-
-      const existing = finalDataMap.get(`${r},${c}`);
-      if (existing) {
-        restoreCellData(cell, existing);
-      }
-    }
-  }
-
   buildRowControls();
 };
 
 const swapRows = (rowA, rowB) => {
   if (rowA === rowB) return;
 
-  const allData = collectGridData();
+  const cols = state.gridCols;
+  const cells = state.getCells();
 
-  // Swap row indices
-  const newData = allData.map((d) => {
-    if (d.row === rowA) return { ...d, row: rowB };
-    if (d.row === rowB) return { ...d, row: rowA };
-    return d;
-  });
+  // Swap cell data between the two rows directly
+  for (let c = 0; c < cols; c++) {
+    const idxA = rowA * cols + c;
+    const idxB = rowB * cols + c;
+    const dataA = getCellData(cells[idxA]);
+    const dataB = getCellData(cells[idxB]);
+    setCellData(cells[idxA], dataB);
+    setCellData(cells[idxB], dataA);
+  }
 
   // Update state.selectedRows to reflect the swap
   const hadA = state.selectedRows.has(rowA);
@@ -1245,25 +1290,6 @@ const swapRows = (rowA, rowB) => {
     state.selectedRows.add(rowA);
   }
   // If both or neither were selected, no change needed
-
-  // Rebuild grid
-  state.gridEl.innerHTML = "";
-  state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
-  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-
-  const newDataMap = toDataMap(newData);
-
-  for (let r = 0; r < state.gridRows; r++) {
-    for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
-
-      const existing = newDataMap.get(`${r},${c}`);
-      if (existing) {
-        restoreCellData(cell, existing);
-      }
-    }
-  }
 
   buildRowControls();
 };
@@ -1426,40 +1452,47 @@ state.updateFilenameLabel = updateFilenameLabel;
 const deleteColumnAt = (colIndex) => {
   if (state.gridCols <= 1) return; // Don't delete the last column
 
-  const previousBlobUrls = collectBlobUrls();
-  const allData = collectGridData();
+  const rows = state.gridRows;
+  const oldCols = state.gridCols;
+  const cells = state.getCells();
 
-  // Remove data for the deleted column and shift columns after it left
-  const newData = allData
-    .filter((d) => d.col !== colIndex)
-    .map((d) => ({
-      ...d,
-      col: d.col > colIndex ? d.col - 1 : d.col,
-    }));
+  // Collect data keyed by (row, col), skipping the deleted column
+  const dataByPos = new Map();
+  for (const cell of cells) {
+    const r = parseInt(cell.dataset.row);
+    const c = parseInt(cell.dataset.col);
+    if (c === colIndex) {
+      // Revoke blob URL for deleted cells
+      const img = cell.querySelector("img");
+      if (img && img.src && img.src.startsWith("blob:")) {
+        URL.revokeObjectURL(img.src);
+      }
+      continue;
+    }
+    const newCol = c > colIndex ? c - 1 : c;
+    dataByPos.set(`${r},${newCol}`, getCellData(cell));
+  }
 
   state.gridCols--;
   document.getElementById("grid-cols").value = state.gridCols;
 
-  // Rebuild grid
+  // Column deletion changes total cell count — rebuild DOM
   state.gridEl.innerHTML = "";
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(350 * state.gridZoom / 100)}px, 1fr))`;
-  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+  state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
-  const newDataMap = toDataMap(newData);
-
-  for (let r = 0; r < state.gridRows; r++) {
+  for (let r = 0; r < rows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
       const cell = createCell(r, c);
       state.gridEl.appendChild(cell);
 
-      const existing = newDataMap.get(`${r},${c}`);
-      if (existing) {
+      const existing = dataByPos.get(`${r},${c}`);
+      if (existing && (existing.imgSrc || existing.text || (existing.drawingPaths && existing.drawingPaths.length > 0))) {
         restoreCellData(cell, existing);
       }
     }
   }
 
-  revokeOrphanedBlobUrls(previousBlobUrls);
   buildRowControls();
 };
 
