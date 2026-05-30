@@ -44,14 +44,29 @@ const bundledJS = execSync(
   { cwd: root, encoding: "utf-8" }
 );
 
-// --- 2. Read and inline CSS ---
-console.log("Inlining CSS...");
-const normalizeCSS = read("normalize.css");
-const styleCSS = read("style.css");
+// --- 2. Read and inline CSS (minified via esbuild) ---
+console.log("Inlining & minifying CSS...");
+const normalizeCSS = execSync(
+  `${esbuildBin} normalize.css --bundle --minify`,
+  { cwd: root, encoding: "utf-8" }
+);
+const styleCSS = execSync(
+  `${esbuildBin} style.css --bundle --minify`,
+  { cwd: root, encoding: "utf-8" }
+);
 
 // --- 3. Process HTML ---
 console.log("Processing HTML...");
 let html = read("index.html");
+
+// Replace CSP: remove it entirely for the bundled file.
+// 'self' and origin-based policies are meaningless for file: URLs
+// (browsers treat each file: URL as a unique opaque origin).
+// Since this is a self-contained local tool, CSP provides no security benefit.
+html = html.replace(
+  /\s*<meta\s+http-equiv="Content-Security-Policy"[^>]*>\s*/,
+  ""
+);
 
 // Replace CSS links with inline <style>
 html = html.replace(
@@ -69,7 +84,16 @@ html = html.replace(
   `\n    <script>${bundledJS}</script>\n`
 );
 
-// --- 4. Write output ---
+// --- 4. Minify HTML ---
+console.log("Minifying HTML...");
+html = html
+  .replace(/<!--[\s\S]*?-->/g, "")           // strip comments
+  .replace(/^\s+/gm, "")                     // strip leading whitespace per line
+  .replace(/\n{2,}/g, "\n")                   // collapse multiple newlines
+  .replace(/>\s+</g, "><")                    // collapse whitespace between tags
+  .trim();
+
+// --- 5. Write output ---
 const outDir = resolve(root, "dist");
 mkdirSync(outDir, { recursive: true });
 const outPath = resolve(outDir, "index.html");
