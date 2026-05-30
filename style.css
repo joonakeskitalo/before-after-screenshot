@@ -1137,6 +1137,7 @@ body.cell-dragging .grid-cell.keyboard-selected {
     border: 1px solid oklch(92.8% 0.006 264.531);
     min-height: 0;
     min-width: 0;
+    user-select: none;
 }
 
 .filter-preview-img-container .drawing-canvas {

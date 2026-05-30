@@ -2073,6 +2073,10 @@ const previewAllFilters = () => {
     if (!img || !img.src || img.style.display === "none") return;
     // Update the grid with the newly focused image
     filterPreviewBuildFn(filterPreviewGrid, [{ img, name: img.alt || "" }]);
+    // If drawing mode is active, ensure newly created canvases get the active class
+    if (state.drawingMode) {
+      filterPreviewGrid.querySelectorAll(".drawing-canvas").forEach((c) => c.classList.add("active"));
+    }
   };
 };
 
