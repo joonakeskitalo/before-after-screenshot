@@ -365,7 +365,11 @@ const createCell = (row, col) => {
 // --- buildGrid (incremental — reuses existing DOM cells to avoid flash) ---
 
 const buildGrid = () => {
-  // Clear keyboard focus
+  // Clear keyboard focus (remove class from DOM before resetting index)
+  const prevCells = state.getCells();
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < prevCells.length) {
+    prevCells[state.focusedCellIndex].classList.remove("keyboard-focused");
+  }
   state.focusedCellIndex = -1;
 
   const targetTotal = state.gridRows * state.gridCols;
@@ -576,6 +580,10 @@ const relayoutGrid = () => {
   state.selectedRows.clear();
   state.selectedCells.clear();
   updateCopySelectedBtn();
+  const prevRelayoutCells = state.getCells();
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < prevRelayoutCells.length) {
+    prevRelayoutCells[state.focusedCellIndex].classList.remove("keyboard-focused");
+  }
   state.focusedCellIndex = -1;
 
   const targetTotal = state.gridRows * state.gridCols;
