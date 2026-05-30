@@ -231,8 +231,8 @@ document.onpaste = function (event) {
   if (state.focusedCellIndex >= 0) {
     // Collect all image blobs from the clipboard
     const blobs = [];
-    for (const index in items) {
-      const item = items[index];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       if (item.kind === "file") {
         const blob = item.getAsFile();
         if (blob) blobs.push(blob);
@@ -276,8 +276,8 @@ document.onpaste = function (event) {
   }
 
   // No grid cell focused — add all pasted images to the toolbar staging area
-  for (const index in items) {
-    const item = items[index];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     if (item.kind === "file") {
       const blob = item.getAsFile();
       state.addImageToToolbar(URL.createObjectURL(blob), blob.name || "");
