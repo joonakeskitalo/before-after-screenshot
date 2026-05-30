@@ -1210,7 +1210,7 @@ const redrawAllCanvasesForExport = async (scale) => {
     const dpr = window.devicePixelRatio || 1;
     const fitRect = getObjectFitRect(img);
 
-    if (!fitRect) return; // Image not yet laid out, cannot bake
+    if (!fitRect) continue; // Image not yet laid out, skip this canvas
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = fitRect.width * dpr;
