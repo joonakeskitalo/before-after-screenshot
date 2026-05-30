@@ -167,7 +167,8 @@ state.addImageToToolbar = (srcUrl, fileName = "") => {
 };
 
 state.removeToolbarItemById = (id) => {
-  const item = bottomToolbarInner.querySelector(`[data-id="${id}"]`);
+  const escaped = CSS.escape(id);
+  const item = bottomToolbarInner.querySelector(`[data-id="${escaped}"]`);
   if (item) item.remove();
   updateStagingInstruction();
 };
