@@ -176,28 +176,136 @@ const hideSelectionForExport = () => {
   };
 };
 
-const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
+// --- Shared export prepare/restore pair ---
+// Extracts the common DOM manipulation that all export functions perform before
+// and after capturing the grid. Returns a context object used by restoreAfterExport.
+
+const prepareForExport = () => {
   const showAfterExport = hideForExport();
+  const restoreSelection = hideSelectionForExport();
+  const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
+
+  // Determine the effective column count — if copySelectedRows already set a
+  // reduced column count, preserve it; otherwise use the content-based count.
+  const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
+  const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
+  const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
+
+  // Remove overflow and size constraints so nothing gets clipped
+  const allCells = state.getCells();
+  allCells.forEach((cell) => {
+    cell.style.overflow = "visible";
+    cell.style.minHeight = "0";
+  });
+
+  const allImages = state.cardsEl.querySelectorAll("img");
+  const allDrops = state.cardsEl.querySelectorAll(".drop");
+
+  allDrops.forEach((drop) => {
+    drop.style.overflow = "visible";
+  });
+
+  state.root.style.setProperty("--border", `unset`);
+  state.gridEl.style.outline = "none";
+
+  const prevZoom = state.gridZoom;
+
+  return {
+    showAfterExport,
+    restoreSelection,
+    restoreEmptyRows,
+    effectiveCols,
+    allCells,
+    allImages,
+    allDrops,
+    prevZoom,
+  };
+};
+
+const restoreAfterExport = (ctx) => {
+  const { allCells, allImages, allDrops, prevZoom, restoreEmptyRows, restoreSelection } = ctx;
+
+  allCells.forEach((cell) => {
+    cell.style.overflow = null;
+    cell.style.minHeight = null;
+  });
+
+  allImages.forEach((img) => {
+    img.style.objectFit = null;
+    img.style.height = null;
+    img.style.maxHeight = null;
+    img.style.width = null;
+  });
+
+  allDrops.forEach((drop) => {
+    drop.style.overflow = null;
+    drop.style.height = null;
+    drop.style.width = null;
+  });
+
+  state.cardsEl.style.padding = "16px";
+  state.cardsEl.style.width = null;
+  state.cardsEl.style.height = null;
+  state.cardsEl.style.flex = null;
+  state.cardsEl.style.minHeight = null;
+  state.gridEl.style.outline = null;
+  state.gridEl.style.width = null;
+  state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+  state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
+
+  // Restore zoom (also restores gridTemplateColumns, --image-max-width, --gap, etc.)
+  applyGridZoom(prevZoom);
+
+  // Restore drawing canvases to display size
+  restoreAllCanvases();
+
+  restoreEmptyRows();
+  restoreSelection();
+};
+
+// Finalize the grid layout for capture: set grid template, padding, lock width,
+// and return the measured capture height.
+const finalizeLayoutForCapture = (effectiveCols, padding) => {
+  state.gridEl.style.gridTemplateRows = "auto";
+  state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
+
+  state.cardsEl.style.padding = `8px ${padding}px`;
+  state.cardsEl.style.width = "fit-content";
+  state.cardsEl.style.height = "auto";
+  state.cardsEl.style.flex = "none";
+  state.cardsEl.style.minHeight = "0";
+
+  // Force the grid width after layout settles so modern-screenshot doesn't reflow columns
+  const gridRenderedWidth = state.gridEl.offsetWidth;
+  state.gridEl.style.width = `${gridRenderedWidth}px`;
+
+  return state.cardsEl.offsetHeight;
+};
+
+// Capture the cards element to a blob, cropped to the given height.
+const captureToBlob = async (captureHeight, exportScale) => {
+  await redrawAllCanvasesForExport(exportScale);
+  await waitForImagesDecode(state.cardsEl);
+
+  let blob = await domToBlob(state.cardsEl, {
+    height: captureHeight,
+    filter: exportNodeFilter,
+  });
+
+  return cropBlobToHeight(blob, captureHeight);
+};
+
+const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
+  const ctx = prepareForExport();
   try {
-    const restoreSelection = hideSelectionForExport();
-    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
+    const { effectiveCols, allImages, allDrops } = ctx;
+
     state.root.style.setProperty("--image-max-width", "unset");
-
-    // Determine the effective column count — if copySelectedRows already set a
-    // reduced column count, preserve it; otherwise use the content-based count.
-    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
-    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
-
-    // Remove overflow and size constraints so nothing gets clipped
-    const allCells = state.getCells();
-    allCells.forEach((cell) => {
-      cell.style.overflow = "visible";
-      cell.style.minHeight = "0";
-    });
+    state.root.style.setProperty("--gap", `96px`);
+    state.root.style.setProperty("--text-fontsize", `15pt`);
+    state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
 
     // Let images size naturally for the capture
-    const allImages = state.cardsEl.querySelectorAll("img");
     allImages.forEach((img) => {
       if (img.src && img.style.display !== "none") {
         img.style.objectFit = "contain";
@@ -206,22 +314,9 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       }
     });
 
-    // Remove height constraint on drop zones
-    const allDrops = state.cardsEl.querySelectorAll(".drop");
     allDrops.forEach((drop) => {
-      drop.style.overflow = "visible";
       drop.style.height = "auto";
     });
-
-    state.root.style.setProperty("--border", `unset`);
-    state.gridEl.style.outline = "none";
-
-    // Reset zoom for capture
-    const prevZoom = state.gridZoom;
-    state.root.style.setProperty("--image-max-width", "unset");
-    state.root.style.setProperty("--gap", `96px`);
-    state.root.style.setProperty("--text-fontsize", `15pt`);
-    state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
 
     if (useFullSize) {
       const baseFontSize = 15;
@@ -249,92 +344,23 @@ const copyAsImage = async (useFullSize = false, resolutionScale = 1) => {
       });
     }
 
-    // Remove fixed grid row sizing so rows expand to fit content
-    state.gridEl.style.gridTemplateRows = "auto";
-    // Use auto-sized columns for capture so they don't overlap with fit-content
-    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
-
     const initialPadding = useFullSize ? 192 : 64;
     const padding = Math.floor(initialPadding * resolutionScale);
+    const captureHeight = finalizeLayoutForCapture(effectiveCols, padding);
 
-    state.cardsEl.style.padding = `8px ${padding}px`;
-    state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "auto";
-    state.cardsEl.style.flex = "none";
-    state.cardsEl.style.minHeight = "0";
-
-    // Force the grid width after layout settles so modern-screenshot doesn't reflow columns
-    const gridRenderedWidth = state.gridEl.offsetWidth;
-    state.gridEl.style.width = `${gridRenderedWidth}px`;
-
-    // Measure actual content height for cropping after capture
-    const captureHeight = state.cardsEl.offsetHeight;
-
-    // Hide drawing controls during export (not needed — controls are in toolbar now)
-
-    // Redraw canvases at export scale so drawings match the scaled images
     const exportScale = useFullSize ? resolutionScale : 1;
-    await redrawAllCanvasesForExport(exportScale);
-
-    // Ensure all images are fully decoded before capture to prevent blank images
-    await waitForImagesDecode(state.cardsEl);
-
-    let blob = await domToBlob(state.cardsEl, {
-      height: captureHeight,
-      filter: exportNodeFilter,
-    });
-
-    // Crop the blob to the actual content height if modern-screenshot produced a taller image
-    blob = await cropBlobToHeight(blob, captureHeight);
+    const blob = await captureToBlob(captureHeight, exportScale);
 
     navigator.clipboard.write([
-      new ClipboardItem({
-        "image/png": blob,
-      }),
+      new ClipboardItem({ "image/png": blob }),
     ]);
 
-    // Restore all styles
-
-    allCells.forEach((cell) => {
-      cell.style.overflow = null;
-      cell.style.minHeight = null;
-    });
-
-    allImages.forEach((img) => {
-      img.style.objectFit = null;
-      img.style.height = null;
-      img.style.maxHeight = null;
-      img.style.width = null;
-    });
-
-    allDrops.forEach((drop) => {
-      drop.style.overflow = null;
-      drop.style.height = null;
-      drop.style.width = null;
-    });
-
-    state.cardsEl.style.padding = "16px";
-    state.cardsEl.style.width = null;
-    state.cardsEl.style.height = null;
-    state.cardsEl.style.flex = null;
-    state.cardsEl.style.minHeight = null;
-    state.gridEl.style.outline = null;
-    state.gridEl.style.width = null;
-    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-    state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
-
-    // Restore zoom (also restores gridTemplateColumns, --image-max-width, --gap, etc.)
-    applyGridZoom(prevZoom);
-
-    // Restore drawing canvases to display size
-    restoreAllCanvases();
-
-    restoreEmptyRows();
-    restoreSelection();
+    restoreAfterExport(ctx);
   } catch (error) {
     console.error(error);
+    restoreAfterExport(ctx);
   } finally {
-    showAfterExport();
+    ctx.showAfterExport();
   }
 };
 
@@ -368,102 +394,79 @@ const copyWithScale = () => {
   });
 };
 
+// Shared logic for output-scale exports (render at higher res, then downscale).
+// Used by both copy and download variants.
+const prepareOutputScaleExport = (ctx, outputScale) => {
+  const { effectiveCols, allImages, allDrops } = ctx;
+  const baseMultiplier = 2; // Render at 2x grid size for higher resolution
+
+  // Capture current rendered sizes before modifying styles
+  const imageSizes = [];
+  allImages.forEach((img) => {
+    if (img.src && img.style.display !== "none") {
+      imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
+    }
+  });
+
+  // Determine the max scale factor capped by the smallest image's natural size
+  let cappedMultiplier = baseMultiplier;
+  imageSizes.forEach(({ img, width, height }) => {
+    const maxForThis = Math.min(img.naturalWidth / width, img.naturalHeight / height);
+    cappedMultiplier = Math.min(cappedMultiplier, maxForThis);
+  });
+  cappedMultiplier = Math.max(1, cappedMultiplier);
+
+  // Lock each image using the globally capped multiplier
+  imageSizes.forEach(({ img, width, height }) => {
+    img.style.width = Math.round(width * cappedMultiplier) + "px";
+    img.style.height = Math.round(height * cappedMultiplier) + "px";
+    img.style.objectFit = "contain";
+    img.style.maxHeight = "unset";
+  });
+
+  // Scale gap and font to match the capped layout
+  // Divide by outputScale so that after the final downscale, text remains crisp
+  const scale = state.gridZoom / 100;
+  const gap = Math.round(48 * scale * cappedMultiplier);
+  state.root.style.setProperty("--gap", `${gap}px`);
+  const fontSize = Math.round(16 * scale * cappedMultiplier / outputScale);
+  state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
+
+  // Scale filename labels so they remain legible after output downscale
+  const filenameLabels = state.cardsEl.querySelectorAll(".grid-cell-filename");
+  const filenameFontSize = Math.round(8 * cappedMultiplier / outputScale);
+  filenameLabels.forEach((label) => {
+    label.style.fontSize = `${filenameFontSize}pt`;
+  });
+
+  // Collapse empty drops
+  allDrops.forEach((drop) => {
+    const img = drop.querySelector("img");
+    if (!img || !img.src || img.style.display === "none") {
+      drop.style.width = "32px";
+      drop.style.height = "32px";
+    }
+  });
+
+  const padding = Math.round(32 * cappedMultiplier);
+  const captureHeight = finalizeLayoutForCapture(effectiveCols, padding);
+
+  return { cappedMultiplier, filenameLabels, captureHeight };
+};
+
+const restoreOutputScaleExport = (filenameLabels) => {
+  filenameLabels.forEach((label) => {
+    label.style.fontSize = null;
+  });
+};
+
 // Export at full native resolution, then scale the entire output image down
 const copyAsImageWithOutputScale = async (outputScale) => {
-  const showAfterExport = hideForExport();
+  const ctx = prepareForExport();
   try {
-    const restoreSelection = hideSelectionForExport();
-    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
-    const baseMultiplier = 2; // Render at 2x grid size for higher resolution
-
-    // Determine the effective column count — if copySelectedRows already set a
-    // reduced column count, preserve it; otherwise use the content-based count.
-    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
-    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
-
-    // Capture current rendered sizes before modifying styles
-    const allImages = state.cardsEl.querySelectorAll("img");
-    const imageSizes = [];
-    allImages.forEach((img) => {
-      if (img.src && img.style.display !== "none") {
-        imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
-      }
-    });
-
-    state.root.style.setProperty("--border", `unset`);
-    state.gridEl.style.outline = "none";
-
-    const allCells = state.getCells();
-    allCells.forEach((cell) => {
-      cell.style.overflow = "visible";
-    });
-
-    const allDrops = state.cardsEl.querySelectorAll(".drop");
-    allDrops.forEach((drop) => {
-      drop.style.overflow = "visible";
-    });
-
-    // Determine the max scale factor capped by the smallest image's natural size
-    let cappedMultiplier = baseMultiplier;
-    imageSizes.forEach(({ img, width, height }) => {
-      const maxForThis = Math.min(img.naturalWidth / width, img.naturalHeight / height);
-      cappedMultiplier = Math.min(cappedMultiplier, maxForThis);
-    });
-    cappedMultiplier = Math.max(1, cappedMultiplier);
-
-    // Lock each image using the globally capped multiplier
-    imageSizes.forEach(({ img, width, height }) => {
-      img.style.width = Math.round(width * cappedMultiplier) + "px";
-      img.style.height = Math.round(height * cappedMultiplier) + "px";
-      img.style.objectFit = "contain";
-      img.style.maxHeight = "unset";
-    });
-
-    // Scale gap and font to match the capped layout
-    // Divide by outputScale so that after the final downscale, text remains crisp
-    const scale = state.gridZoom / 100;
-    const gap = Math.round(48 * scale * cappedMultiplier);
-    state.root.style.setProperty("--gap", `${gap}px`);
-    const fontSize = Math.round(16 * scale * cappedMultiplier / outputScale);
-    state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
-
-    // Scale filename labels so they remain legible after output downscale
-    const filenameLabels = state.cardsEl.querySelectorAll(".grid-cell-filename");
-    const filenameFontSize = Math.round(8 * cappedMultiplier / outputScale);
-    filenameLabels.forEach((label) => {
-      label.style.fontSize = `${filenameFontSize}pt`;
-    });
-
-    // Collapse empty drops
-    allDrops.forEach((drop) => {
-      const img = drop.querySelector("img");
-      if (!img || !img.src || img.style.display === "none") {
-        drop.style.width = "32px";
-        drop.style.height = "32px";
-      }
-    });
-
-    state.gridEl.style.gridTemplateRows = "auto";
-    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
-
-    const padding = Math.round(32 * cappedMultiplier);
-    state.cardsEl.style.padding = `8px ${padding}px`;
-    state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "auto";
-    state.cardsEl.style.flex = "none";
-    state.cardsEl.style.minHeight = "0";
-
-    // Force the grid width after layout settles so modern-screenshot doesn't reflow columns
-    const gridRenderedWidth = state.gridEl.offsetWidth;
-    state.gridEl.style.width = `${gridRenderedWidth}px`;
-
-    // Measure actual content height for cropping after capture
-    const captureHeight = state.cardsEl.offsetHeight;
+    const { cappedMultiplier, filenameLabels, captureHeight } = prepareOutputScaleExport(ctx, outputScale);
 
     await redrawAllCanvasesForExport(cappedMultiplier);
-
-    // Ensure all images are fully decoded before capture to prevent blank images
     await waitForImagesDecode(state.cardsEl);
 
     let blob = await domToBlob(state.cardsEl, {
@@ -475,52 +478,17 @@ const copyAsImageWithOutputScale = async (outputScale) => {
     const scaledBlob = await cropAndScaleBlob(blob, captureHeight, outputScale);
 
     navigator.clipboard.write([
-      new ClipboardItem({
-        "image/png": scaledBlob,
-      }),
+      new ClipboardItem({ "image/png": scaledBlob }),
     ]);
 
-    // Restore all styles
-    allCells.forEach((cell) => {
-      cell.style.overflow = null;
-    });
-
-    allImages.forEach((img) => {
-      img.style.objectFit = null;
-      img.style.height = null;
-      img.style.maxHeight = null;
-      img.style.width = null;
-    });
-
-    allDrops.forEach((drop) => {
-      drop.style.overflow = null;
-      drop.style.height = null;
-      drop.style.width = null;
-    });
-
-    filenameLabels.forEach((label) => {
-      label.style.fontSize = null;
-    });
-
-    state.cardsEl.style.padding = "16px";
-    state.cardsEl.style.width = null;
-    state.cardsEl.style.height = null;
-    state.cardsEl.style.flex = null;
-    state.cardsEl.style.minHeight = null;
-    state.gridEl.style.outline = null;
-    state.gridEl.style.width = null;
-    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-    state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
-
-    applyGridZoom(state.gridZoom);
-    restoreAllCanvases();
-
-    restoreEmptyRows();
-    restoreSelection();
+    restoreOutputScaleExport(filenameLabels);
+    restoreAfterExport(ctx);
   } catch (error) {
     console.error(error);
+    restoreOutputScaleExport(state.cardsEl.querySelectorAll(".grid-cell-filename"));
+    restoreAfterExport(ctx);
   } finally {
-    showAfterExport();
+    ctx.showAfterExport();
   }
 };
 
@@ -652,19 +620,11 @@ const copySelectedRows = () => {
 };
 
 const copyAsGridSize = async () => {
-  const showAfterExport = hideForExport();
+  const ctx = prepareForExport();
   try {
-    const restoreSelection = hideSelectionForExport();
-    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
-
-    // Determine the effective column count — if copySelectedRows already set a
-    // reduced column count, preserve it; otherwise use the content-based count.
-    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
-    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
+    const { effectiveCols, allImages, allDrops } = ctx;
 
     // Capture the current rendered sizes of images before modifying styles
-    const allImages = state.cardsEl.querySelectorAll("img");
     const imageSizes = [];
     allImages.forEach((img) => {
       if (img.src && img.style.display !== "none") {
@@ -672,21 +632,7 @@ const copyAsGridSize = async () => {
       }
     });
 
-    state.root.style.setProperty("--border", `unset`);
-    state.gridEl.style.outline = "none";
-
     // Keep the current grid zoom settings — don't reset them
-    // Just remove overflow clipping so the capture is clean
-    const allCells = state.getCells();
-    allCells.forEach((cell) => {
-      cell.style.overflow = "visible";
-    });
-
-    const allDrops = state.cardsEl.querySelectorAll(".drop");
-    allDrops.forEach((drop) => {
-      drop.style.overflow = "visible";
-    });
-
     // Lock each image to its current display size
     imageSizes.forEach(({ img, width, height }) => {
       img.style.width = width + "px";
@@ -704,83 +650,21 @@ const copyAsGridSize = async () => {
       }
     });
 
-    // Use auto columns so the grid fits the locked image sizes
-    state.gridEl.style.gridTemplateRows = "auto";
-    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
-
-    state.cardsEl.style.padding = `8px 32px`;
-    state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "auto";
-    state.cardsEl.style.flex = "none";
-    state.cardsEl.style.minHeight = "0";
-
-    // Force the grid width after layout settles so modern-screenshot doesn't reflow columns
-    const gridRenderedWidth = state.gridEl.offsetWidth;
-    state.gridEl.style.width = `${gridRenderedWidth}px`;
-
-    // Measure actual content height for cropping after capture
-    const captureHeight = state.cardsEl.offsetHeight;
+    const captureHeight = finalizeLayoutForCapture(effectiveCols, 32);
 
     // Redraw canvases at 1:1 since we're keeping display size
-    await redrawAllCanvasesForExport(1);
-
-    // Ensure all images are fully decoded before capture to prevent blank images
-    await waitForImagesDecode(state.cardsEl);
-
-    let blob = await domToBlob(state.cardsEl, {
-      height: captureHeight,
-      filter: exportNodeFilter,
-    });
-
-    // Crop to actual content height
-    blob = await cropBlobToHeight(blob, captureHeight);
+    const blob = await captureToBlob(captureHeight, 1);
 
     navigator.clipboard.write([
-      new ClipboardItem({
-        "image/png": blob,
-      }),
+      new ClipboardItem({ "image/png": blob }),
     ]);
 
-    // Restore all styles
-    allCells.forEach((cell) => {
-      cell.style.overflow = null;
-    });
-
-    allImages.forEach((img) => {
-      img.style.objectFit = null;
-      img.style.height = null;
-      img.style.maxHeight = null;
-      img.style.width = null;
-    });
-
-    allDrops.forEach((drop) => {
-      drop.style.overflow = null;
-      drop.style.height = null;
-      drop.style.width = null;
-    });
-
-    state.cardsEl.style.padding = "16px";
-    state.cardsEl.style.width = null;
-    state.cardsEl.style.height = null;
-    state.cardsEl.style.flex = null;
-    state.cardsEl.style.minHeight = null;
-    state.gridEl.style.outline = null;
-    state.gridEl.style.width = null;
-    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-    state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
-
-    // Restore zoom (restores gridTemplateColumns, --image-max-width, --gap, etc.)
-    applyGridZoom(state.gridZoom);
-
-    // Restore drawing canvases to display size
-    restoreAllCanvases();
-
-    restoreEmptyRows();
-    restoreSelection();
+    restoreAfterExport(ctx);
   } catch (error) {
     console.error(error);
+    restoreAfterExport(ctx);
   } finally {
-    showAfterExport();
+    ctx.showAfterExport();
   }
 };
 
@@ -903,23 +787,16 @@ const triggerDownload = (blob, filename) => {
 
 // Download the composed grid image (same logic as copy, but saves to file)
 const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
-  const showAfterExport = hideForExport();
+  const ctx = prepareForExport();
   try {
-    const restoreSelection = hideSelectionForExport();
-    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
+    const { effectiveCols, allImages, allDrops } = ctx;
+
     state.root.style.setProperty("--image-max-width", "unset");
+    state.root.style.setProperty("--gap", `96px`);
+    state.root.style.setProperty("--text-fontsize", `15pt`);
+    state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
 
-    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
-    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
-
-    const allCells = state.getCells();
-    allCells.forEach((cell) => {
-      cell.style.overflow = "visible";
-      cell.style.minHeight = "0";
-    });
-
-    const allImages = state.cardsEl.querySelectorAll("img");
+    // Let images size naturally for the capture
     allImages.forEach((img) => {
       if (img.src && img.style.display !== "none") {
         img.style.objectFit = "contain";
@@ -928,20 +805,9 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
       }
     });
 
-    const allDrops = state.cardsEl.querySelectorAll(".drop");
     allDrops.forEach((drop) => {
-      drop.style.overflow = "visible";
       drop.style.height = "auto";
     });
-
-    state.root.style.setProperty("--border", `unset`);
-    state.gridEl.style.outline = "none";
-
-    const prevZoom = state.gridZoom;
-    state.root.style.setProperty("--image-max-width", "unset");
-    state.root.style.setProperty("--gap", `96px`);
-    state.root.style.setProperty("--text-fontsize", `15pt`);
-    state.root.style.setProperty("--grid-zoom-cell-height", `0px`);
 
     if (useFullSize) {
       const baseFontSize = 15;
@@ -968,76 +834,21 @@ const downloadAsImage = async (useFullSize = false, resolutionScale = 1) => {
       });
     }
 
-    state.gridEl.style.gridTemplateRows = "auto";
-    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
-
     const initialPadding = useFullSize ? 192 : 64;
     const padding = Math.floor(initialPadding * resolutionScale);
-
-    state.cardsEl.style.padding = `8px ${padding}px`;
-    state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "auto";
-    state.cardsEl.style.flex = "none";
-    state.cardsEl.style.minHeight = "0";
-
-    const gridRenderedWidth = state.gridEl.offsetWidth;
-    state.gridEl.style.width = `${gridRenderedWidth}px`;
-
-    const captureHeight = state.cardsEl.offsetHeight;
+    const captureHeight = finalizeLayoutForCapture(effectiveCols, padding);
 
     const exportScale = useFullSize ? resolutionScale : 1;
-    await redrawAllCanvasesForExport(exportScale);
-
-    // Ensure all images are fully decoded before capture to prevent blank images
-    await waitForImagesDecode(state.cardsEl);
-
-    let blob = await domToBlob(state.cardsEl, {
-      height: captureHeight,
-      filter: exportNodeFilter,
-    });
-
-    blob = await cropBlobToHeight(blob, captureHeight);
+    const blob = await captureToBlob(captureHeight, exportScale);
 
     triggerDownload(blob, generateFilename());
 
-    // Restore all styles
-    allCells.forEach((cell) => {
-      cell.style.overflow = null;
-      cell.style.minHeight = null;
-    });
-
-    allImages.forEach((img) => {
-      img.style.objectFit = null;
-      img.style.height = null;
-      img.style.maxHeight = null;
-      img.style.width = null;
-    });
-
-    allDrops.forEach((drop) => {
-      drop.style.overflow = null;
-      drop.style.height = null;
-      drop.style.width = null;
-    });
-
-    state.cardsEl.style.padding = "16px";
-    state.cardsEl.style.width = null;
-    state.cardsEl.style.height = null;
-    state.cardsEl.style.flex = null;
-    state.cardsEl.style.minHeight = null;
-    state.gridEl.style.outline = null;
-    state.gridEl.style.width = null;
-    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-    state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
-
-    applyGridZoom(prevZoom);
-    restoreAllCanvases();
-
-    restoreEmptyRows();
-    restoreSelection();
+    restoreAfterExport(ctx);
   } catch (error) {
     console.error(error);
+    restoreAfterExport(ctx);
   } finally {
-    showAfterExport();
+    ctx.showAfterExport();
   }
 };
 
@@ -1114,89 +925,11 @@ const downloadWithScale = () => {
 };
 
 const downloadAsImageWithOutputScale = async (outputScale) => {
-  const showAfterExport = hideForExport();
+  const ctx = prepareForExport();
   try {
-    const restoreSelection = hideSelectionForExport();
-    const { restore: restoreEmptyRows, effectiveCols: contentCols } = hideEmptyRowsForExport();
-    const baseMultiplier = 2;
-
-    const currentTemplateCols = state.gridEl.style.gridTemplateColumns;
-    const colMatch = currentTemplateCols && currentTemplateCols.match(/repeat\((\d+)/);
-    const effectiveCols = colMatch ? Math.min(parseInt(colMatch[1]), contentCols) : contentCols;
-
-    const allImages = state.cardsEl.querySelectorAll("img");
-    const imageSizes = [];
-    allImages.forEach((img) => {
-      if (img.src && img.style.display !== "none") {
-        imageSizes.push({ img, width: img.clientWidth, height: img.clientHeight });
-      }
-    });
-
-    state.root.style.setProperty("--border", `unset`);
-    state.gridEl.style.outline = "none";
-
-    const allCells = state.getCells();
-    allCells.forEach((cell) => {
-      cell.style.overflow = "visible";
-    });
-
-    const allDrops = state.cardsEl.querySelectorAll(".drop");
-    allDrops.forEach((drop) => {
-      drop.style.overflow = "visible";
-    });
-
-    let cappedMultiplier = baseMultiplier;
-    imageSizes.forEach(({ img, width, height }) => {
-      const maxForThis = Math.min(img.naturalWidth / width, img.naturalHeight / height);
-      cappedMultiplier = Math.min(cappedMultiplier, maxForThis);
-    });
-    cappedMultiplier = Math.max(1, cappedMultiplier);
-
-    imageSizes.forEach(({ img, width, height }) => {
-      img.style.width = Math.round(width * cappedMultiplier) + "px";
-      img.style.height = Math.round(height * cappedMultiplier) + "px";
-      img.style.objectFit = "contain";
-      img.style.maxHeight = "unset";
-    });
-
-    const scale = state.gridZoom / 100;
-    const gap = Math.round(48 * scale * cappedMultiplier);
-    state.root.style.setProperty("--gap", `${gap}px`);
-    const fontSize = Math.round(16 * scale * cappedMultiplier / outputScale);
-    state.root.style.setProperty("--text-fontsize", `${fontSize}pt`);
-
-    const filenameLabels = state.cardsEl.querySelectorAll(".grid-cell-filename");
-    const filenameFontSize = Math.round(8 * cappedMultiplier / outputScale);
-    filenameLabels.forEach((label) => {
-      label.style.fontSize = `${filenameFontSize}pt`;
-    });
-
-    allDrops.forEach((drop) => {
-      const img = drop.querySelector("img");
-      if (!img || !img.src || img.style.display === "none") {
-        drop.style.width = "32px";
-        drop.style.height = "32px";
-      }
-    });
-
-    state.gridEl.style.gridTemplateRows = "auto";
-    state.gridEl.style.gridTemplateColumns = `repeat(${effectiveCols}, auto)`;
-
-    const padding = Math.round(32 * cappedMultiplier);
-    state.cardsEl.style.padding = `8px ${padding}px`;
-    state.cardsEl.style.width = "fit-content";
-    state.cardsEl.style.height = "auto";
-    state.cardsEl.style.flex = "none";
-    state.cardsEl.style.minHeight = "0";
-
-    const gridRenderedWidth = state.gridEl.offsetWidth;
-    state.gridEl.style.width = `${gridRenderedWidth}px`;
-
-    const captureHeight = state.cardsEl.offsetHeight;
+    const { cappedMultiplier, filenameLabels, captureHeight } = prepareOutputScaleExport(ctx, outputScale);
 
     await redrawAllCanvasesForExport(cappedMultiplier);
-
-    // Ensure all images are fully decoded before capture to prevent blank images
     await waitForImagesDecode(state.cardsEl);
 
     let blob = await domToBlob(state.cardsEl, {
@@ -1208,47 +941,14 @@ const downloadAsImageWithOutputScale = async (outputScale) => {
 
     triggerDownload(scaledBlob, generateFilename());
 
-    // Restore all styles
-    allCells.forEach((cell) => {
-      cell.style.overflow = null;
-    });
-
-    allImages.forEach((img) => {
-      img.style.objectFit = null;
-      img.style.height = null;
-      img.style.maxHeight = null;
-      img.style.width = null;
-    });
-
-    allDrops.forEach((drop) => {
-      drop.style.overflow = null;
-      drop.style.height = null;
-      drop.style.width = null;
-    });
-
-    filenameLabels.forEach((label) => {
-      label.style.fontSize = null;
-    });
-
-    state.cardsEl.style.padding = "16px";
-    state.cardsEl.style.width = null;
-    state.cardsEl.style.height = null;
-    state.cardsEl.style.flex = null;
-    state.cardsEl.style.minHeight = null;
-    state.gridEl.style.outline = null;
-    state.gridEl.style.width = null;
-    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
-    state.root.style.setProperty("--border", `1px dashed rgb(167, 165, 165)`);
-
-    applyGridZoom(state.gridZoom);
-    restoreAllCanvases();
-
-    restoreEmptyRows();
-    restoreSelection();
+    restoreOutputScaleExport(filenameLabels);
+    restoreAfterExport(ctx);
   } catch (error) {
     console.error(error);
+    restoreOutputScaleExport(state.cardsEl.querySelectorAll(".grid-cell-filename"));
+    restoreAfterExport(ctx);
   } finally {
-    showAfterExport();
+    ctx.showAfterExport();
   }
 };
 
