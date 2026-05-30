@@ -516,7 +516,7 @@ const setupCell = (cell) => {
     }
 
     const src = e.dataTransfer.getData("text/plain");
-    if (src) {
+    if (src && (src.startsWith("data:") || src.startsWith("blob:"))) {
       // Check if dragged from toolbar — insert from toolbar
       const source = e.dataTransfer.getData("source");
       const draggedId = e.dataTransfer.getData("id");
@@ -543,7 +543,7 @@ const setupCell = (cell) => {
         }
       }
 
-      // Fallback: just set the image (e.g. external drop)
+      // Fallback: just set the image (e.g. local drop)
       img.style.display = "block";
       img.src = src;
       img.alt = "";
