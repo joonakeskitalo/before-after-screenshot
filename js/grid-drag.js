@@ -88,7 +88,14 @@ const computeMoveTargets = (selectedIndices, fromIndex, toIndex, cells = state.g
   return selectedIndices.map((idx) => idx + offset);
 };
 
+const assertDragDepsInitialized = () => {
+  if (!_getCellData || !_setCellData || !_insertRowAt || !_insertColumnAt) {
+    throw new Error("grid-drag: initDragDeps() was never called");
+  }
+};
+
 const performCellMove = (selectedIndices, targetIndices) => {
+  assertDragDepsInitialized();
   const cells = state.getCells();
   const offset = targetIndices[0] - selectedIndices[0];
 
@@ -183,6 +190,7 @@ let lastEdgeExpansionTime = 0;
 const EDGE_EXPANSION_COOLDOWN = 400; // ms
 
 const expandGridForDrag = (direction) => {
+  assertDragDepsInitialized();
   const now = Date.now();
   if (now - lastEdgeExpansionTime < EDGE_EXPANSION_COOLDOWN) return false;
 

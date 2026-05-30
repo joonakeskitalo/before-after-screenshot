@@ -17,6 +17,12 @@ const initRowControlsDeps = ({ getCellData, setCellData, createCell, updateFilen
   _updateFilenameLabel = updateFilenameLabel;
 };
 
+const assertRowControlsDepsInitialized = () => {
+  if (!_getCellData || !_setCellData || !_createCell || !_updateFilenameLabel) {
+    throw new Error("grid-row-controls: initRowControlsDeps() was never called");
+  }
+};
+
 // --- SVG Icon Factories (DOM-based to avoid innerHTML/XSS vectors) ---
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -102,6 +108,7 @@ const clearRowDropTarget = () => {
 // --- Row swap / move ---
 
 const swapRows = (rowA, rowB) => {
+  assertRowControlsDepsInitialized();
   if (rowA === rowB) return;
 
   const cols = state.gridCols;
@@ -133,6 +140,7 @@ const swapRows = (rowA, rowB) => {
 };
 
 const moveRow = (sourceRow, targetIndex) => {
+  assertRowControlsDepsInitialized();
   // If dropping in the same position or adjacent (no-op)
   if (targetIndex === sourceRow || targetIndex === sourceRow + 1) return;
 
@@ -191,6 +199,7 @@ const moveRow = (sourceRow, targetIndex) => {
 // --- Insert / Delete rows and columns ---
 
 const insertRowAt = (insertIndex) => {
+  assertRowControlsDepsInitialized();
   // Enforce maximum grid size
   if (state.gridRows >= GRID_MAX_ROWS) return;
 
@@ -265,6 +274,7 @@ const insertRowAt = (insertIndex) => {
 };
 
 const insertColumnAt = (insertIndex) => {
+  assertRowControlsDepsInitialized();
   // Enforce maximum grid size
   if (state.gridCols >= GRID_MAX_COLS) return;
 
@@ -349,6 +359,7 @@ const insertColumnAt = (insertIndex) => {
 };
 
 const deleteRowAt = (rowIndex) => {
+  assertRowControlsDepsInitialized();
   if (state.gridRows <= 1) return; // Don't delete the last row
 
   const cols = state.gridCols;
@@ -459,6 +470,7 @@ const deleteRowAt = (rowIndex) => {
 };
 
 const deleteColumnAt = (colIndex) => {
+  assertRowControlsDepsInitialized();
   if (state.gridCols <= 1) return; // Don't delete the last column
 
   const rows = state.gridRows;
