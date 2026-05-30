@@ -1,5 +1,3 @@
-import state from './state.js';
-
 // Sync content-container padding-top with toolbar height
 (() => {
   const toolbar = document.querySelector('.toolbar');

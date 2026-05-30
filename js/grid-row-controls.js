@@ -1,7 +1,6 @@
 import state from './state.js';
 import { GRID_MIN_COL_WIDTH } from './constants.js';
 import { updateCopySelectedBtn } from './grid-ui.js';
-import { redrawCanvas } from './drawing.js';
 
 // These are resolved lazily to avoid circular imports with grid-core.js
 let _getCellData = null;

@@ -1,6 +1,6 @@
 import state from './state.js';
 import { applyGridZoom } from './zoom.js';
-import { toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt, updateFilenameLabel } from './grid.js';
+import { getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt, updateFilenameLabel } from './grid.js';
 import {
   updatePresetColorSelection, penModeBtn, arrowModeBtn, lineModeBtn,
   rectModeBtn, rectstrokeModeBtn, ovalModeBtn, ovalfillModeBtn,

@@ -15,8 +15,8 @@ import {
 import {
   scaleBlob, cropAndScaleBlob, generateFilename, triggerDownload,
 } from './export-utils.js';
-import { COLOR_MATRICES, applyFilterToImageData } from './filter-kernels.js';
-import { applyFilterToCanvas, closeFilterPreview, previewAllFilters } from './filter-preview.js';
+import { applyFilterToImageData } from './filter-kernels.js';
+import { closeFilterPreview, previewAllFilters } from './filter-preview.js';
 import { showToast } from './toast.js';
 
 // Guard against concurrent exports

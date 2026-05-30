@@ -9,7 +9,6 @@ import {
 const bottomToolbar = document.getElementById("bottom-toolbar");
 const bottomToolbarInner = document.getElementById("bottom-toolbar-inner");
 const bottomToolbarDrop = document.getElementById("bottom-toolbar-drop");
-const bottomToolbarDropSpan = bottomToolbarDrop.querySelector("span");
 
 // Track whether the user has manually resized the staging area
 let stagingManuallyResized = false;
