@@ -1124,14 +1124,9 @@ const insertColumnAt = (insertIndex) => {
   const oldCols = state.gridCols;
   const rows = state.gridRows;
 
-  // Collect all existing cell data keyed by (row, col)
-  const cells = state.getCells();
-  const dataByPos = new Map();
-  for (const cell of cells) {
-    const r = parseInt(cell.dataset.row, 10);
-    const c = parseInt(cell.dataset.col, 10);
-    dataByPos.set(`${r},${c}`, getCellData(cell));
-  }
+  // Clamp insertIndex
+  if (insertIndex < 0) insertIndex = 0;
+  if (insertIndex > oldCols) insertIndex = oldCols;
 
   state.gridCols++;
   document.getElementById("grid-cols").value = state.gridCols;
@@ -1155,53 +1150,55 @@ const insertColumnAt = (insertIndex) => {
     state.focusedCellIndex = row * state.gridCols + newCol;
   }
 
-  // Build new data array with shifted columns
-  const newData = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < state.gridCols; c++) {
-      if (c === insertIndex) {
-        newData.push({ row: r, col: c, imgSrc: null, imgAlt: "", text: "", drawingPaths: [] });
+  // Insert new empty cells into the DOM at the correct positions (bottom-up to keep indices stable)
+  const cells = state.getCells();
+  for (let r = rows - 1; r >= 0; r--) {
+    const newCell = createCell(r, insertIndex);
+    // The reference node is the cell that was at (r, insertIndex) in the old layout,
+    // i.e. index r * oldCols + insertIndex. If insertIndex === oldCols, append after last cell in row.
+    const refIdx = r * oldCols + insertIndex;
+    if (insertIndex < oldCols && refIdx < cells.length) {
+      state.gridEl.insertBefore(newCell, cells[refIdx]);
+    } else {
+      // Inserting at the end of the row — append after the last cell of this row
+      const lastInRow = cells[r * oldCols + oldCols - 1];
+      if (lastInRow && lastInRow.nextSibling) {
+        state.gridEl.insertBefore(newCell, lastInRow.nextSibling);
       } else {
-        const srcCol = c < insertIndex ? c : c - 1;
-        const existing = dataByPos.get(`${r},${srcCol}`);
-        newData.push(existing ? { ...existing, row: r, col: c } : { row: r, col: c, imgSrc: null, imgAlt: "", text: "", drawingPaths: [] });
+        state.gridEl.appendChild(newCell);
       }
     }
   }
 
-  // Column insertion changes the total cell count and grid template — rebuild is needed
-  cleanupCanvasData(state.gridEl.querySelectorAll(".drawing-canvas"));
-  state.gridEl.innerHTML = "";
+  // Update grid template
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
-  const newDataMap = toDataMap(newData);
-
+  // Invalidate cache and fix dataset.row/col attributes
+  state.invalidateCellsCache();
+  const updatedCells = state.getCells();
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
-
-      const existing = newDataMap.get(`${r},${c}`);
-      if (existing && (existing.imgSrc || existing.text || (existing.drawingPaths && existing.drawingPaths.length > 0))) {
-        restoreCellData(cell, existing);
-      }
+      updatedCells[r * state.gridCols + c].dataset.row = String(r);
+      updatedCells[r * state.gridCols + c].dataset.col = String(c);
     }
   }
 
-  buildRowControls();
-
-  // Re-apply selection CSS classes to the rebuilt DOM
-  const rebuiltCells = state.getCells();
+  // Re-apply selection CSS classes
+  updatedCells.forEach((cell) => {
+    cell.classList.remove("keyboard-selected", "keyboard-focused");
+  });
   state.selectedCells.forEach((idx) => {
-    if (idx >= 0 && idx < rebuiltCells.length) {
-      rebuiltCells[idx].classList.add("keyboard-selected");
+    if (idx >= 0 && idx < updatedCells.length) {
+      updatedCells[idx].classList.add("keyboard-selected");
     }
   });
-  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < rebuiltCells.length) {
-    rebuiltCells[state.focusedCellIndex].classList.add("keyboard-focused");
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < updatedCells.length) {
+    updatedCells[state.focusedCellIndex].classList.add("keyboard-focused");
   }
   updateCopySelectedBtn();
+
+  buildRowControls();
 };
 
 const deleteRowAt = (rowIndex) => {
@@ -1552,11 +1549,27 @@ const relayoutGrid = () => {
 document.getElementById("relayout-btn").addEventListener("click", relayoutGrid);
 
 const updateGrid = () => {
-  state.gridCols = parseInt(document.getElementById("grid-cols").value, 10) || 3;
-  state.gridRows = parseInt(document.getElementById("grid-rows").value, 10) || 1;
+  const newCols = parseInt(document.getElementById("grid-cols").value, 10) || 3;
+  const newRows = parseInt(document.getElementById("grid-rows").value, 10) || 1;
+
+  // Add/remove rows incrementally
+  while (state.gridRows < newRows) {
+    insertRowAt(state.gridRows);
+  }
+  while (state.gridRows > newRows && state.gridRows > 1) {
+    deleteRowAt(state.gridRows - 1);
+  }
+
+  // Add/remove columns incrementally
+  while (state.gridCols < newCols) {
+    insertColumnAt(state.gridCols);
+  }
+  while (state.gridCols > newCols && state.gridCols > 1) {
+    deleteColumnAt(state.gridCols - 1);
+  }
+
   state.selectedRows.clear();
   updateCopySelectedBtn();
-  buildGrid();
 };
 
 // Wire up grid size inputs (replacing inline onchange handlers)
@@ -1573,21 +1586,36 @@ const deleteColumnAt = (colIndex) => {
   const oldCols = state.gridCols;
   const cells = state.getCells();
 
-  // Collect data keyed by (row, col), skipping the deleted column
-  const dataByPos = new Map();
-  for (const cell of cells) {
-    const r = parseInt(cell.dataset.row, 10);
-    const c = parseInt(cell.dataset.col, 10);
-    if (c === colIndex) {
-      // Revoke blob URL for deleted cells
-      const img = cell.querySelector("img");
-      if (img && img.src && img.src.startsWith("blob:")) {
-        URL.revokeObjectURL(img.src);
-      }
-      continue;
+  // Revoke blob URLs and remove cells in the deleted column (bottom-up to keep indices stable)
+  for (let r = rows - 1; r >= 0; r--) {
+    const idx = r * oldCols + colIndex;
+    const cell = cells[idx];
+    // Revoke blob URL
+    const img = cell.querySelector("img");
+    if (img && img.src && img.src.startsWith("blob:")) {
+      URL.revokeObjectURL(img.src);
     }
-    const newCol = c > colIndex ? c - 1 : c;
-    dataByPos.set(`${r},${newCol}`, getCellData(cell));
+    // Clean up canvas observer and data
+    const canvas = cell.querySelector(".drawing-canvas");
+    if (canvas) {
+      const observer = state.canvasObservers.get(canvas);
+      if (observer) {
+        observer.disconnect();
+        state.canvasObservers.delete(canvas);
+      }
+      const visObserver = state.canvasVisibilityObservers.get(canvas);
+      if (visObserver) {
+        visObserver.disconnect();
+        state.canvasVisibilityObservers.delete(canvas);
+      }
+      const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
+      if (mouseUpHandler) {
+        document.removeEventListener("mouseup", mouseUpHandler);
+        state.canvasMouseUpHandlers.delete(canvas);
+      }
+      state.canvasDataMap.delete(canvas);
+    }
+    cell.remove();
   }
 
   // Update selectedCells — remove cells in the deleted column and shift indices
@@ -1618,37 +1646,35 @@ const deleteColumnAt = (colIndex) => {
   state.gridCols--;
   document.getElementById("grid-cols").value = state.gridCols;
 
-  // Column deletion changes total cell count — rebuild DOM
-  cleanupCanvasData(state.gridEl.querySelectorAll(".drawing-canvas"));
-  state.gridEl.innerHTML = "";
+  // Update grid template
   state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
   state.gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
+  // Invalidate cache and fix dataset.row/col attributes
+  state.invalidateCellsCache();
+  const updatedCells = state.getCells();
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < state.gridCols; c++) {
-      const cell = createCell(r, c);
-      state.gridEl.appendChild(cell);
-
-      const existing = dataByPos.get(`${r},${c}`);
-      if (existing && (existing.imgSrc || existing.text || (existing.drawingPaths && existing.drawingPaths.length > 0))) {
-        restoreCellData(cell, existing);
-      }
+      updatedCells[r * state.gridCols + c].dataset.row = String(r);
+      updatedCells[r * state.gridCols + c].dataset.col = String(c);
     }
   }
 
-  buildRowControls();
-
-  // Re-apply selection CSS classes to the rebuilt DOM
-  const rebuiltCells = state.getCells();
+  // Re-apply selection CSS classes
+  updatedCells.forEach((cell) => {
+    cell.classList.remove("keyboard-selected", "keyboard-focused");
+  });
   state.selectedCells.forEach((idx) => {
-    if (idx >= 0 && idx < rebuiltCells.length) {
-      rebuiltCells[idx].classList.add("keyboard-selected");
+    if (idx >= 0 && idx < updatedCells.length) {
+      updatedCells[idx].classList.add("keyboard-selected");
     }
   });
-  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < rebuiltCells.length) {
-    rebuiltCells[state.focusedCellIndex].classList.add("keyboard-focused");
+  if (state.focusedCellIndex >= 0 && state.focusedCellIndex < updatedCells.length) {
+    updatedCells[state.focusedCellIndex].classList.add("keyboard-focused");
   }
   updateCopySelectedBtn();
+
+  buildRowControls();
 };
 
 export {

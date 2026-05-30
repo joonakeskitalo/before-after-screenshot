@@ -1,6 +1,6 @@
 import state from './state.js';
 import { applyGridZoom } from './zoom.js';
-import { buildGrid, toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt } from './grid.js';
+import { toggleFilenames, getAdjacentCell, getCellData, setCellData, insertRowAt, insertColumnAt, deleteRowAt, deleteColumnAt } from './grid.js';
 import {
   updatePresetColorSelection, penModeBtn, arrowModeBtn, lineModeBtn,
   rectModeBtn, rectstrokeModeBtn, ovalModeBtn, ovalfillModeBtn,
@@ -441,9 +441,6 @@ document.addEventListener("keydown", (e) => {
   // Allow Shift+R/E/O through for tool switching hotkeys
   if (e.shiftKey && state.drawingMode && e.key !== "Escape" && !["!", "\"", "#", "R", "E", "O", "A"].includes(e.key)) return;
 
-  const gridColsInput = document.getElementById("grid-cols");
-  const gridRowsInput = document.getElementById("grid-rows");
-
   switch (e.key) {
     case "Escape":
       // Clear grid cell focus and selection
@@ -499,31 +496,23 @@ document.addEventListener("keydown", (e) => {
       moveModeBtn.click();
       break;
     case "?":
-      state.gridRows++;
-      gridRowsInput.value = state.gridRows;
-      buildGrid();
+      insertRowAt(state.gridRows);
       break;
     case "_":
       // Shift - remove row
       if (state.gridRows > 1) {
-        state.gridRows--;
-        gridRowsInput.value = state.gridRows;
-        buildGrid();
+        deleteRowAt(state.gridRows - 1);
       }
       break;
     case "+":
       // + add column
-      state.gridCols++;
-      gridColsInput.value = state.gridCols;
-      buildGrid();
+      insertColumnAt(state.gridCols);
       e.preventDefault();
       break;
     case "-":
       // - remove column
       if (state.gridCols > 1) {
-        state.gridCols--;
-        gridColsInput.value = state.gridCols;
-        buildGrid();
+        deleteColumnAt(state.gridCols - 1);
       }
       e.preventDefault();
       break;

@@ -498,10 +498,10 @@ insertAllBtn.addEventListener("click", (e) => {
   const needed = items.length - emptyCells.length;
   if (needed > 0) {
     const extraRows = Math.ceil(needed / state.gridCols);
-    state.gridRows += extraRows;
-    document.getElementById("grid-rows").value = state.gridRows;
-    buildGrid();
-    // Re-query empty cells after rebuilding
+    for (let i = 0; i < extraRows; i++) {
+      insertRowAt(state.gridRows);
+    }
+    // Re-query empty cells after adding rows
     emptyCells = state.getCells().filter((cell) => {
       const img = cell.querySelector("img");
       return !img || !img.src || img.style.display === "none";
