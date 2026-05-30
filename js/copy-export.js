@@ -1689,6 +1689,9 @@ const previewAllFilters = async () => {
 
         ctx.drawImage(img, imgX, imgY, drawW, drawH);
 
+        // Revoke the blob URL now that the image has been drawn to the canvas
+        URL.revokeObjectURL(img.src);
+
         ctx.fillStyle = "#333333";
         ctx.font = `500 ${labelFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
         ctx.textAlign = "center";
