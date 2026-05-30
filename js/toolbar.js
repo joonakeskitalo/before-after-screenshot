@@ -559,10 +559,7 @@ clearGridBtn.addEventListener("click", (e) => {
     if (span) span.style.display = "block";
     if (textarea) textarea.value = "";
     if (canvas) {
-      const canvasData = state.canvasDataMap.get(canvas);
-      if (canvasData) {
-        canvasData.paths = [];
-      }
+      state.canvasDataMap.delete(canvas);
     }
     updateFilenameLabel(cell);
   });
