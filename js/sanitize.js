@@ -6,7 +6,36 @@
 const MAX_FILENAME_LENGTH = 255;
 
 // Allowed image MIME types for data: URLs
-const ALLOWED_IMAGE_MIMES = /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml|bmp|ico|avif)/i;
+const ALLOWED_IMAGE_MIMES = /^data:image\/(png|jpeg|jpg|gif|webp|bmp|ico|avif)/i;
+
+// SVG (image/svg+xml) is explicitly excluded from all file acceptance paths
+// because SVGs can contain embedded scripts. While browsers sandbox SVGs in
+// <img> tags, they could become an XSS vector if ever rendered in a less
+// restrictive context (e.g., foreignObject, innerHTML).
+
+/**
+ * Allowed raster image MIME types for file input (drops/pastes).
+ * This is an allowlist approach — only known-safe raster formats pass.
+ */
+const ALLOWED_FILE_MIMES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+  "image/avif",
+];
+
+/**
+ * Check whether a File object has an allowed image MIME type.
+ * Uses an allowlist of safe raster formats; SVGs are explicitly excluded.
+ */
+export const isAllowedImageFile = (file) => {
+  if (!file || typeof file.type !== "string") return false;
+  return ALLOWED_FILE_MIMES.includes(file.type.toLowerCase());
+};
 
 /**
  * Check whether a URL is safe to use as an image source.

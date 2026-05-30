@@ -1,6 +1,6 @@
 import state from './state.js';
 import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt } from './grid.js';
-import { isAllowedImageSrc } from './sanitize.js';
+import { isAllowedImageSrc, isAllowedImageFile } from './sanitize.js';
 import {
   TOOLBAR_MIN_HEIGHT, TOOLBAR_COMPACT_THRESHOLD, TOOLBAR_PADDING_OFFSET, TOOLBAR_BODY_PADDING,
 } from './constants.js';
@@ -186,10 +186,8 @@ bottomToolbarDrop.addEventListener("dragover", (e) => {
 bottomToolbarDrop.addEventListener("drop", (e) => {
   e.preventDefault();
 
-  // Handle file drops
-  const files = [...e.dataTransfer.files].filter((f) =>
-    f.type.startsWith("image/"),
-  );
+  // Handle file drops (raster images only; SVGs excluded for security)
+  const files = [...e.dataTransfer.files].filter(isAllowedImageFile);
   if (files.length) {
     files.forEach((file) => {
       state.addImageToToolbar(URL.createObjectURL(file), file.name);
@@ -217,9 +215,7 @@ bottomToolbar.addEventListener("drop", (e) => {
   }
   e.preventDefault();
 
-  const files = [...e.dataTransfer.files].filter((f) =>
-    f.type.startsWith("image/"),
-  );
+  const files = [...e.dataTransfer.files].filter(isAllowedImageFile);
   if (files.length) {
     files.forEach((file) => {
       state.addImageToToolbar(URL.createObjectURL(file), file.name);

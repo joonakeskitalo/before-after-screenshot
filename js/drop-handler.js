@@ -1,5 +1,6 @@
 import state from './state.js';
 import { buildGrid } from './grid.js';
+import { isAllowedImageFile } from './sanitize.js';
 
 const dropNewImage = (e) => {
   e.preventDefault();
@@ -14,7 +15,7 @@ const dropNewImage = (e) => {
   }
 
   [...e.dataTransfer.files]
-    .filter((x) => x.type.startsWith("image/"))
+    .filter(isAllowedImageFile)
     .forEach((droppedFile) => {
       state.addImageToToolbar(URL.createObjectURL(droppedFile), droppedFile.name);
     });

@@ -2,7 +2,7 @@ import state from './state.js';
 import { initDrawingCanvas, redrawCanvas, getObjectFitRect } from './drawing.js';
 import { attachDragTo, updateCopySelectedBtn } from './grid-ui.js';
 import { applyGridZoom } from './zoom.js';
-import { isAllowedImageSrc, sanitizeFilename, isValidElementId } from './sanitize.js';
+import { isAllowedImageSrc, isAllowedImageFile, sanitizeFilename, isValidElementId } from './sanitize.js';
 import {
   GRID_MIN_COL_WIDTH, EDGE_EXPANSION_THRESHOLD, EDGE_EXPANSION_MAX_COLS,
   EDGE_EXPANSION_MAX_ROWS, SWAP_ANIMATION_FALLBACK_MS,
@@ -507,7 +507,7 @@ const setupCell = (cell) => {
     }
 
     const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile && droppedFile.type.startsWith("image/")) {
+    if (droppedFile && isAllowedImageFile(droppedFile)) {
       img.style.display = "block";
       img.src = URL.createObjectURL(droppedFile);
       img.alt = droppedFile.name;
