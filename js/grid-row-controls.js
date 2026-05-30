@@ -1,5 +1,5 @@
 import state from './state.js';
-import { GRID_MIN_COL_WIDTH } from './constants.js';
+import { GRID_MIN_COL_WIDTH, GRID_MAX_ROWS, GRID_MAX_COLS } from './constants.js';
 import { updateCopySelectedBtn } from './grid-ui.js';
 
 // These are resolved lazily to avoid circular imports with grid-core.js
@@ -190,6 +190,9 @@ const moveRow = (sourceRow, targetIndex) => {
 // --- Insert / Delete rows and columns ---
 
 const insertRowAt = (insertIndex) => {
+  // Enforce maximum grid size
+  if (state.gridRows >= GRID_MAX_ROWS) return;
+
   const cols = state.gridCols;
   const oldRows = state.gridRows;
 
@@ -261,6 +264,9 @@ const insertRowAt = (insertIndex) => {
 };
 
 const insertColumnAt = (insertIndex) => {
+  // Enforce maximum grid size
+  if (state.gridCols >= GRID_MAX_COLS) return;
+
   const oldCols = state.gridCols;
   const rows = state.gridRows;
 

@@ -2,7 +2,7 @@ import state from './state.js';
 import { initDrawingCanvas, redrawCanvas } from './drawing.js';
 import { attachDragTo, updateCopySelectedBtn } from './grid-ui.js';
 import { isAllowedImageSrc, isAllowedImageFile, sanitizeFilename, isValidElementId } from './sanitize.js';
-import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS } from './constants.js';
+import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS, GRID_MAX_ROWS, GRID_MAX_COLS } from './constants.js';
 import { handleCellClick } from './grid-selection.js';
 import { handleCellDragStart } from './grid-drag.js';
 import {
@@ -581,8 +581,12 @@ document.getElementById("relayout-btn").addEventListener("click", relayoutGrid);
 // --- updateGrid ---
 
 const updateGrid = () => {
-  const newCols = parseInt(document.getElementById("grid-cols").value, 10) || 3;
-  const newRows = parseInt(document.getElementById("grid-rows").value, 10) || 1;
+  const newCols = Math.min(parseInt(document.getElementById("grid-cols").value, 10) || 3, GRID_MAX_COLS);
+  const newRows = Math.min(parseInt(document.getElementById("grid-rows").value, 10) || 1, GRID_MAX_ROWS);
+
+  // Reflect clamped values back into the inputs
+  document.getElementById("grid-cols").value = newCols;
+  document.getElementById("grid-rows").value = newRows;
 
   // Add/remove rows incrementally
   while (state.gridRows < newRows) {
