@@ -1,5 +1,5 @@
 import state from './state.js';
-import { updateFilenameLabel, buildGrid, toggleFilenames } from './grid.js';
+import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt } from './grid.js';
 
 // --- Bottom Toolbar Logic ---
 const bottomToolbar = document.getElementById("bottom-toolbar");
@@ -228,24 +228,48 @@ document.onpaste = function (event) {
   const items = (event.clipboardData || event.originalEvent.clipboardData).items;
 
   if (state.focusedCellIndex >= 0) {
-    // Paste the first image directly into the focused grid cell
-    const cells = state.getCells();
-    const cell = cells[state.focusedCellIndex];
-    if (cell) {
-      for (const index in items) {
-        const item = items[index];
-        if (item.kind === "file") {
-          const blob = item.getAsFile();
-          const img = cell.querySelector("img");
-          const span = cell.querySelector("span");
-          img.style.display = "flex";
-          img.src = URL.createObjectURL(blob);
-          img.alt = blob.name || "";
-          if (span) span.style.display = "none";
-          updateFilenameLabel(cell);
-          break; // Only paste the first image into the cell
-        }
+    // Collect all image blobs from the clipboard
+    const blobs = [];
+    for (const index in items) {
+      const item = items[index];
+      if (item.kind === "file") {
+        const blob = item.getAsFile();
+        if (blob) blobs.push(blob);
       }
+    }
+    if (blobs.length === 0) return;
+
+    // Paste images starting at the focused cell, continuing to the right.
+    // Skip cells that already have an image. If the row runs out, add a new row.
+    let cellIndex = state.focusedCellIndex;
+    for (const blob of blobs) {
+      // Skip cells that already have an image
+      while (true) {
+        // Add a new row if we've run past the last cell
+        if (cellIndex >= state.gridCols * state.gridRows) {
+          insertRowAt(state.gridRows);
+        }
+        const cells = state.getCells();
+        const cell = cells[cellIndex];
+        const existingImg = cell && cell.querySelector("img");
+        if (!existingImg || existingImg.style.display === "none" || !existingImg.src) {
+          break; // Cell is empty, use it
+        }
+        cellIndex++;
+      }
+
+      const cells = state.getCells();
+      const cell = cells[cellIndex];
+      if (cell) {
+        const img = cell.querySelector("img");
+        const span = cell.querySelector("span");
+        img.style.display = "flex";
+        img.src = URL.createObjectURL(blob);
+        img.alt = blob.name || "";
+        if (span) span.style.display = "none";
+        updateFilenameLabel(cell);
+      }
+      cellIndex++;
     }
     return;
   }
