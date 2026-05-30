@@ -1733,7 +1733,7 @@ const previewAllFilters = async () => {
   const closeBtn = document.createElement("button");
   closeBtn.className = "filter-preview-close";
   closeBtn.textContent = "×";
-  closeBtn.addEventListener("click", () => overlay.remove());
+  closeBtn.addEventListener("click", () => closeFilterPreview());
 
   header.appendChild(title);
   headerBtns.appendChild(copyToStagingBtn);
