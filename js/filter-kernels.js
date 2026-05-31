@@ -70,9 +70,9 @@ export const applyFilterToImageData = (imageData, filter) => {
     const matrix = COLOR_MATRICES[filter];
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-      d[i] = matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * (a / 255) + matrix[4] * 255;
-      d[i + 1] = matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * (a / 255) + matrix[9] * 255;
-      d[i + 2] = matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * (a / 255) + matrix[14] * 255;
+      d[i] = matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4];
+      d[i + 1] = matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * a + matrix[9];
+      d[i + 2] = matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * a + matrix[14];
     }
   } else {
     console.warn(`[filter-kernels] Unrecognized filter: "${filter}". Returning unmodified imageData.`);
