@@ -80,6 +80,23 @@ const handleCellClick = (e, cell) => {
   }
 };
 
+// --- Click outside to deselect ---
+
+document.addEventListener("click", (e) => {
+  // Don't interfere with drawing mode
+  if (state.drawingMode) return;
+
+  // If the click landed inside a grid cell, handleCellClick handles it
+  if (e.target.closest(".grid-cell")) return;
+
+  // If the click landed on toolbar or controls, don't clear selection
+  if (e.target.closest(".toolbar")) return;
+
+  // Clear focus and selection
+  clearCellSelection();
+  setFocusedCellByIndex(-1);
+});
+
 export {
   setFocusedCellByIndex,
   clearCellSelection,
