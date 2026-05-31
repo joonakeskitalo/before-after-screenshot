@@ -82,49 +82,17 @@ export const applyFilterToImageData = (imageData, filter) => {
 
 /**
  * Generate the source code for the Web Worker.
- * The worker uses the same COLOR_MATRICES and applyFilterToImageData logic
- * serialized as a self-contained string (no imports in worker context).
+ * The worker reuses the same COLOR_MATRICES and applyFilterToImageData logic
+ * by serializing the live function via .toString(), so there is only one
+ * source of truth. The result is cached to avoid repeated string allocation.
  */
-export const generateWorkerSource = () => `
+let _cachedWorkerSource;
+export const generateWorkerSource = () => {
+  if (!_cachedWorkerSource) {
+    _cachedWorkerSource = `
 const COLOR_MATRICES = ${JSON.stringify(COLOR_MATRICES)};
 
-function applyFilterToImageData(imageData, filter) {
-  if (filter === "none") return imageData;
-  const d = imageData.data;
-
-  if (filter === "grayscale") {
-    for (let i = 0; i < d.length; i += 4) {
-      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      d[i] = d[i + 1] = d[i + 2] = gray;
-    }
-  } else if (filter === "low-contrast") {
-    const factor = 0.85;
-    const intercept = 128 * (1 - factor);
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = d[i] * factor + intercept;
-      d[i + 1] = d[i + 1] * factor + intercept;
-      d[i + 2] = d[i + 2] * factor + intercept;
-    }
-  } else if (filter === "high-contrast") {
-    const factor = 1.5;
-    const intercept = 128 * (1 - factor);
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = d[i] * factor + intercept;
-      d[i + 1] = d[i + 1] * factor + intercept;
-      d[i + 2] = d[i + 2] * factor + intercept;
-    }
-  } else if (COLOR_MATRICES[filter]) {
-    const matrix = COLOR_MATRICES[filter];
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-      d[i] = matrix[0]*r + matrix[1]*g + matrix[2]*b + matrix[3]*a + matrix[4]*255;
-      d[i+1] = matrix[5]*r + matrix[6]*g + matrix[7]*b + matrix[8]*a + matrix[9]*255;
-      d[i+2] = matrix[10]*r + matrix[11]*g + matrix[12]*b + matrix[13]*a + matrix[14]*255;
-    }
-  }
-
-  return imageData;
-}
+const applyFilterToImageData = ${applyFilterToImageData.toString()};
 
 self.onmessage = async (e) => {
   const { type, imageBitmap, filter, id } = e.data;
@@ -152,3 +120,6 @@ self.onmessage = async (e) => {
   }
 };
 `;
+  }
+  return _cachedWorkerSource;
+};
