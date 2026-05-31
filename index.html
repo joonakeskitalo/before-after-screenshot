@@ -22,46 +22,51 @@
           <div class="toolbar-row toolbar-row-1">
             <span class="toolbar-title">Before & After</span>
 
-            <div class="toolbar-controls">
-              <label class="toolbar-label">
-                Zoom
-                <input type="range" id="grid-zoom" min="20" max="300" value="100" step="10" style="width:100px;height:24px" />
-                <span id="grid-zoom-label" style="min-width:28px;text-align:center;font-variant-numeric:tabular-nums">100%</span>
-              </label>
+            <div class="toolbar-section">
+              <div class="toolbar-section-controls">
+                <label class="toolbar-label">
+                  Zoom
+                  <input type="range" id="grid-zoom" min="20" max="300" value="100" step="10" style="width:100px;height:24px" />
+                  <span id="grid-zoom-label" style="min-width:28px;text-align:center;font-variant-numeric:tabular-nums">100%</span>
+                </label>
 
-              <div class="toolbar-divider"></div>
+                <div class="toolbar-divider"></div>
 
-              <div class="grid-size-control">
-                <label class="grid-size-label" for="grid-cols">cols</label>
-                <input type="number" id="grid-cols" value="3" min="1" />
-                <span class="grid-size-x">×</span>
-                <input type="number" id="grid-rows" value="1" min="1" />
-                <label class="grid-size-label" for="grid-rows">rows</label>
+                <div class="grid-size-control">
+                  <label class="grid-size-label" for="grid-cols">cols</label>
+                  <input type="number" id="grid-cols" value="3" min="1" />
+                  <span class="grid-size-x">×</span>
+                  <input type="number" id="grid-rows" value="1" min="1" />
+                  <label class="grid-size-label" for="grid-rows">rows</label>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <button id="filename-toggle-btn" class="tool-mode-btn labeled-btn" title="Toggle filenames"><span class="btn-icon">Aa</span><span class="btn-label">Toggle filenames</span></button>
+                <button id="clear-grid-btn" class="tool-mode-btn labeled-btn" title="Clear all images from the grid"><span class="btn-icon">🗑</span><span class="btn-label">Clear</span></button>
               </div>
-
-              <div class="toolbar-divider"></div>
-
-              <button id="filename-toggle-btn" class="tool-mode-btn labeled-btn" title="Toggle filenames"><span class="btn-icon">Aa</span><span class="btn-label">Toggle filenames</span></button>
-              <button id="clear-grid-btn" class="tool-mode-btn labeled-btn" title="Clear all images from the grid"><span class="btn-icon">🗑</span><span class="btn-label">Clear</span></button>
-
-              <div class="toolbar-divider"></div>
-
-              <select id="color-filter-select" title="Color vision filter (v)">
-                <option value="none">No filter</option>
-                <option value="grayscale">Grayscale</option>
-                <option value="protanopia">Protanopia</option>
-                <option value="deuteranopia">Deuteranopia</option>
-                <option value="tritanopia">Tritanopia</option>
-                <option value="achromatopsia">Achromatopsia</option>
-                <option value="low-contrast">Low contrast</option>
-                <option value="high-contrast">High contrast</option>
-                <option value="low-quality-display">Low quality display</option>
-              </select>
-              <button id="preview-all-filters-btn" title="Preview all images with all color filters applied (f)">Preview filters</button>
             </div>
 
-            <div class="toolbar-copy">
-              <select id="bg-color-select">
+            <div class="toolbar-section">
+              <div class="toolbar-section-controls">
+                <select id="color-filter-select" title="Color vision filter (v)">
+                  <option value="none">No filter</option>
+                  <option value="grayscale">Grayscale</option>
+                  <option value="protanopia">Protanopia</option>
+                  <option value="deuteranopia">Deuteranopia</option>
+                  <option value="tritanopia">Tritanopia</option>
+                  <option value="achromatopsia">Achromatopsia</option>
+                  <option value="low-contrast">Low contrast</option>
+                  <option value="high-contrast">High contrast</option>
+                  <option value="low-quality-display">Low quality display</option>
+                </select>
+                <button id="preview-all-filters-btn" title="Preview all images with all color filters applied (f)">Preview filters</button>
+              </div>
+            </div>
+
+            <div class="toolbar-section toolbar-copy">
+              <div class="toolbar-section-controls">
+                <select id="bg-color-select">
                 <option disabled selected value="#f0f0f0">Background color</option>
                 <option value="#f0f0f0">Grey</option>
                 <option value="#7f7f7f;white">Grey 50%</option>
@@ -100,6 +105,7 @@
               <button id="copy-btn" title="Copy grid to clipboard (copies selection if active)">Copy</button>
               <button id="download-btn" title="Download as PNG"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M8 10l-3-3M8 10l3-3M3 13h10"/></svg></button>
               <button id="bulk-download-btn" title="Download all staged images individually"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2v7M5 9L3 7M5 9l2-2M11 2v7M11 9L9 7M11 9l2-2M2 13h12"/></svg></button>
+              </div>
             </div>
           </div>
 
