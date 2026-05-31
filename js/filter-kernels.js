@@ -37,6 +37,16 @@ export const COLOR_MATRICES = {
   ],
 };
 
+/** Apply a linear contrast adjustment in place. */
+const applyContrast = (d, factor) => {
+  const intercept = 128 * (1 - factor);
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]     = d[i]     * factor + intercept;
+    d[i + 1] = d[i + 1] * factor + intercept;
+    d[i + 2] = d[i + 2] * factor + intercept;
+  }
+};
+
 /**
  * Apply a named filter to raw ImageData (mutates in place).
  * Returns the same ImageData reference for convenience.
@@ -52,21 +62,9 @@ export const applyFilterToImageData = (imageData, filter) => {
       d[i] = d[i + 1] = d[i + 2] = gray;
     }
   } else if (filter === "low-contrast") {
-    const factor = 0.85;
-    const intercept = 128 * (1 - factor);
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = d[i] * factor + intercept;
-      d[i + 1] = d[i + 1] * factor + intercept;
-      d[i + 2] = d[i + 2] * factor + intercept;
-    }
+    applyContrast(d, 0.85);
   } else if (filter === "high-contrast") {
-    const factor = 1.5;
-    const intercept = 128 * (1 - factor);
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = d[i] * factor + intercept;
-      d[i + 1] = d[i + 1] * factor + intercept;
-      d[i + 2] = d[i + 2] * factor + intercept;
-    }
+    applyContrast(d, 1.5);
   } else if (COLOR_MATRICES[filter]) {
     const matrix = COLOR_MATRICES[filter];
     for (let i = 0; i < d.length; i += 4) {
@@ -91,6 +89,8 @@ export const generateWorkerSource = () => {
   if (!_cachedWorkerSource) {
     _cachedWorkerSource = `
 const COLOR_MATRICES = ${JSON.stringify(COLOR_MATRICES)};
+
+const applyContrast = ${applyContrast.toString()};
 
 const applyFilterToImageData = ${applyFilterToImageData.toString()};
 
