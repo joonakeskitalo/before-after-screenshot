@@ -73,6 +73,8 @@ export const applyFilterToImageData = (imageData, filter) => {
       d[i + 1] = matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * (a / 255) + matrix[9] * 255;
       d[i + 2] = matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * (a / 255) + matrix[14] * 255;
     }
+  } else {
+    console.warn(`[filter-kernels] Unrecognized filter: "${filter}". Returning unmodified imageData.`);
   }
 
   return imageData;
