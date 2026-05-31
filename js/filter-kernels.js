@@ -55,25 +55,25 @@ export const applyFilterToImageData = (imageData, filter) => {
     const factor = 0.85;
     const intercept = 128 * (1 - factor);
     for (let i = 0; i < d.length; i += 4) {
-      d[i] = Math.min(255, Math.max(0, d[i] * factor + intercept));
-      d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
-      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
+      d[i] = d[i] * factor + intercept;
+      d[i + 1] = d[i + 1] * factor + intercept;
+      d[i + 2] = d[i + 2] * factor + intercept;
     }
   } else if (filter === "high-contrast") {
     const factor = 1.5;
     const intercept = 128 * (1 - factor);
     for (let i = 0; i < d.length; i += 4) {
-      d[i] = Math.min(255, Math.max(0, d[i] * factor + intercept));
-      d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
-      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
+      d[i] = d[i] * factor + intercept;
+      d[i + 1] = d[i + 1] * factor + intercept;
+      d[i + 2] = d[i + 2] * factor + intercept;
     }
   } else if (COLOR_MATRICES[filter]) {
     const matrix = COLOR_MATRICES[filter];
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-      d[i] = Math.min(255, Math.max(0, matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4] * 255));
-      d[i + 1] = Math.min(255, Math.max(0, matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * a + matrix[9] * 255));
-      d[i + 2] = Math.min(255, Math.max(0, matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * a + matrix[14] * 255));
+      d[i] = matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4] * 255;
+      d[i + 1] = matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * a + matrix[9] * 255;
+      d[i + 2] = matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * a + matrix[14] * 255;
     }
   }
 
@@ -101,25 +101,25 @@ function applyFilterToImageData(imageData, filter) {
     const factor = 0.85;
     const intercept = 128 * (1 - factor);
     for (let i = 0; i < d.length; i += 4) {
-      d[i] = Math.min(255, Math.max(0, d[i] * factor + intercept));
-      d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
-      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
+      d[i] = d[i] * factor + intercept;
+      d[i + 1] = d[i + 1] * factor + intercept;
+      d[i + 2] = d[i + 2] * factor + intercept;
     }
   } else if (filter === "high-contrast") {
     const factor = 1.5;
     const intercept = 128 * (1 - factor);
     for (let i = 0; i < d.length; i += 4) {
-      d[i] = Math.min(255, Math.max(0, d[i] * factor + intercept));
-      d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * factor + intercept));
-      d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * factor + intercept));
+      d[i] = d[i] * factor + intercept;
+      d[i + 1] = d[i + 1] * factor + intercept;
+      d[i + 2] = d[i + 2] * factor + intercept;
     }
   } else if (COLOR_MATRICES[filter]) {
     const matrix = COLOR_MATRICES[filter];
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-      d[i] = Math.min(255, Math.max(0, matrix[0]*r + matrix[1]*g + matrix[2]*b + matrix[3]*a + matrix[4]*255));
-      d[i+1] = Math.min(255, Math.max(0, matrix[5]*r + matrix[6]*g + matrix[7]*b + matrix[8]*a + matrix[9]*255));
-      d[i+2] = Math.min(255, Math.max(0, matrix[10]*r + matrix[11]*g + matrix[12]*b + matrix[13]*a + matrix[14]*255));
+      d[i] = matrix[0]*r + matrix[1]*g + matrix[2]*b + matrix[3]*a + matrix[4]*255;
+      d[i+1] = matrix[5]*r + matrix[6]*g + matrix[7]*b + matrix[8]*a + matrix[9]*255;
+      d[i+2] = matrix[10]*r + matrix[11]*g + matrix[12]*b + matrix[13]*a + matrix[14]*255;
     }
   }
 
