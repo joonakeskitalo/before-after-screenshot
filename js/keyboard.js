@@ -480,6 +480,19 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
+  // Cmd+A: select all cells in the grid
+  if (e.key === "a" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+    e.preventDefault();
+    const cells = state.getCells();
+    if (cells.length === 0) return;
+    clearSelection();
+    for (let i = 0; i < cells.length; i++) {
+      addCellToSelection(i);
+    }
+    setFocusedCell(cells.length - 1);
+    return;
+  }
+
   // Cmd+C: copy selected cells/rows, or copy entire grid
   if (e.key === "c" && e.metaKey && !e.shiftKey) {
     e.preventDefault();
