@@ -53,6 +53,7 @@ const applyContrast = (d, factor) => {
  */
 export const applyFilterToImageData = (imageData, filter) => {
   if (filter === "none") return imageData;
+  if (imageData.width === 0 || imageData.height === 0) return imageData;
 
   const d = imageData.data;
 
