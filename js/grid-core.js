@@ -740,24 +740,13 @@ const updateGrid = () => {
   document.getElementById("grid-cols").value = newCols;
   document.getElementById("grid-rows").value = newRows;
 
-  // Add/remove rows incrementally
-  while (state.gridRows < newRows) {
-    insertRowAt(state.gridRows);
-  }
-  while (state.gridRows > newRows && state.gridRows > 1) {
-    deleteRowAt(state.gridRows - 1);
-  }
+  // Update column count in state — relayoutGrid will handle the full reflow
+  // and calculate the needed rows to fit all existing content.
+  state.gridCols = newCols;
 
-  // Add/remove columns incrementally
-  while (state.gridCols < newCols) {
-    insertColumnAt(state.gridCols);
-  }
-  while (state.gridCols > newCols && state.gridCols > 1) {
-    deleteColumnAt(state.gridCols - 1);
-  }
-
-  state.selectedRows.clear();
-  updateCopySelectedBtn();
+  // Compact the grid: reflows all content into the new column count,
+  // preserving all items and adjusting rows as needed.
+  relayoutGrid();
 };
 
 // Wire up grid size inputs (replacing inline onchange handlers)
