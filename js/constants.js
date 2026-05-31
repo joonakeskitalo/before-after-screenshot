@@ -5,7 +5,7 @@
 export const GRID_MIN_COL_WIDTH = 350;        // px – base minimum column width before zoom scaling
 export const GRID_MIN_CELL_HEIGHT = 300;      // px – base minimum cell height before zoom scaling
 export const GRID_IMAGE_MAX_HEIGHT = 60;      // dvh – base image max-height before zoom scaling
-export const GRID_GAP = 48;                   // px – base gap between grid cells before zoom scaling
+export const GRID_GAP = 28;                   // px – base gap between grid cells before zoom scaling
 export const GRID_BASE_FONT_SIZE = 15;        // pt – base font size for cell textareas
 
 // --- Zoom ---
