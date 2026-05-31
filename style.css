@@ -148,12 +148,6 @@ body {
     padding: 0;
 }
 
-.grid-size-x {
-    font-size: 9pt;
-    opacity: 0.6;
-    padding: 0 1px;
-}
-
 .toolbar-section {
     display: flex;
     flex-direction: column;

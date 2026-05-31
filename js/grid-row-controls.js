@@ -234,7 +234,6 @@ const insertRowAt = (insertIndex) => {
   updateCopySelectedBtn();
 
   state.gridRows++;
-  document.getElementById("grid-rows").value = state.gridRows;
 
   // Append new empty cells for the extra row at the end of the grid
   for (let c = 0; c < cols; c++) {
@@ -444,7 +443,6 @@ const deleteRowAt = (rowIndex) => {
   updateCopySelectedBtn();
 
   state.gridRows--;
-  document.getElementById("grid-rows").value = state.gridRows;
 
   // Update grid template
   state.gridEl.style.gridTemplateColumns = `repeat(${cols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;

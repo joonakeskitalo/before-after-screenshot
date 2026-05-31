@@ -2,7 +2,7 @@ import state from './state.js';
 import { initDrawingCanvas, redrawCanvas } from './drawing.js';
 import { attachDragTo, updateCopySelectedBtn } from './grid-ui.js';
 import { isAllowedImageSrc, isAllowedImageFile, sanitizeFilename, isValidElementId } from './sanitize.js';
-import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS, GRID_MAX_ROWS, GRID_MAX_COLS } from './constants.js';
+import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS, GRID_MAX_COLS } from './constants.js';
 import { pushUndo } from './undo.js';
 import { handleCellClick } from './grid-selection.js';
 import { handleCellDragStart } from './grid-drag.js';
@@ -566,7 +566,6 @@ const relayoutGrid = () => {
     if (state.gridRows <= 1) return; // already minimal
 
     state.gridRows = 1;
-    document.getElementById("grid-rows").value = state.gridRows;
 
     state.selectedRows.clear();
     state.selectedCells.clear();
@@ -612,7 +611,6 @@ const relayoutGrid = () => {
   // Remove empty trailing rows by calculating the actual rows needed
   const neededRows = Math.max(1, Math.ceil(filledCells.length / state.gridCols));
   state.gridRows = neededRows;
-  document.getElementById("grid-rows").value = state.gridRows;
 
   // Clear selections since positions changed
   state.selectedRows.clear();
@@ -731,11 +729,9 @@ const relayoutGrid = () => {
 
 const updateGrid = () => {
   const newCols = Math.min(parseInt(document.getElementById("grid-cols").value, 10) || 3, GRID_MAX_COLS);
-  const newRows = Math.min(parseInt(document.getElementById("grid-rows").value, 10) || 1, GRID_MAX_ROWS);
 
-  // Reflect clamped values back into the inputs
+  // Reflect clamped value back into the input
   document.getElementById("grid-cols").value = newCols;
-  document.getElementById("grid-rows").value = newRows;
 
   // Update column count in state — relayoutGrid will handle the full reflow
   // and calculate the needed rows to fit all existing content.
@@ -746,9 +742,8 @@ const updateGrid = () => {
   relayoutGrid();
 };
 
-// Wire up grid size inputs (replacing inline onchange handlers)
+// Wire up grid size input
 document.getElementById("grid-cols").addEventListener("change", updateGrid);
-document.getElementById("grid-rows").addEventListener("change", updateGrid);
 
 export {
   setupCell,

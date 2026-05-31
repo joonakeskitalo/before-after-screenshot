@@ -115,7 +115,6 @@ const performUndo = () => {
   // Update grid dimensions
   state.gridRows = snapshot.gridRows;
   state.gridCols = snapshot.gridCols;
-  document.getElementById("grid-rows").value = state.gridRows;
   document.getElementById("grid-cols").value = state.gridCols;
 
   // Suppress blob URL revocation during undo — the snapshot holds valid references

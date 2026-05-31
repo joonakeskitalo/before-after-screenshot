@@ -441,7 +441,6 @@ clearGridBtn.addEventListener("click", (e) => {
 
   // Compact to a single row since all content is now empty
   state.gridRows = 1;
-  document.getElementById("grid-rows").value = state.gridRows;
   state.selectedRows.clear();
   state.selectedCells.clear();
   state.focusedCellIndex = -1;
