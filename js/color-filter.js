@@ -5,7 +5,7 @@ import state from './state.js';
 const colorFilterSelect = document.getElementById("color-filter-select");
 const grid = state.gridEl;
 
-const FILTER_OPTIONS = ["none", "grayscale", "protanopia", "deuteranopia", "tritanopia", "achromatopsia", "low-contrast", "high-contrast"];
+const FILTER_OPTIONS = ["none", "grayscale", "protanopia", "deuteranopia", "tritanopia", "achromatopsia", "low-contrast", "high-contrast", "low-quality-display"];
 
 const FILTER_LABELS = {
   "none": "Original",
@@ -16,6 +16,7 @@ const FILTER_LABELS = {
   "achromatopsia": "Achromatopsia",
   "low-contrast": "Low contrast",
   "high-contrast": "High contrast",
+  "low-quality-display": "Low quality display",
 };
 
 const applyColorFilter = (filter) => {

@@ -986,7 +986,11 @@ body.cell-dragging .grid-cell.keyboard-selected {
 }
 
 .color-filter-high-contrast .grid-cell img {
-    filter: contrast(1.5);
+    filter: contrast(1.25);
+}
+
+.color-filter-low-quality-display .grid-cell img {
+    filter: contrast(0.95) saturate(0.6) blur(0.5px);
 }
 
 /* Filter preview overlay */
