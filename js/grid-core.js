@@ -727,9 +727,6 @@ const relayoutGrid = () => {
   buildRowControls();
 };
 
-// Wire up relayout button
-document.getElementById("relayout-btn").addEventListener("click", relayoutGrid);
-
 // --- updateGrid ---
 
 const updateGrid = () => {
