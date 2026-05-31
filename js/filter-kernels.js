@@ -37,9 +37,12 @@ export const COLOR_MATRICES = {
   ],
 };
 
+/** Midpoint of the 0–255 color range, used as the pivot for contrast scaling. */
+const CHANNEL_MIDPOINT = 128;
+
 /** Apply a linear contrast adjustment in place. */
 const applyContrast = (d, factor) => {
-  const intercept = 128 * (1 - factor);
+  const intercept = CHANNEL_MIDPOINT * (1 - factor);
   for (let i = 0; i < d.length; i += 4) {
     d[i]     = d[i]     * factor + intercept;
     d[i + 1] = d[i + 1] * factor + intercept;
@@ -92,6 +95,8 @@ export const generateWorkerSource = () => {
   if (!_cachedWorkerSource) {
     _cachedWorkerSource = `
 const COLOR_MATRICES = ${JSON.stringify(COLOR_MATRICES)};
+
+const CHANNEL_MIDPOINT = ${CHANNEL_MIDPOINT};
 
 const applyContrast = ${applyContrast.toString()};
 
