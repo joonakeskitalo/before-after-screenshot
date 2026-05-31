@@ -25,7 +25,7 @@
             <div class="toolbar-controls">
               <label class="toolbar-label">
                 Zoom
-                <input type="range" id="grid-zoom" min="20" max="300" value="100" step="10" style="width:100px;height:28px" />
+                <input type="range" id="grid-zoom" min="20" max="300" value="100" step="10" style="width:100px;height:24px" />
                 <span id="grid-zoom-label" style="min-width:28px;text-align:center;font-variant-numeric:tabular-nums">100%</span>
               </label>
 
@@ -39,10 +39,10 @@
 
               <div class="toolbar-divider"></div>
 
-              <button id="relayout-btn" class="tool-mode-btn" title="Compact grid layout — remove blank gaps between images">🧹</button>
-              <button id="filename-toggle-btn" class="tool-mode-btn" title="Toggle filenames">Aa</button>
-              <button id="staging-toggle-btn" class="tool-mode-btn" title="Toggle staging area (h)" style="transform: rotate(180deg)">⬒</button>
-              <button id="clear-grid-btn" class="tool-mode-btn" title="Clear all images from the grid">🗑</button>
+              <button id="relayout-btn" class="tool-mode-btn labeled-btn" title="Compact grid layout — remove blank gaps between images"><span class="btn-icon">🧹</span><span class="btn-label">Compact</span></button>
+              <button id="filename-toggle-btn" class="tool-mode-btn labeled-btn" title="Toggle filenames"><span class="btn-icon">Aa</span><span class="btn-label">Names</span></button>
+              <button id="staging-toggle-btn" class="tool-mode-btn labeled-btn" title="Toggle staging area (h)"><span class="btn-icon" style="transform: rotate(180deg); display: inline-block;">⬒</span><span class="btn-label">Stage</span></button>
+              <button id="clear-grid-btn" class="tool-mode-btn labeled-btn" title="Clear all images from the grid"><span class="btn-icon">🗑</span><span class="btn-label">Clear</span></button>
 
               <div class="toolbar-divider"></div>
 
@@ -143,7 +143,7 @@
 
             <div class="toolbar-divider"></div>
             <button id="text-mode-btn" class="tool-mode-btn" title="Text tool (t)">T</button>
-            <input type="number" id="draw-font-size" min="8" max="72" value="13" title="Text size" style="width:42px;height:28px;font-size:10pt;border-radius:6px;border:1px solid oklch(92.8% 0.006 264.531);text-align:center;" />
+            <input type="number" id="draw-font-size" min="8" max="72" value="13" title="Text size" style="width:38px;height:24px;font-size:8pt;border-radius:6px;border:1px solid oklch(92.8% 0.006 264.531);text-align:center;" />
           </div>
     </div>
 

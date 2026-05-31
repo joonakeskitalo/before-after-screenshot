@@ -94,7 +94,7 @@ body {
     flex-shrink: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    height: 42px;
+    height: 36px;
     border-top: 1px solid oklch(92.8% 0.006 264.531);
     background-color: #ffffffdf;
 }
@@ -131,8 +131,8 @@ body {
 
 .toolbar-label input[type="number"] {
     width: 40px;
-    height: 28px;
-    font-size: 10pt;
+    height: 24px;
+    font-size: 8pt;
     border-radius: 6px;
     border: 1px solid oklch(92.8% 0.006 264.531);
     text-align: center;
@@ -260,11 +260,11 @@ button {
     color: #24292e;
     cursor: pointer;
     display: inline-block;
-    font-size: 10pt;
+    font-size: 8pt;
     font-weight: 500;
     line-height: 20px;
     list-style: none;
-    padding: 4px 10px;
+    padding: 3px 8px;
     position: relative;
     transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
     user-select: none;
@@ -273,7 +273,7 @@ button {
     vertical-align: middle;
     white-space: nowrap;
     word-wrap: break-word;
-    height: 28px;
+    height: 24px;
     justify-content: center;
     line-height: 0;
     border-radius: 6px;
@@ -331,20 +331,20 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 select {
-    font-size: 10pt;
+    font-size: 8pt;
     font-weight: 500;
     appearance: none;
     background-color: #fbfbfb;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 8px center;
+    background-position: right 6px center;
     border: unset;
     box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0,
         rgba(255, 255, 255, 0.25) 0 1px 0 inset;
     box-sizing: border-box;
     color: #24292e;
-    padding: 0 24px 0 14px;
-    height: 28px;
+    padding: 0 20px 0 10px;
+    height: 24px;
     justify-content: center;
     border-radius: 6px;
     border: 1px solid oklch(92.8% 0.006 264.531);
@@ -652,12 +652,33 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 
 /* Tool mode button (arrow, etc.) */
 .tool-mode-btn {
-    font-size: 12pt;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 6px;
+    font-size: 10pt;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 5px;
     border-radius: 6px;
     font-weight: 600;
+}
+
+/* Labeled toolbar buttons — icon + short text */
+.tool-mode-btn.labeled-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 6px;
+    height: 24px;
+    min-width: unset;
+}
+
+.tool-mode-btn.labeled-btn .btn-icon {
+    font-size: 9pt;
+    line-height: 1;
+}
+
+.tool-mode-btn.labeled-btn .btn-label {
+    font-size: 8pt;
+    font-weight: 500;
+    line-height: 1;
 }
 
 .tool-mode-btn.active {
@@ -675,9 +696,9 @@ body.drawing-mode .drop:hover .clear-drawing-btn {
 }
 
 .thickness-btn {
-    min-width: 26px;
-    width: 26px;
-    height: 26px;
+    min-width: 22px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     display: flex;
     align-items: center;
