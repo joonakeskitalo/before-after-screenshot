@@ -1,6 +1,5 @@
 import state from './state.js';
 import { EDGE_EXPANSION_THRESHOLD, EDGE_EXPANSION_MAX_COLS, EDGE_EXPANSION_MAX_ROWS } from './constants.js';
-import { updateCopySelectedBtn } from './grid-ui.js';
 import { pushUndo } from './undo.js';
 import {
   setFocusedCellByIndex,

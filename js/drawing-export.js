@@ -7,7 +7,7 @@ import { disconnectAll, reconnectAll } from './shared-observers.js';
 // Redraw all canvases at export scale — called before capture.
 // Since drawing coords are stored relative to the image (0-1), we bake them
 // directly onto the image for a pixel-perfect export.
-export const redrawAllCanvasesForExport = async (scale) => {
+export const redrawAllCanvasesForExport = async () => {
   // Disconnect shared observers so they don't interfere during export
   disconnectAll();
 
@@ -48,7 +48,6 @@ export const redrawAllCanvasesForExport = async (scale) => {
       continue;
     }
 
-    const imgRect = img.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const fitRect = getObjectFitRect(img);
 

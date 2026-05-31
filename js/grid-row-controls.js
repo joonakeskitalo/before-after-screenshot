@@ -669,7 +669,7 @@ const buildRowControls = () => {
     selectCb.dataset.row = r;
     selectCb.title = `Select row ${r + 1} for export`;
     selectCb.checked = state.selectedRows.has(r);
-    selectCb.addEventListener("change", (e) => {
+    selectCb.addEventListener("change", () => {
       const rowIdx = parseInt(selectCb.dataset.row, 10);
       if (selectCb.checked) {
         state.selectedRows.add(rowIdx);

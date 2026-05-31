@@ -13,10 +13,6 @@ import {
   setRowDropTarget,
   clearRowDropTarget,
   clearRowHighlights,
-  insertRowAt,
-  insertColumnAt,
-  deleteRowAt,
-  deleteColumnAt,
 } from './grid-row-controls.js';
 
 // --- Utility helpers ---

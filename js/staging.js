@@ -1,5 +1,5 @@
 import state from './state.js';
-import { updateFilenameLabel, buildGrid, toggleFilenames, insertRowAt, pushUndo } from './grid.js';
+import { updateFilenameLabel, buildGrid, insertRowAt, pushUndo } from './grid.js';
 import { withoutUndo } from './undo.js';
 import { isAllowedImageSrc, isAllowedImageFile, isValidElementId } from './sanitize.js';
 import {

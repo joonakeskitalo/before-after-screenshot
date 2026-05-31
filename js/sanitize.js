@@ -71,6 +71,7 @@ export const isAllowedImageSrc = (src) => {
 export const sanitizeFilename = (name) => {
   if (!name || typeof name !== "string") return "";
   // Remove control characters (U+0000–U+001F, U+007F–U+009F)
+  // eslint-disable-next-line no-control-regex
   const cleaned = name.replace(/[\x00-\x1f\x7f-\x9f]/g, "");
   return cleaned.slice(0, MAX_FILENAME_LENGTH);
 };
@@ -83,5 +84,5 @@ export const sanitizeFilename = (name) => {
 export const isValidElementId = (id) => {
   if (!id || typeof id !== "string") return false;
   // Allow alphanumeric, hyphens, underscores, and dots; max 128 chars
-  return /^[\w.\-]{1,128}$/.test(id);
+  return /^[\w.-]{1,128}$/.test(id);
 };
