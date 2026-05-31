@@ -138,6 +138,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && state.drawingMode) {
     disableDrawingMode();
     allToolButtons.forEach((btn) => btn.classList.remove("active"));
+  } else if (e.key === "Escape") {
+    e.target.blur();
   }
 });
 
