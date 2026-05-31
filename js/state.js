@@ -1,6 +1,6 @@
 import {
   DRAW_DEFAULT_FONT_SIZE, DRAW_DEFAULT_LINE_WIDTH, ZOOM_DEFAULT,
-  TOOL_NAMES,
+  TOOL_NAMES, GRID_DEFAULT_COLS
 } from './constants.js';
 
 // Shared mutable application state.
@@ -11,7 +11,7 @@ const state = {
   gridEl: document.getElementById("grid"),
   content: document.querySelector(".content"),
 
-  gridCols: 3,
+  gridCols: GRID_DEFAULT_COLS,
   gridRows: 1,
   selectedRows: new Set(),
   selectedCells: new Set(),

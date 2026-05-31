@@ -2,7 +2,7 @@ import state from './state.js';
 import { initDrawingCanvas, redrawCanvas } from './drawing.js';
 import { attachDragTo, updateCopySelectedBtn } from './grid-ui.js';
 import { isAllowedImageSrc, isAllowedImageFile, sanitizeFilename, isValidElementId } from './sanitize.js';
-import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS, GRID_MAX_COLS } from './constants.js';
+import { GRID_MIN_COL_WIDTH, SWAP_ANIMATION_FALLBACK_MS, GRID_MAX_COLS, GRID_DEFAULT_COLS } from './constants.js';
 import { pushUndo } from './undo.js';
 import { handleCellClick } from './grid-selection.js';
 import { handleCellDragStart } from './grid-drag.js';
@@ -728,7 +728,7 @@ const relayoutGrid = () => {
 // --- updateGrid ---
 
 const updateGrid = () => {
-  const newCols = Math.min(parseInt(document.getElementById("grid-cols").value, 10) || 3, GRID_MAX_COLS);
+  const newCols = Math.min(parseInt(document.getElementById("grid-cols").value, 10) || GRID_DEFAULT_COLS, GRID_MAX_COLS);
 
   // Reflect clamped value back into the input
   document.getElementById("grid-cols").value = newCols;
