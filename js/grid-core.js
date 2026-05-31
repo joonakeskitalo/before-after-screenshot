@@ -561,8 +561,46 @@ const relayoutGrid = () => {
     (d) => d.imgSrc || d.text || (d.drawingPaths && d.drawingPaths.length > 0)
   );
 
-  // Nothing to relayout
-  if (filledCells.length === 0) return;
+  // Grid is entirely empty — compact down to a single row
+  if (filledCells.length === 0) {
+    if (state.gridRows <= 1) return; // already minimal
+
+    state.gridRows = 1;
+    document.getElementById("grid-rows").value = state.gridRows;
+
+    state.selectedRows.clear();
+    state.selectedCells.clear();
+    updateCopySelectedBtn();
+    const prevCells = state.getCells();
+    if (state.focusedCellIndex >= 0 && state.focusedCellIndex < prevCells.length) {
+      prevCells[state.focusedCellIndex].classList.remove("keyboard-focused");
+    }
+    state.focusedCellIndex = -1;
+
+    const targetTotal = state.gridRows * state.gridCols;
+    // Remove excess cells from the end (with proper cleanup)
+    for (let i = prevCells.length - 1; i >= targetTotal; i--) {
+      const cell = prevCells[i];
+      const canvas = cell.querySelector(".drawing-canvas");
+      if (canvas) {
+        const drop = canvas.parentElement;
+        if (drop) unobserveDrop(drop);
+        const mouseUpHandler = state.canvasMouseUpHandlers.get(canvas);
+        if (mouseUpHandler) {
+          document.removeEventListener("mouseup", mouseUpHandler);
+          state.canvasMouseUpHandlers.delete(canvas);
+        }
+        state.canvasDataMap.delete(canvas);
+      }
+      cell.remove();
+    }
+
+    state.gridEl.style.gridTemplateColumns = `repeat(${state.gridCols}, minmax(${Math.round(GRID_MIN_COL_WIDTH * state.gridZoom / 100)}px, 1fr))`;
+    state.gridEl.style.gridTemplateRows = `repeat(${state.gridRows}, 1fr)`;
+    state.invalidateCellsCache();
+    buildRowControls();
+    return;
+  }
 
   // Reassign positions sequentially in row-major order
   const reindexed = filledCells.map((d, i) => ({
