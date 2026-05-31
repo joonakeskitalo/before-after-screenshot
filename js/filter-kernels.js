@@ -55,7 +55,7 @@ const applyContrast = (d, factor) => {
  * Returns the same ImageData reference for convenience.
  */
 export const applyFilterToImageData = (imageData, filter) => {
-  if (filter === "none") return imageData;
+  if (!filter || filter === "none") return imageData;
   if (imageData.width === 0 || imageData.height === 0) return imageData;
 
   const d = imageData.data;
